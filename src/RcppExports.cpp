@@ -5,22 +5,41 @@
 
 using namespace Rcpp;
 
+// foldChange
+extern SEXP foldChange(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP threads, SEXP fc_name, SEXP min_threshold);
+RcppExport SEXP _bigde_foldChange(SEXP matrixSEXP, SEXP labelsSEXP, SEXP calc_percentsSEXP, SEXP threadsSEXP, SEXP fc_nameSEXP, SEXP min_thresholdSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type matrix(matrixSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type labels(labelsSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type calc_percents(calc_percentsSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type threads(threadsSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type fc_name(fc_nameSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type min_threshold(min_thresholdSEXP);
+    rcpp_result_gen = Rcpp::wrap(foldChange(matrix, labels, calc_percents, threads, fc_name, min_threshold));
+    return rcpp_result_gen;
+END_RCPP
+}
 // wmwtest
-extern SEXP wmwtest(SEXP matrix, SEXP labels, SEXP rtype);
-RcppExport SEXP _bigde_wmwtest(SEXP matrixSEXP, SEXP labelsSEXP, SEXP rtypeSEXP) {
+extern SEXP wmwtest(SEXP matrix, SEXP labels, SEXP rtype, SEXP continuity_correction, SEXP threads);
+RcppExport SEXP _bigde_wmwtest(SEXP matrixSEXP, SEXP labelsSEXP, SEXP rtypeSEXP, SEXP continuity_correctionSEXP, SEXP threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< SEXP >::type matrix(matrixSEXP);
     Rcpp::traits::input_parameter< SEXP >::type labels(labelsSEXP);
     Rcpp::traits::input_parameter< SEXP >::type rtype(rtypeSEXP);
-    rcpp_result_gen = Rcpp::wrap(wmwtest(matrix, labels, rtype));
+    Rcpp::traits::input_parameter< SEXP >::type continuity_correction(continuity_correctionSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type threads(threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(wmwtest(matrix, labels, rtype, continuity_correction, threads));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_bigde_wmwtest", (DL_FUNC) &_bigde_wmwtest, 3},
+    {"_bigde_foldChange", (DL_FUNC) &_bigde_foldChange, 6},
+    {"_bigde_wmwtest", (DL_FUNC) &_bigde_wmwtest, 5},
     {NULL, NULL, 0}
 };
 

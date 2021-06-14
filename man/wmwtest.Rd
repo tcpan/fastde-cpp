@@ -8,10 +8,10 @@ Simple function using Rcpp
 Simple function using Rcpp
 }
 \usage{
-wmwtest(matrix, labels, rtype)	
+wmwtest(matrix, labels, rtype, threads)	
 }
 \examples{
 \dontrun{
-wmwtest(matrix, labels, rtype)
+wmwtest(matrix, labels, rtype, threads)
 }
 }
