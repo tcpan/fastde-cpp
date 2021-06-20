@@ -9,9 +9,13 @@ library(tictoc)
 # read input
 input <- h5read("/home/tpan/build/wave/input.h5", "array/block0_values")
 labels <- as.vector(h5read("/home/tpan/build/wave/labels.h5", "array/block0_values"))
+genenames <- h5read("/home/tpan/build/wave/input.h5", "array/axis1")
+samplenames <- h5read("/home/tpan/build/wave/input.h5", "array/axis0")
 wilcox <- h5read("/home/tpan/build/wave/test-wilcox.h5", "array/block0_values")
 
 
+colnames(input) <- genenames
+rownames(input) <- samplenames
 
 # count number of labels
 #num_labels = nlevels(labels)
@@ -34,10 +38,25 @@ tic("bigde")
 # time and run BioQC
 bigdewilcox <- matrix(, ncol = ncol(wilcox), nrow = nrow(wilcox) )
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
-bigdewilcox <- bigde::wmwtest(input, labels, as.integer(2), TRUE, as.integer(4))
+bigdewilcox <- bigde::wmwfast(input, labels, rtype=as.integer(2), 
+    continuity_correction=TRUE, as_dataframe = FALSE, threads = as.integer(4))
 toc()
 
 bigdewilcox[, 1]
+
+
+tic("bigde_df")
+# time and run BioQC
+bigdewilcox_df <- matrix(, ncol = ncol(wilcox), nrow = nrow(wilcox) )
+cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
+bigdewilcox_df <- bigde::wmwfast(input, labels, rtype=as.integer(2), 
+    continuity_correction=TRUE, as_dataframe = TRUE, threads = as.integer(4))
+toc()
+
+print(bigdewilcox_df)
+# bigdewilcox_df$p_val
+# bigdewilcox_df$cluster
+# bigdewilcox_df$genes
 
 
 
@@ -48,7 +67,7 @@ inds = list()
 for ( c in L ) {
     inds[[c]] <- labels %in% c
 }
-cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
+# cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
 BioQCwilcox2 <- BioQC::wmwTest(input, inds, valType = "p.two.sided")
 toc()
 

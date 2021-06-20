@@ -108,20 +108,23 @@ void foldchange_percents(std::unordered_map<LABEL, clust_info> const & sums,
   
   if (sums.size() == 0) return;
 
-  size_t label_count = sums.size() - 1;
   size_t count = sums.at(std::numeric_limits<LABEL>::max()).count;
   size_t thresh_count = sums.at(std::numeric_limits<LABEL>::max()).thresh_count;
   // Rprintf("%lu %lu %lu %f\n", label_count, count, thresh_count, sums.at(std::numeric_limits<LABEL>::max()).sum);
   
   // for each gene/cluster combo, report fold change, and percent above threshold
-  LABEL key;
   double mean1 = 0;
   double mean2 = 0;
-  for (size_t i = 0; i < label_count; ++i) {
-    key = i+1;
-    percent1[i] = static_cast<double>(sums.at(key).thresh_count) / static_cast<double>(sums.at(key).count);
-    percent2[i] = static_cast<double>(thresh_count - sums.at(key).thresh_count) / static_cast<double>(count - sums.at(key).count);
+  size_t i = 0;
+  for (auto item : sums) {
+    if (item.first == std::numeric_limits<LABEL>::max()) continue;  // skip the max count
+
+    percent1[i] = static_cast<double>(item.second.thresh_count) / static_cast<double>(item.second.count);
+    percent2[i] = static_cast<double>(thresh_count - item.second.thresh_count) / static_cast<double>(count - item.second.count);
+    ++i;
+    // order of entry is same as order of sums traversal.
   }
+  
 }
 
 // compute mean .  this is used for seurat "scaled.data".  no log or pseudocount applied.
@@ -130,23 +133,23 @@ template <typename LABEL, typename OT>
 void foldchange_mean(std::unordered_map<LABEL, clust_info> const & sums, 
   OT * out) {
 
-  if (sums.size() == 0) {
-    return;
-  }
-  size_t label_count = sums.size() - 1;
+  if (sums.size() == 0) return;
+ 
   double total_sum = sums.at(std::numeric_limits<LABEL>::max()).sum;
   size_t count = sums.at(std::numeric_limits<LABEL>::max()).count;
   // Rprintf("MEAN: %lu %lu %lu %f\n", sums.size(), count, sums.at(std::numeric_limits<LABEL>::max()).thresh_count, total_sum);
 
   // for each gene/cluster combo, report fold change, and percent above threshold
-  LABEL key;
   double mean1 = 0;
   double mean2 = 0;
-  for (size_t i = 0; i < label_count; ++i) {
-    key = i+1;
-    mean1 = sums.at(key).sum / static_cast<double>(sums.at(key).count);
-    mean2 = (total_sum - sums.at(key).sum) / static_cast<double>(count - sums.at(key).count);
+  size_t i = 0;
+  for (auto item : sums) {    
+    if (item.first == std::numeric_limits<LABEL>::max()) continue;  // skip the max count
+
+    mean1 = item.second.sum / static_cast<double>(item.second.count);
+    mean2 = (total_sum - item.second.sum) / static_cast<double>(count - item.second.count);
     out[i] = mean1 - mean2;
+    ++i;
   }
 
 }
@@ -159,19 +162,19 @@ void foldchange_logmean(std::unordered_map<LABEL, clust_info> const & sums,
   
   if (sums.size() == 0) return;
 
-  size_t label_count = sums.size() - 1;
   double total_sum = sums.at(std::numeric_limits<LABEL>::max()).sum;
   size_t count = sums.at(std::numeric_limits<LABEL>::max()).count;
   
   // for each gene/cluster combo, report fold change, and percent above threshold
-  LABEL key;
   double mean1 = 0;
   double mean2 = 0;
   double inv_log = 1.0 / log(base);
-  for (size_t i = 0; i < label_count; ++i) {
-    key = i+1;
-    mean1 = sums.at(key).sum / static_cast<double>(sums.at(key).count);
-    mean2 = (total_sum - sums.at(key).sum) / static_cast<double>(count - sums.at(key).count);
+  size_t i = 0;
+  for (auto item : sums) {    
+    if (item.first == std::numeric_limits<LABEL>::max()) continue;  // skip the max count
+
+    mean1 = item.second.sum / static_cast<double>(item.second.count);
+    mean2 = (total_sum - item.second.sum) / static_cast<double>(count - item.second.count);
     if (base == 2.0) {
       mean1 = log2(mean1 + pseudocount);
       mean2 = log2(mean2 + pseudocount);
@@ -186,6 +189,7 @@ void foldchange_logmean(std::unordered_map<LABEL, clust_info> const & sums,
       mean2 = log(mean2) * inv_log;
     }
     out[i] = mean1 - mean2;
+    ++i;
   }
 }
 
@@ -203,7 +207,9 @@ void foldchange_logmean(std::unordered_map<LABEL, clust_info> const & sums,
 // [[Rcpp::export]]
 extern SEXP FoldChangeBatch(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP fc_name, 
   SEXP use_expm1, SEXP min_threshold, 
-  SEXP use_log, SEXP log_base, SEXP use_pseudocount, SEXP threads) {
+  SEXP use_log, SEXP log_base, SEXP use_pseudocount, 
+  SEXP as_dataframe,
+  SEXP threads) {
   
   bool perc = Rf_asLogical(calc_percents);
   double min_thresh = REAL(min_threshold)[0];
@@ -211,49 +217,169 @@ extern SEXP FoldChangeBatch(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP f
   bool _use_log = Rf_asLogical(use_log);
   double _log_base = REAL(log_base)[0];
   bool _use_pseudocount = Rf_asLogical(use_pseudocount);
+  bool _as_dataframe = Rf_asLogical(as_dataframe);
 
   int nthreads=INTEGER(threads)[0];
   if (nthreads < 1) nthreads = 1;
   const size_t nsamples=NROW(matrix);  // n
   const size_t nfeatures=NCOL(matrix); // m
   
-  // ========= count number of labels so we can allocate output
+  // ========= count number of labels so we can allocate output  run the first one.
   int *label_ptr=INTEGER(labels);
-  size_t label_count = 0;
-  {
-    std::unordered_set<int> unique_labels;
-    for (size_t l = 0; l < nsamples; ++l, ++label_ptr) {
-      unique_labels.insert(*label_ptr);
-    }
-    label_count = unique_labels.size();   // k
-  }
+  // run 1, so we can get the cluster order.
+  std::unordered_map<int, clust_info> info =
+      foldchange_stats(REAL(matrix), label_ptr, nsamples, min_thresh, false);
+  size_t label_count = info.size() - 1;   // k
   label_ptr = INTEGER(labels);   // reset to start.
+  
+  int intlen = snprintf(NULL, 0, "%lu", std::numeric_limits<size_t>::max());
+  char * str = reinterpret_cast<char *>(malloc(intlen + 1));
+  int proc_count = 0;
+
+    // https://stackoverflow.com/questions/23547625/returning-a-data-frame-from-c-to-r
+
+  // GET features.
+  SEXP features = Rf_getAttrib(matrix, R_NamesSymbol);
+  // check if features is null.  if so, make a new one.
+  // https://stackoverflow.com/questions/25172419/how-can-i-get-the-sexptype-of-an-sexp-value
+  if (TYPEOF(features) == NILSXP) {
+    PROTECT(features = Rf_allocVector(STRSXP, nfeatures));
+    ++proc_count;
+    
+    for (size_t j = 0; j < nfeatures; ++j) {
+      // create string and set in clust.
+      sprintf(str, "%lu", j);
+      SET_STRING_ELT(features, j, Rf_mkChar(str));
+      memset(str, 0, intlen + 1);
+    }
+
+  }
 
   // ============= alloc output
-  SEXP fc = PROTECT(Rf_allocMatrix(REALSXP, label_count, nfeatures));
-  SEXP p1;
-  SEXP p2;
+  SEXP fc, p1, p2, clust, genenames, res, names, rownames, cls, dimnames;
+  int ncols = 1 + (perc ? 2 : 0) + (_as_dataframe ? 2 : 0);
+  int col_id = 0;
 
-  if (perc) {
-    p1 = PROTECT(Rf_allocMatrix(REALSXP, label_count, nfeatures));
-    p2 = PROTECT(Rf_allocMatrix(REALSXP, label_count, nfeatures)); 
+  PROTECT(res = Rf_allocVector(VECSXP, ncols));   // cluster id and gene names are repeated.
+  PROTECT(names = Rf_allocVector(STRSXP, ncols));
+  proc_count += 2;
+
+  if (_as_dataframe) {
+    PROTECT(clust = Rf_allocVector(INTSXP, label_count * nfeatures));
+    PROTECT(genenames = Rf_allocVector(STRSXP, label_count * nfeatures));
+    PROTECT(fc = Rf_allocVector(REALSXP, label_count * nfeatures));
+    proc_count += 3;
+    if (perc) {
+      PROTECT(p1 = Rf_allocVector(REALSXP, label_count * nfeatures));
+      PROTECT(p2 = Rf_allocVector(REALSXP, label_count * nfeatures)); 
+      proc_count += 2;
+    }
+
+    PROTECT(cls = Rf_allocVector(STRSXP, 1)); // class attribute
+    SET_STRING_ELT(cls, 0, Rf_mkChar("data.frame"));
+    Rf_classgets(res, cls);
+
+    ++proc_count;
+
+  } else {
+    // use clust for column names.
+    PROTECT(clust = Rf_allocVector(STRSXP, label_count));
+    ++proc_count;
+    int key;
+    size_t j = 0;
+    for (auto item : info) {
+      key = item.first;
+      if (key == std::numeric_limits<int>::max()) continue;
+
+      sprintf(str, "%d", key);
+      SET_STRING_ELT(clust, j, Rf_mkChar(str));
+      memset(str, 0, intlen + 1);
+      ++j;
+    }
+    
+    PROTECT(fc = Rf_allocMatrix(REALSXP, label_count, nfeatures));
+    ++proc_count;
+    if (perc) {
+      PROTECT(p1 = Rf_allocMatrix(REALSXP, label_count, nfeatures));
+      PROTECT(p2 = Rf_allocMatrix(REALSXP, label_count, nfeatures)); 
+      proc_count += 2;
+    }
   }
 
-  // alloc output res.
-  SEXP res = PROTECT(Rf_allocVector(VECSXP, (perc ? 3 : 1)));
-  SET_VECTOR_ELT(res, 0, fc);
-  if (perc) {
-    SET_VECTOR_ELT(res, 1, p1);
-    SET_VECTOR_ELT(res, 2, p2);
+  // set up the output structure.
+  if (_as_dataframe) {
+    PROTECT(rownames = Rf_allocVector(STRSXP, label_count * nfeatures));  // dataframe column names.
+    ++proc_count;
+
+    // make the clusters vector.
+    int * clust_ptr = INTEGER(clust);
+    SEXP * features_ptr = STRING_PTR(features);
+    size_t j = 0;
+    for (auto item : info) {
+      if (item.first == std::numeric_limits<int>::max()) continue;
+      std::fill_n(clust_ptr, nfeatures, item.first);
+      clust_ptr += nfeatures;
+
+      // copy feature names multiple times to the genenames vector.
+      features_ptr = STRING_PTR(features);
+      for (size_t i = 0; i < nfeatures; ++i) {
+        SET_STRING_ELT(genenames, j, Rf_duplicate(*features_ptr));
+        ++features_ptr;
+
+        sprintf(str, "%lu", j);
+        SET_STRING_ELT(rownames, j, Rf_mkChar(str));
+        memset(str, 0, intlen + 1);
+  
+        ++j;
+      }
+    }
+
+    SET_VECTOR_ELT(res, col_id, clust);  
+    SET_STRING_ELT(names, col_id, Rf_mkChar("cluster"));
+    ++col_id;
+    SET_VECTOR_ELT(res, col_id, genenames);
+    SET_STRING_ELT(names, col_id, Rf_mkChar("genes"));
+    ++col_id;
   }
 
-  SEXP names = PROTECT(Rf_allocVector(STRSXP, (perc ? 3 :  1)));
-  SET_STRING_ELT(names, 0, Rf_mkChar("fc"));   // temporary
+
+  SET_VECTOR_ELT(res, col_id, fc);
+  // convert from STRSXP to CHARSXP
+  SET_STRING_ELT(names, col_id, Rf_mkChar(CHAR(STRING_ELT(fc_name, 0)))); 
+  ++col_id;
+
   if (perc) {
-    SET_STRING_ELT(names, 1, Rf_mkChar("pct.1"));
-    SET_STRING_ELT(names, 2, Rf_mkChar("pct.2"));
+    SET_VECTOR_ELT(res, col_id, p1);
+    SET_STRING_ELT(names, col_id, Rf_mkChar("pct.1"));
+    ++col_id;
+    SET_VECTOR_ELT(res, col_id, p2);
+    SET_STRING_ELT(names, col_id, Rf_mkChar("pct.2"));
+    ++col_id;
   }
-  Rf_setAttrib(res, R_NamesSymbol, names);
+
+  // column names.
+  if (_as_dataframe) {
+    Rf_namesgets(res, names);
+
+    // set row names - NEEDED to print the dataframe!!!
+    Rf_setAttrib(res, R_RowNamesSymbol, rownames);
+  } else {
+    // set list element names.
+    Rf_setAttrib(res, R_NamesSymbol, names);
+
+    PROTECT(dimnames = Rf_allocVector(VECSXP, 2));
+    ++proc_count;
+    SET_VECTOR_ELT(dimnames, 0, clust);  // rows = clusters
+    SET_VECTOR_ELT(dimnames, 1, features);  // columns  = features (genes)
+
+    // https://stackoverflow.com/questions/5709940/r-extension-in-c-setting-matrix-row-column-names
+    Rf_setAttrib(fc, R_DimNamesSymbol, dimnames);
+    if (perc) {
+      Rf_setAttrib(p1, R_DimNamesSymbol, Rf_duplicate(dimnames));
+      Rf_setAttrib(p2, R_DimNamesSymbol, Rf_duplicate(dimnames));
+    }
+
+  }
 
   // Rprintf("inputsize  r %lu c %lu , output r %lu c %lu \n", nsamples, nfeatures, NROW(res), NCOL(res));
 
@@ -280,8 +406,8 @@ extern SEXP FoldChangeBatch(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP f
     }
   }
 
-
-  UNPROTECT(5);
+  UNPROTECT(proc_count);
+  free(str);
   return(res);
 }
 

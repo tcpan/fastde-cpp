@@ -6,8 +6,8 @@
 using namespace Rcpp;
 
 // FoldChangeBatch
-extern SEXP FoldChangeBatch(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP fc_name, SEXP use_expm1, SEXP min_threshold, SEXP use_log, SEXP log_base, SEXP use_pseudocount, SEXP threads);
-RcppExport SEXP _bigde_FoldChangeBatch(SEXP matrixSEXP, SEXP labelsSEXP, SEXP calc_percentsSEXP, SEXP fc_nameSEXP, SEXP use_expm1SEXP, SEXP min_thresholdSEXP, SEXP use_logSEXP, SEXP log_baseSEXP, SEXP use_pseudocountSEXP, SEXP threadsSEXP) {
+extern SEXP FoldChangeBatch(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP fc_name, SEXP use_expm1, SEXP min_threshold, SEXP use_log, SEXP log_base, SEXP use_pseudocount, SEXP as_dataframe, SEXP threads);
+RcppExport SEXP _bigde_FoldChangeBatch(SEXP matrixSEXP, SEXP labelsSEXP, SEXP calc_percentsSEXP, SEXP fc_nameSEXP, SEXP use_expm1SEXP, SEXP min_thresholdSEXP, SEXP use_logSEXP, SEXP log_baseSEXP, SEXP use_pseudocountSEXP, SEXP as_dataframeSEXP, SEXP threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -20,14 +20,15 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< SEXP >::type use_log(use_logSEXP);
     Rcpp::traits::input_parameter< SEXP >::type log_base(log_baseSEXP);
     Rcpp::traits::input_parameter< SEXP >::type use_pseudocount(use_pseudocountSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type as_dataframe(as_dataframeSEXP);
     Rcpp::traits::input_parameter< SEXP >::type threads(threadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(FoldChangeBatch(matrix, labels, calc_percents, fc_name, use_expm1, min_threshold, use_log, log_base, use_pseudocount, threads));
+    rcpp_result_gen = Rcpp::wrap(FoldChangeBatch(matrix, labels, calc_percents, fc_name, use_expm1, min_threshold, use_log, log_base, use_pseudocount, as_dataframe, threads));
     return rcpp_result_gen;
 END_RCPP
 }
-// wmwtest
-extern SEXP wmwtest(SEXP matrix, SEXP labels, SEXP rtype, SEXP continuity_correction, SEXP threads);
-RcppExport SEXP _bigde_wmwtest(SEXP matrixSEXP, SEXP labelsSEXP, SEXP rtypeSEXP, SEXP continuity_correctionSEXP, SEXP threadsSEXP) {
+// wmwfast
+extern SEXP wmwfast(SEXP matrix, SEXP labels, SEXP rtype, SEXP continuity_correction, SEXP as_dataframe, SEXP threads);
+RcppExport SEXP _bigde_wmwfast(SEXP matrixSEXP, SEXP labelsSEXP, SEXP rtypeSEXP, SEXP continuity_correctionSEXP, SEXP as_dataframeSEXP, SEXP threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -35,15 +36,16 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< SEXP >::type labels(labelsSEXP);
     Rcpp::traits::input_parameter< SEXP >::type rtype(rtypeSEXP);
     Rcpp::traits::input_parameter< SEXP >::type continuity_correction(continuity_correctionSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type as_dataframe(as_dataframeSEXP);
     Rcpp::traits::input_parameter< SEXP >::type threads(threadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(wmwtest(matrix, labels, rtype, continuity_correction, threads));
+    rcpp_result_gen = Rcpp::wrap(wmwfast(matrix, labels, rtype, continuity_correction, as_dataframe, threads));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_bigde_FoldChangeBatch", (DL_FUNC) &_bigde_FoldChangeBatch, 10},
-    {"_bigde_wmwtest", (DL_FUNC) &_bigde_wmwtest, 5},
+    {"_bigde_FoldChangeBatch", (DL_FUNC) &_bigde_FoldChangeBatch, 11},
+    {"_bigde_wmwfast", (DL_FUNC) &_bigde_wmwfast, 6},
     {NULL, NULL, 0}
 };
 

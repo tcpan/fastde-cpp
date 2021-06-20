@@ -176,33 +176,149 @@ void wmw(IT const * in, LABEL const * labels, size_t const & count, OT * out, si
  * This implementation uses normal approximation, which works reasonably well if sample size is large (say N>=20)
  */
 // [[Rcpp::export]]
-extern SEXP wmwtest(SEXP matrix, SEXP labels, SEXP rtype, SEXP continuity_correction, SEXP threads) {
+extern SEXP wmwfast(SEXP matrix, SEXP labels, SEXP rtype, 
+    SEXP continuity_correction, 
+    SEXP as_dataframe,
+    SEXP threads) {
   const int type=INTEGER(rtype)[0];
   if (type > 3) Rprintf("ERROR: unsupported type: %d. Supports only greater, less, twosided, and U\n", type);
   int nthreads=INTEGER(threads)[0];
   if (nthreads < 1) nthreads = 1;
-  bool continuity = LOGICAL(continuity_correction)[0];
+  bool continuity = Rf_asLogical(continuity_correction);
   const size_t nsamples=NROW(matrix);  // n
   const size_t nfeatures=NCOL(matrix); // m
+  bool _as_dataframe = Rf_asLogical(as_dataframe);
   
   // get the number of unique labels.
-  size_t label_count = 0;
   int *label_ptr=INTEGER(labels);
-  {
-    std::unordered_set<int> unique_labels;
-    for (size_t l = 0; l < nsamples; ++l, ++label_ptr) {
-      unique_labels.insert(*label_ptr);
-    }
-    label_count = unique_labels.size();   // k
+  std::unordered_map<int, int> info;
+  for (size_t l = 0; l < nsamples; ++l, ++label_ptr) {
+    info[*label_ptr] = l;
   }
+  size_t label_count = info.size();
+  info[std::numeric_limits<int>::max()] = nsamples;   // this is just to make the iteration order consistent
   label_ptr = INTEGER(labels);
 
-  // double *matColPtr; // pointer to the current column of the matrix
-  SEXP res;
-  // double *resPtr;  // pointer to the current column of the output 
-   
+  int intlen = snprintf(NULL, 0, "%lu", std::numeric_limits<size_t>::max());
+  char * str = reinterpret_cast<char *>(malloc(intlen + 1));
+  int proc_count = 0;
 
-  res=PROTECT(Rf_allocMatrix(REALSXP, label_count, nfeatures));
+  // https://stackoverflow.com/questions/23547625/returning-a-data-frame-from-c-to-r
+
+  // GET features.
+  SEXP features = Rf_getAttrib(matrix, R_NamesSymbol);
+  // check if features is null.  if so, make a new one.
+  // https://stackoverflow.com/questions/25172419/how-can-i-get-the-sexptype-of-an-sexp-value
+  if (TYPEOF(features) == NILSXP) {
+    PROTECT(features = Rf_allocVector(STRSXP, nfeatures));
+    ++proc_count;
+
+    for (size_t j = 0; j < nfeatures; ++j) {
+      // create string and set in clust.
+      sprintf(str, "%lu", j);
+      SET_STRING_ELT(features, j, Rf_mkChar(str));
+      memset(str, 0, intlen + 1);
+    }
+
+  }
+
+  // double *matColPtr; // pointer to the current column of the matrix
+  SEXP res, pv, clust, genenames, names, rownames, cls;
+  int ncols = 1 + (_as_dataframe ? 2 : 0);
+  int col_id = 0;
+
+  if (_as_dataframe) {
+    PROTECT(res = Rf_allocVector(VECSXP, ncols));   // cluster id and gene names are repeated.
+    proc_count += 1;
+
+    PROTECT(clust = Rf_allocVector(INTSXP, label_count * nfeatures));
+    PROTECT(genenames = Rf_allocVector(STRSXP, label_count * nfeatures));
+    PROTECT(pv = Rf_allocVector(REALSXP, label_count * nfeatures));
+    proc_count += 3;
+
+    PROTECT(cls = Rf_allocVector(STRSXP, 1)); // class attribute
+    SET_STRING_ELT(cls, 0, Rf_mkChar("data.frame"));
+    Rf_classgets(res, cls);
+    ++proc_count;
+
+  } else {
+    // use clust for column names.
+    PROTECT(clust = Rf_allocVector(STRSXP, label_count));
+    ++proc_count;
+    int key;
+    size_t j = 0;
+    for (auto item : info) {
+      key = item.first;
+      if (key == std::numeric_limits<int>::max()) continue;
+
+      // create string and set in clust.
+      sprintf(str, "%d", key);
+      SET_STRING_ELT(clust, j, Rf_mkChar(str));
+      memset(str, 0, intlen + 1);
+      ++j;
+    }
+    
+    PROTECT(pv = Rf_allocMatrix(REALSXP, label_count, nfeatures));
+    ++proc_count;
+
+  }
+
+  // alloc output res (list?)
+  if (_as_dataframe) {
+    PROTECT(rownames = Rf_allocVector(STRSXP, label_count * nfeatures));  // dataframe column names.
+    ++proc_count;
+
+    // make the clusters vector.
+    int * clust_ptr = INTEGER(clust);
+    SEXP * features_ptr = STRING_PTR(features);
+    size_t j = 0;
+    for (auto item : info) {
+      if (item.first == std::numeric_limits<int>::max()) continue;
+      std::fill_n(clust_ptr, nfeatures, item.first);
+      clust_ptr += nfeatures;
+
+      // copy feature names multiple times to the genenames vector.
+      features_ptr = STRING_PTR(features);
+      for (size_t i = 0; i < nfeatures; ++i) {
+        SET_STRING_ELT(genenames, j, Rf_duplicate(*features_ptr));
+        ++features_ptr;
+
+        sprintf(str, "%lu", j);
+        SET_STRING_ELT(rownames, j, Rf_mkChar(str));
+        memset(str, 0, intlen + 1);
+  
+        ++j;
+      }
+    }
+
+    PROTECT(names = Rf_allocVector(STRSXP, ncols));  // dataframe column names.
+    ++proc_count;
+
+    SET_VECTOR_ELT(res, col_id, clust);  
+    SET_STRING_ELT(names, col_id, Rf_mkChar("cluster"));
+    ++col_id;
+    SET_VECTOR_ELT(res, col_id, genenames);
+    SET_STRING_ELT(names, col_id, Rf_mkChar("genes"));
+    ++col_id;
+    SET_VECTOR_ELT(res, col_id, pv);
+    SET_STRING_ELT(names, col_id, Rf_mkChar("p_val"));   
+    ++col_id;
+    Rf_namesgets(res, names);  // colnames
+
+    // set row names - NEEDED to print the dataframe!!!
+    Rf_setAttrib(res, R_RowNamesSymbol, rownames);
+
+
+  } else {
+    // set col and row names for pv.
+    // https://stackoverflow.com/questions/5709940/r-extension-in-c-setting-matrix-row-column-names
+    PROTECT(names = Rf_allocVector(VECSXP, 2));
+    ++proc_count;
+    SET_VECTOR_ELT(names, 0, clust);  // rows = clusters
+    SET_VECTOR_ELT(names, 1, features);  // columns  = features (genes)
+    Rf_setAttrib(pv, R_DimNamesSymbol, names);
+  }
+
   // Rprintf("inputsize  r %lu c %lu , output r %lu c %lu \n", nsamples, nfeatures, NROW(res), NCOL(res));
 
   omp_set_num_threads(nthreads);
@@ -211,11 +327,14 @@ extern SEXP wmwtest(SEXP matrix, SEXP labels, SEXP rtype, SEXP continuity_correc
   for(size_t i=0; i < nfeatures; ++i) {
     // directly compute matrix and res pointers.
     Rprintf("thread %d processing feature %d\n", omp_get_thread_num(), i);
-    wmw(REAL(matrix) + i * nsamples, label_ptr, nsamples, REAL(res) + i * label_count, label_count, type, continuity);
+    wmw(REAL(matrix) + i * nsamples, label_ptr, nsamples, REAL(pv) + i * label_count, label_count, type, continuity);
   }
 
-  UNPROTECT(1);
-  return(res);
+
+  UNPROTECT(proc_count);
+  free(str);
+  if (_as_dataframe) return(res);
+  else return(pv);
 }
 
 
