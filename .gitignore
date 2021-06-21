@@ -41,4 +41,6 @@ vignettes/*.pdf
 # object files
 src/*.o
 src/*.so
+man/*.Rd
+**.bak
 

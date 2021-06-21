@@ -162,18 +162,21 @@ void wmw(IT const * in, LABEL const * labels, size_t const & count, OT * out, si
 }
 
 
-/*! \brief Wilcoxon-Mann-Whitney Test
+/*! \brief Fast Wilcoxon-Mann-Whitney Test
  *
  * \param matrix: an expression matrix, each row is a feature, each column corresponds to a samples
  * \param labels: an integer vector, each element indicating the group to which a sample belongs.
- * \param rtype:
+ * \param rtype: 
  * \parblock
  * Define f(x)=abs(log10(x))
  * 0=p(greater), 1=p(less), 2=p(twoSided), 3=U,
- * 4=f(p(greater)),5=p(less),6=f(p(twoSided)), 7=p(greater)<p(less) ? f(p(twoSided)) : -f(p(twoSided))
  * \endparblock
+ * \param continuity_correction: TRUE/FALSE for continuity correction
+ * \param as_dataframe: TRUE/FALSE - TRUE returns a dataframe, FALSE returns a matrix
+ * \param threads:  number of concurrent threads.
  * 
  * This implementation uses normal approximation, which works reasonably well if sample size is large (say N>=20)
+ * 
  */
 // [[Rcpp::export]]
 extern SEXP wmwfast(SEXP matrix, SEXP labels, SEXP rtype, 
@@ -272,16 +275,16 @@ extern SEXP wmwfast(SEXP matrix, SEXP labels, SEXP rtype,
     int * clust_ptr = INTEGER(clust);
     SEXP * features_ptr = STRING_PTR(features);
     size_t j = 0;
-    for (auto item : info) {
-      if (item.first == std::numeric_limits<int>::max()) continue;
-      std::fill_n(clust_ptr, nfeatures, item.first);
-      clust_ptr += nfeatures;
+    for (size_t i = 0; i < nfeatures; ++i) {
+      for (auto item : info) {
+        if (item.first == std::numeric_limits<int>::max()) continue;
 
-      // copy feature names multiple times to the genenames vector.
-      features_ptr = STRING_PTR(features);
-      for (size_t i = 0; i < nfeatures; ++i) {
+        // rotate through cluster labels for this feature.        
+        *clust_ptr = item.first;
+        ++clust_ptr;
+
+        // same feature name for the set of cluster
         SET_STRING_ELT(genenames, j, Rf_duplicate(*features_ptr));
-        ++features_ptr;
 
         sprintf(str, "%lu", j);
         SET_STRING_ELT(rownames, j, Rf_mkChar(str));
@@ -289,6 +292,8 @@ extern SEXP wmwfast(SEXP matrix, SEXP labels, SEXP rtype,
   
         ++j;
       }
+      ++features_ptr;
+
     }
 
     PROTECT(names = Rf_allocVector(STRSXP, ncols));  // dataframe column names.
@@ -298,7 +303,7 @@ extern SEXP wmwfast(SEXP matrix, SEXP labels, SEXP rtype,
     SET_STRING_ELT(names, col_id, Rf_mkChar("cluster"));
     ++col_id;
     SET_VECTOR_ELT(res, col_id, genenames);
-    SET_STRING_ELT(names, col_id, Rf_mkChar("genes"));
+    SET_STRING_ELT(names, col_id, Rf_mkChar("gene"));
     ++col_id;
     SET_VECTOR_ELT(res, col_id, pv);
     SET_STRING_ELT(names, col_id, Rf_mkChar("p_val"));   

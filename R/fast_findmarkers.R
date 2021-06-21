@@ -1,0 +1,1117 @@
+library(tictoc)
+library(Seurat)
+library(BioQC)
+
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+# Functions
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+#' 
+#' Gene expression markers for all identity classes
+#'
+#' Finds markers (differentially expressed genes) for each of the identity classes in a dataset
+#'
+# @inheritParams FastFindMarkers
+#' @param return.thresh Only return markers that have a p-value < return.thresh, or a power > return.thresh (if the test is ROC)
+#'
+#' @return Matrix containing a ranked list of putative markers, and associated
+#' statistics (p-values, ROC score, etc.)
+#'
+#' @importFrom stats setNames
+#' @importFrom Seurat Idents
+#' @importFrom Seurat FindAllMarkers
+#'
+#' @name FastFindAllMarkers
+#' @export
+#'
+#' @concept differential_expression
+#'
+# @examples
+# data("pbmc_small")
+# # Find markers for all clusters
+# all.markers <- FindAllMarkers(object = pbmc_small)
+# head(x = all.markers)
+# \dontrun{
+# # Pass a value to node as a replacement for FindAllMarkersNode
+# pbmc_small <- BuildClusterTree(object = pbmc_small)
+# all.markers <- FindAllMarkers(object = pbmc_small, node = 4)
+# head(x = all.markers)
+# }
+#
+FastFindAllMarkers <- function(
+  object,
+  assay = NULL,
+  features = NULL,
+  logfc.threshold = 0.25,
+  test.use = 'wilcox',
+  slot = 'data',
+  min.pct = 0.1,
+  min.diff.pct = -Inf,
+  node = NULL,
+  verbose = TRUE,
+  only.pos = FALSE,
+  max.cells.per.ident = Inf,
+  random.seed = 1,
+  latent.vars = NULL,
+  min.cells.feature = 3,
+  min.cells.group = 3,
+  pseudocount.use = 1,
+  mean.fxn = NULL,
+  fc.name = NULL,
+  base = 2,
+  return.thresh = 1e-2,
+  ...
+) {
+  # call ours if possible.  conditiions:
+  #   node is null
+  #   test.use = "wilcox"
+
+  # what does this do?
+  if ( (is.null(x = node)) && (test.use == "wilcox") && (is.null(x = mean.fxn)) ) {
+  
+    # Idents get the cell identity (not name), which correspond to cluster ids? 
+    idents.clusters = Seurat::Idents(object = object)
+    
+
+    # compute for all rows/cols
+    messages <- list()
+    if (verbose) {
+      idents.all <- sort(x = unique(x = idents.clusters))
+      message("Calculating all clusters ", idents.all)
+    }
+    # genes.de dim = cluster as rows, genes as columns
+    gde.all <- FastFindMarkers(
+      object = object,
+      assay = assay,
+      features = features,
+      logfc.threshold = logfc.threshold,
+      test.use = "wilcox",
+      slot = slot,
+      min.pct = min.pct,
+      min.diff.pct = min.diff.pct,
+      verbose = verbose,
+      only.pos = only.pos,
+      pseudocount.use = pseudocount.use,
+      fc.name = fc.name,
+      base = base,
+      return.dataframe = TRUE,
+      ...
+    )
+    # output should be less than p_val thresh, and has columns cluster and gene.
+    gde.all <- subset(x = gde.all, subset = gde.all$p_val < return.thresh)
+    # also already filtered by p val > 0 if only.pos.
+
+    # this hsould not happen
+    # rownames(x = gde.all) <- make.unique(names = as.character(x = gde.all$gene))
+    
+    # print error messgaes.
+    if (nrow(x = gde.all) == 0) {
+      warning("No DE genes identified", call. = FALSE, immediate. = TRUE)
+    }
+    if (length(x = messages) > 0) {
+      warning("The following tests were not performed: ", call. = FALSE, immediate. = TRUE)
+      for (i in 1:length(x = messages)) {
+        if (!is.null(x = messages[[i]])) {
+          warning("When testing ", idents.all[i], " versus all:\n\t", messages[[i]], call. = FALSE, immediate. = TRUE)
+        }
+      }
+    }
+    return(gde.all)
+
+  } else {
+    return(Seurat::FindAllMarkers(
+        object = object,
+        assay = assay,
+        features = features,
+        logfc.threshold = logfc.threshold,
+        test.use = test.use,
+        slot = slot,
+        min.pct = min.pct,
+        min.diff.pct = min.diff.pct,
+        node = node,
+        verbose = verbose,
+        only.pos = only.pos,
+        max.cells.per.ident = max.cells.per.ident,
+        random.seed = random.seed,
+        latent.vars = latent.vars,
+        min.cells.feature = min.cells.feature,
+        min.cells.group = min.cells.group,
+        pseudocount.use = pseudocount.use,
+        mean.fxn = mean.fxn,
+        fc.name = fc.name,
+        base = base,
+        return.thresh = return.thresh,
+        ...
+      ))
+  }
+}
+
+
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+# Methods for Seurat-defined generics
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+#' @rdname FastFindMarkers
+#' @param cells.1 Vector of cell names belonging to group 1
+#' @param cells.2 Vector of cell names belonging to group 2
+#' @param counts Count matrix if using scale.data for DE tests. This is used for
+#' computing pct.1 and pct.2 and for filtering features based on fraction
+#' expressing
+#' @param features Genes to test. Default is to use all genes
+#' @param logfc.threshold Limit testing to genes which show, on average, at least
+#' X-fold difference (log-scale) between the two groups of cells. Default is 0.25
+#' Increasing logfc.threshold speeds up the function, but can miss weaker signals.
+#' @param test.use Denotes which test to use. Available options are:
+#' \itemize{
+#'  \item{"wilcox"} : Identifies differentially expressed genes between two
+#'  groups of cells using a Wilcoxon Rank Sum test (default)
+#'  \item{"bimod"} : Likelihood-ratio test for single cell gene expression,
+#'  (McDavid et al., Bioinformatics, 2013)
+#'  \item{"roc"} : Identifies 'markers' of gene expression using ROC analysis.
+#'  For each gene, evaluates (using AUC) a classifier built on that gene alone,
+#'  to classify between two groups of cells. An AUC value of 1 means that
+#'  expression values for this gene alone can perfectly classify the two
+#'  groupings (i.e. Each of the cells in cells.1 exhibit a higher level than
+#'  each of the cells in cells.2). An AUC value of 0 also means there is perfect
+#'  classification, but in the other direction. A value of 0.5 implies that
+#'  the gene has no predictive power to classify the two groups. Returns a
+#'  'predictive power' (abs(AUC-0.5) * 2) ranked matrix of putative differentially
+#'  expressed genes.
+#'  \item{"t"} : Identify differentially expressed genes between two groups of
+#'  cells using the Student's t-test.
+#'  \item{"negbinom"} : Identifies differentially expressed genes between two
+#'   groups of cells using a negative binomial generalized linear model.
+#'   Use only for UMI-based datasets
+#'  \item{"poisson"} : Identifies differentially expressed genes between two
+#'   groups of cells using a poisson generalized linear model.
+#'   Use only for UMI-based datasets
+#'  \item{"LR"} : Uses a logistic regression framework to determine differentially
+#'  expressed genes. Constructs a logistic regression model predicting group
+#'  membership based on each feature individually and compares this to a null
+#'  model with a likelihood ratio test.
+#'  \item{"MAST"} : Identifies differentially expressed genes between two groups
+#'  of cells using a hurdle model tailored to scRNA-seq data. Utilizes the MAST
+#'  package to run the DE testing.
+#'  \item{"DESeq2"} : Identifies differentially expressed genes between two groups
+#'  of cells based on a model using DESeq2 which uses a negative binomial
+#'  distribution (Love et al, Genome Biology, 2014).This test does not support
+#'  pre-filtering of genes based on average difference (or percent detection rate)
+#'  between cell groups. However, genes may be pre-filtered based on their
+#'  minimum detection rate (min.pct) across both cell groups. To use this method,
+#'  please install DESeq2, using the instructions at
+#'  https://bioconductor.org/packages/release/bioc/html/DESeq2.html
+#' }
+#' @param min.pct  only test genes that are detected in a minimum fraction of
+#' min.pct cells in either of the two populations. Meant to speed up the function
+#' by not testing genes that are very infrequently expressed. Default is 0.1
+#' @param min.diff.pct  only test genes that show a minimum difference in the
+#' fraction of detection between the two groups. Set to -Inf by default
+#' @param only.pos Only return positive markers (FALSE by default)
+#' @param verbose Print a progress bar once expression testing begins
+#' @param pseudocount.use Pseudocount to add to averaged expression values when
+#' calculating logFC. 1 by default.
+#' @param fc.results data.frame from FastFoldChange
+#'
+#' @importFrom stats p.adjust
+#'
+#' 
+#' @concept differential_expression
+#' 
+#' @name FastFindMarkers
+#' @export
+#' @method FastFindMarkers default
+FastFindMarkers.default <- function(
+  object,
+  slot = "data",
+  counts = numeric(),
+  cells.clusters = NULL,
+  features = NULL,
+  logfc.threshold = 0.25,
+  test.use = 'wilcox',
+  min.pct = 0.1,
+  min.diff.pct = -Inf,
+  verbose = TRUE,
+  only.pos = FALSE,
+  pseudocount.use = 1,
+  fc.results = NULL,
+  fc.name = NULL,
+  base = 2,
+  return.dataframe = TRUE,
+  ...
+) {
+  print("TCP SEURAT: FastFindMarkers.default")
+
+  tic("FastFindMarkers.assay FastFoldChange")
+
+  # need to do this first - results will be used to filter.
+  fc.results <- FastFoldChange(
+    object = object,
+    cells.clusters = cells.clusters,
+    features = features,
+    slot = slot,
+    pseudocount.use = pseudocount.use,
+    base = base,
+    fc.name = fc.name,
+    return.dataframe = return.dataframe,
+    ...
+  )
+
+  toc()
+  tic("FinMarkers.default load")
+  # reform to data frame.
+
+  # reset parameters so no feature filtering is performed
+  data <- switch(
+    EXPR = slot,
+    'scale.data' = counts,
+    object
+  )
+
+  # Compute a set of features for each cluster, 
+  # and only compute using those features when wmwtest.
+  # get the baseline mask  - this is uniform for all clusters
+  # get the full mask - this may vary per cluster, so fc_mask is 2D.
+  fc_mask <- bigde::FilterFoldChange(
+    fc.results[,fc.name], fc.results$pct.1, fc.results$pct.2,   
+    init_mask = fc.results$gene %in% features,
+    min_pct = min.pct, min_diff_pct = min.diff.pct, 
+    logfc_threshold = logfc.threshold, only_pos = only.pos, 
+    not_count = (slot != "scale.data"), 
+    threads = future::nbrOfWorkers())
+  # mask the dataframe or matrix.
+
+
+  # print("TCP SEURAT: FastFindMarkers.default 1")
+  # # feature selection (based on percentages)
+  # alpha.min <- pmax(fc.results$pct.1, fc.results$pct.2)
+  # names(x = alpha.min) <- rownames(x = fc.results)
+  # features <- names(x = which(x = alpha.min >= min.pct))
+  # if (length(x = features) == 0) {
+  #   warning("No features pass min.pct threshold; returning empty data.frame")
+  #   return(fc.results[features, ])
+  # }
+
+  # print("TCP SEURAT: FastFindMarkers.default 2")
+  # alpha.diff <- alpha.min - pmin(fc.results$pct.1, fc.results$pct.2)
+  # features <- names(
+  #   x = which(x = alpha.min >= min.pct & alpha.diff >= min.diff.pct)
+  # )
+  # if (length(x = features) == 0) {
+  #   warning("No features pass min.diff.pct threshold; returning empty data.frame")
+  #   return(fc.results[features, ])
+  # }
+  # # feature selection (based on logFC)
+  # if (slot != "scale.data") {
+  #   total.diff <- fc.results[, 1] #first column is logFC
+  #   names(total.diff) <- rownames(fc.results)
+  #   features.diff <- if (only.pos) {
+  #     names(x = which(x = total.diff >= logfc.threshold))
+  #   } else {
+  #     names(x = which(x = abs(x = total.diff) >= logfc.threshold))
+  #   }
+  #   features <- intersect(x = features, y = features.diff)
+  #   if (length(x = features) == 0) {
+  #     warning("No features pass logfc.threshold threshold; returning empty data.frame")
+  #     return(fc.results[features, ])
+  #   }
+  # }
+  # # filter for positive entries of fc.name - DO IT  in fc_mask
+  # if (only.pos) {
+  #   # column 2 is same as fc.results first column, fc value.
+  #   de.results <- de.results[de.results[, fc.name] > 0, , drop = FALSE]
+  # }
+
+  # NO subsample cell groups if they are too large
+
+  toc()
+
+  # because fc_mask is 2D, we compute the DE for all specified features.
+  tic("FastFindMarkers.default performDE")
+  de.results <- FastPerformDE(
+    object = object,
+    cells.clusters = cells.clusters,
+    features = features,
+    test.use = test.use,
+    verbose = verbose,
+    return.dataframe = return.dataframe,
+    ...
+  )
+  toc()
+
+  tic("FastFindMarkers.default post DE")
+
+  #append avg_diff to de.results.  both should have same row assignments.
+  de.results <- cbind(de.results, fc.results[, c(fc.name, "pct.1", "pct.2")])
+
+  # select de.results USING FC_MASK
+  de.results <- de.results[fc_mask, , drop = FALSE]
+
+  # sort.  first order by cluster, then by p_val, and finally by avg_diff.
+  de.results <- de.results[order(de.results$cluster, de.results$p_val, -de.results[, fc.name]), ]
+  # Bonferroni correction is just division by n.  p.adjust require n >= length(p)
+  # so we will just do division directly.
+  corr_factor = 1.0 / nrow(x = object)
+  de.results$p_val_adj <- de.results$p_val * corr_factor
+  # de.results$p_val_adj = p.adjust(
+  #   p = de.results$p_val,
+  #   method = "bonferroni",
+  #   n = nrow(x = object)
+  # )
+
+  toc()
+  print("TCP SEURAT: FastFindMarkers.default DONE")
+  return(de.results)
+}
+
+#' @rdname FastFindMarkers
+#' 
+#' @importFrom Seurat GetAssayData
+#' @importFrom Seurat Idents
+#' 
+#' @concept differential_expression
+#' 
+#' @name FastFindMarkers
+#' @export
+#' @method FastFindMarkers Assay
+FastFindMarkers.Assay <- function(
+  object,
+  slot = "data",
+  cells.clusters = NULL,
+  features = NULL,
+  logfc.threshold = 0.25,
+  test.use = 'wilcox',
+  min.pct = 0.1,
+  min.diff.pct = -Inf,
+  verbose = TRUE,
+  only.pos = FALSE,
+  pseudocount.use = 1,
+  fc.name = NULL,
+  base = 2,
+  return.dataframe = TRUE,
+  ...
+) {
+  print("TCP SEURAT: FastFindMarkers.assay")
+
+  tic("FastFindMarkers.assay load")
+  data.use <- Seurat::GetAssayData(object = object, slot = slot)
+  counts <- switch(
+    EXPR = slot,
+    'scale.data' = Seurat::GetAssayData(object = object, slot = "counts"),
+    numeric()
+  )
+
+  # using the passed in seurat object to get cluster ids.
+  if ( is.null(x = cells.clusters) ) {
+    clusters <- Seurat::Idents(object = object)
+  } else {
+    clusters <- cells.clusters
+  }
+  # clusters <- cells.clusters %||% Seurat::Idents(object = object)
+  toc()
+
+  tic("FastFindMarkers.assay dispatch FastFindMarkers")
+  de.results <- FastFindMarkers(
+    object = data.use,
+    cells.clusters = clusters,
+    features = features,
+    slot = slot,
+    counts = counts,
+    logfc.threshold = logfc.threshold,
+    test.use = test.use,
+    min.pct = min.pct,
+    min.diff.pct = min.diff.pct,
+    verbose = verbose,
+    only.pos = only.pos,
+    pseudocount.use = pseudocount.use,
+    base = base,
+    fc.name = fc.name,
+    return.dataframe = return.dataframe,
+    ...
+  )
+  toc()
+  print("TCP SEURAT: FastFindMarkers.assay DONE")
+  return(de.results)
+}
+
+#' @rdname FastFindMarkers
+#' @importFrom Seurat Embeddings
+#' @importFrom Seurat Idents
+#' 
+#' @concept differential_expression
+#' 
+#' @name FastFindMarkers
+#' @export
+#' @method FastFindMarkers DimReduc
+FastFindMarkers.DimReduc <- function(
+  object,
+  cells.clusters = NULL,
+  features = NULL,
+  test.use = "wilcox",
+  verbose = TRUE,
+  only.pos = FALSE,
+  fc.name = NULL,
+  return.dataframe = TRUE,
+  ...
+
+) {
+  print("TCP SEURAT: FastFindMarkers.DimReduc")
+
+
+  tic("FastFindMarkers.DimReduc load")
+  if ( is.null(x = fc.name) ) {
+    fc.name <- "avg_diff"
+  }
+  # fc.name <- fc.name %||% "avg_diff"
+  data <- t(x = Seurat::Embeddings(object = object))
+  if (! is.null(x = features) ) {
+    data <- data[features, ]
+  }
+  # does the size match?
+  if ( is.null(x = cells.clusters) ) {
+    clusters <- Seurat::Idents(object = object)
+  } else {
+    clusters <- cells.clusters
+  }
+  # clusters <- cells.clusters %||% Seurat::Idents(object = object)  
+
+  toc()
+
+  # NOT subsample cell groups if they are too large
+
+  tic("FastFindMarkers.DimReduc FastFoldChange")
+  # Calculate avg difference.  This is just rowMeans.
+  fc.results <- bigde::ComputeFoldChange(data, clusters,
+    calc_percents = FALSE, fc_name = fc.name, 
+    use_expm1 = FALSE, min_threshold = 0.0, 
+    use_log = FALSE, log_base = 2.0, use_pseudocount = FALSE, 
+    return.dataframe = return.dataframe,
+    threads = future::nbrOfWorkers())
+
+  toc()
+
+  tic("FastFindMarkers.DimReduc PerformDE")
+
+  de.results <- FastPerformDE(
+    object = data,
+    cells.clusters = clusters,
+    test.use = test.use,
+    verbose = verbose,
+    return.dataframe = return.dataframe,
+    ...
+  )
+  toc()
+
+  tic("FastFindMarkers.DimReduc Post DE")
+
+
+  #append avg_diff to de.results.  both should have same row assignments.
+  de.results <- cbind(de.results, fc.results$avg_diff)
+  # filter for positive entries.
+  if (only.pos) {
+    de.results <- de.results[de.results$avg_diff > 0, , drop = FALSE]
+  }
+  # sort.  first order by cluster, then by p_val, and finally by avg_diff.
+  de.results <- de.results[order(de.results$cluster, de.results$p_val, -de.results$avg_diff), ]
+  # Bonferroni correction is just division by n.  p.adjust require n >= length(p)
+  # so we will just do division directly.
+  corr_factor = 1.0 / nrow(x = object)
+  de.results$p_val_adj <- de.results$p_val * corr_factor
+  # de.results$p_val_adj = p.adjust(
+  #   p = de.results$p_val,
+  #   method = "bonferroni",
+  #   n = nrow(x = object)
+  # )
+  toc()
+  print("TCP SEURAT: FastFindMarkers.DimReduc DONE")
+  return(de.results)
+}
+
+#' @rdname FastFindMarkers
+#' @param ident.1 Identity class to define markers for; pass an object of class
+#' \code{phylo} or 'clustertree' to find markers for a node in a cluster tree;
+#' passing 'clustertree' requires \code{\link{BuildClusterTree}} to have been run
+#' @param ident.2 A second identity class for comparison; if \code{NULL},
+#' use all other cells for comparison; if an object of class \code{phylo} or
+#' 'clustertree' is passed to \code{ident.1}, must pass a node to find markers for
+#' @param reduction Reduction to use in differential expression testing - will test for DE on cell embeddings
+#' @param group.by Regroup cells into a different identity class prior to performing differential expression (see example)
+#' @param subset.ident Subset a particular identity class prior to regrouping. Only relevant if group.by is set (see example)
+#' @param assay Assay to use in differential expression testing
+#' @param slot Slot to pull data from; note that if \code{test.use} is "negbinom", "poisson", or "DESeq2",
+#' \code{slot} will be set to "counts"
+#' @param mean.fxn Function to use for fold change or average difference calculation.
+#' If NULL, the appropriate function will be chose according to the slot used
+#' @param fc.name Name of the fold change, average difference, or custom function column
+#' in the output data.frame. If NULL, the fold change column will be named
+#' according to the logarithm base (eg, "avg_log2FC"), or if using the scale.data
+#' slot "avg_diff".
+#' @param base The base with respect to which logarithms are computed.
+#'
+#' @importFrom Seurat DefaultAssay
+#' @importFrom Seurat Idents
+#' 
+#' @concept differential_expression
+#' 
+#' @name FastFindMarkers
+#' @export 
+#' @method FastFindMarkers Seurat
+FastFindMarkers.Seurat <- function(
+  object,
+  group.by = NULL,
+  subset.ident = NULL,
+  assay = NULL,
+  slot = 'data',
+  reduction = NULL,
+  features = NULL,
+  logfc.threshold = 0.25,
+  test.use = "wilcox",
+  min.pct = 0.1,
+  min.diff.pct = -Inf,
+  verbose = TRUE,
+  only.pos = FALSE,
+  pseudocount.use = 1,
+  fc.name = NULL,
+  base = 2,
+  return.dataframe = TRUE,
+  ...
+) {
+  print("TCP SEURAT: FastFindMarkers.Seurat")
+  tic("FastFindMarkers.Seurat setup")
+
+  if (!is.null(x = group.by)) {
+    if (!is.null(x = subset.ident)) {
+      object <- subset(x = object, idents = subset.ident)
+    }
+    Seurat::Idents(object = object) <- group.by
+  }
+  if (!is.null(x = assay) && !is.null(x = reduction)) {
+    stop("Please only specify either assay or reduction.")
+  }
+  # select which data to use
+  if (is.null(x = reduction)) {
+    if ( is.null(x = assay) ) {
+      assay <- Seurat::DefaultAssay(object = object)
+    }
+    # assay <- assay %||% Seurat::DefaultAssay(object = object)
+    data.use <- object[[assay]]
+    cellnames.use <-  colnames(x = data.use)
+  } else {
+    data.use <- object[[reduction]]
+    cellnames.use <- rownames(data.use)
+  }
+
+  clusters <- Seurat::Idents(object = object)
+
+  toc()
+  tic("FastFindMarkers.Seurat dispatch FastFindMarkers")
+  de.results <- FastFindMarkers(
+    object = data.use,
+    slot = slot,
+    cells.clusters = clusters,
+    features = features,
+    logfc.threshold = logfc.threshold,
+    test.use = test.use,
+    min.pct = min.pct,
+    min.diff.pct = min.diff.pct,
+    verbose = verbose,
+    only.pos = only.pos,
+    pseudocount.use = pseudocount.use,
+    base = base,
+    fc.name = fc.name,
+    return.dataframe = return.dataframe,
+    ...
+  )
+  toc()
+  print("TCP SEURAT: FastFindMarkers.Seurat DONE")
+  return(de.results)
+}
+
+#' Gene expression markers of identity classes
+#'
+#' Finds markers (differentially expressed genes) for identity classes
+#'
+#' @param object An object
+#' @param ... Arguments passed to other methods and to specific DE methods
+
+#' @return data.frame with a ranked list of putative markers as rows, and associated
+#' statistics as columns (p-values, ROC score, etc., depending on the test used (\code{test.use})). The following columns are always present:
+#' \itemize{
+#'   \item \code{avg_logFC}: log fold-chage of the average expression between the two groups. Positive values indicate that the gene is more highly expressed in the first group
+#'   \item \code{pct.1}: The percentage of cells where the gene is detected in the first group
+#'   \item \code{pct.2}: The percentage of cells where the gene is detected in the second group
+#'   \item \code{p_val_adj}: Adjusted p-value, based on bonferroni correction using all genes in the dataset
+#' }
+#'
+#' @details p-value adjustment is performed using bonferroni correction based on
+#' the total number of genes in the dataset. Other correction methods are not
+#' recommended, as Seurat pre-filters genes using the arguments above, reducing
+#' the number of tests performed. Lastly, as Aaron Lun has pointed out, p-values
+#' should be interpreted cautiously, as the genes used for clustering are the
+#' same genes tested for differential expression.
+#'
+#' @references McDavid A, Finak G, Chattopadyay PK, et al. Data exploration,
+#' quality control and testing in single-cell qPCR-based gene expression experiments.
+#' Bioinformatics. 2013;29(4):461-467. doi:10.1093/bioinformatics/bts714
+#' @references Trapnell C, et al. The dynamics and regulators of cell fate
+#' decisions are revealed by pseudotemporal ordering of single cells. Nature
+#' Biotechnology volume 32, pages 381-386 (2014)
+#' @references Andrew McDavid, Greg Finak and Masanao Yajima (2017). MAST: Model-based
+#' Analysis of Single Cell Transcriptomics. R package version 1.2.1.
+#' https://github.com/RGLab/MAST/
+#' @references Love MI, Huber W and Anders S (2014). "Moderated estimation of
+#' fold change and dispersion for RNA-seq data with DESeq2." Genome Biology.
+#' https://bioconductor.org/packages/release/bioc/html/DESeq2.html
+#'
+#' @export
+#'
+# @examples
+# data("pbmc_small")
+# # Find markers for cluster 2
+# markers <- FastFindMarkers(object = pbmc_small, ident.1 = 2)
+# head(x = markers)
+#
+# # Take all cells in cluster 2, and find markers that separate cells in the 'g1' group (metadata
+# # variable 'group')
+# markers <- FastFindMarkers(pbmc_small, ident.1 = "g1", group.by = 'groups', subset.ident = "2")
+# head(x = markers)
+#
+# # Pass 'clustertree' or an object of class phylo to ident.1 and
+# # a node to ident.2 as a replacement for FindMarkersNode
+# pbmc_small <- BuildClusterTree(object = pbmc_small)
+# markers <- FastFindMarkers(object = pbmc_small, ident.1 = 'clustertree', ident.2 = 5)
+# head(x = markers)
+#
+#' @rdname FastFindMarkers
+#' @export FastFindMarkers
+#'
+#' @seealso \code{FastFoldChange}
+#'
+FastFindMarkers <- function(object, ...) {
+  UseMethod(generic = 'FastFindMarkers', object = object)
+}
+
+
+# ============================================
+
+
+
+#' @rdname FastFoldChange
+#' @param cells.1 Vector of cell names belonging to group 1
+#' @param cells.2 Vector of cell names belonging to group 2
+#' @param features Features to calculate fold change for.
+#' If NULL, use all features
+#' @concept differential_expression
+#' @name FastFoldChange
+#' @export
+#' @method FastFoldChange default
+FastFoldChange.default <- function(
+  object,
+  cells.clusters = NULL,
+  features = NULL,
+  slot = "data",
+  pseudocount.use = 1,
+  base = 2,
+  fc.name = NULL,
+  return.dataframe = TRUE,
+  ...
+) {
+  print("TCP SEURAT: FastFoldChange.default")
+  tic("FastFoldChange.default setup")
+
+  log.use <- ifelse(
+    test = slot == "scale.data",
+    yes = FALSE,
+    no = TRUE
+  )
+  expm1.use <- ifelse(
+    test = slot == "data",
+    yes = TRUE,
+    no = FALSE
+  )
+
+  if ( is.null(x = cells.clusters) ) {
+    clusters <- Seurat::Idents(object = object)
+  } else {
+    clusters <- cells.clusters
+  }
+  # clusters <- cells.clusters %||% Seurat::Idents(object = object)
+
+  # Omit the decimal value of e from the column name if base == exp(1)
+  base.text <- ifelse(
+    test = base == exp(1),
+    yes = "",
+    no = base
+  )
+  if ( is.null(x = fc.name) ) {
+    fc.name = ifelse(
+      test = slot == "scale.data",
+      yes = "avg_diff",
+      no = paste0("avg_log", base.text, "FC")
+    )
+  }
+  # fc.name <- fc.name %||% ifelse(
+  #   test = slot == "scale.data",
+  #   yes = "avg_diff",
+  #   no = paste0("avg_log", base.text, "FC")
+  # )
+  
+  if (is.null(features)) {
+    data <- object[features, ]
+  } else {
+    data <- object
+  }
+  toc()
+
+  tic("FastFoldChange.default calc")
+  fc.results <- bigde::ComputeFoldChange(data, clusters,
+    calc_percents = TRUE, fc_name = fc.name, 
+    use_expm1 = expm1.use, min_threshold = 0.0, 
+    use_log = log.use, log_base = base, use_pseudocount = pseudocount.use, 
+    return.dataframe = return.dataframe,
+    threads = future::nbrOfWorkers())
+
+  toc()
+  print("TCP SEURAT: FastFoldChange.default DONE")
+  return(fc.results)
+}
+
+#' @rdname FastFoldChange
+#' @concept differential_expression
+#' @importFrom Seurat GetAssayData
+#' @importFrom Seurat Idents
+#' @name FastFoldChange
+#' @export
+#' @method FastFoldChange Assay
+FastFoldChange.Assay <- function(
+  object,
+  cells.clusters = NULL,
+  features = NULL,
+  slot = "data",
+  pseudocount.use = 1,
+  base = 2,
+  fc.name = NULL,
+  return.dataframe = TRUE,
+  ...
+) {
+  print("TCP SEURAT: FastFoldChange.Assay")
+  tic("FastFoldChange.Assay setup")
+  data <- Seurat::GetAssayData(object = object, slot = slot)
+
+  # using the passed in seurat object to get cluster ids.
+  if ( is.null(x = cells.clusters) ) {
+    clusters <- Seurat::Idents(object = object)
+  } else {
+    clusters <- cells.clusters
+  }
+  # clusters <- cells.clusters %||% Seurat::Idents(object = object)
+  
+  toc()
+  tic("FastFoldChange.Assay dispatch FastFoldChange")
+  fc.results <- FastFoldChange(
+    object = data,
+    cells.clusters = clusters,
+    features = features,
+    slot = slot,
+    pseudocount.use = pseudocount.use,
+    base = base,
+    fc.name = fc.name,
+    return.dataframe = return.dataframe,
+    ...
+  )
+  toc()
+  print("TCP SEURAT: FastFoldChange.Assay DONE")
+  return(fc.results)
+}
+
+#' @rdname FastFoldChange
+#' @concept differential_expression
+#' @importFrom Seurat Embeddings
+#' @importFrom Seurat Idents
+#' @name FastFoldChange
+#' @export
+#' @method FastFoldChange DimReduc
+FastFoldChange.DimReduc <- function(
+  object,
+  cells.clusters = NULL,
+  features = NULL,
+  fc.name = NULL,
+  return.dataframe = TRUE,
+  ...
+) {
+  print("TCP SEURAT: FastFoldChange.DimReduc")
+  tic("FastFoldChange.DimReduc init")
+
+  if ( is.null(fc.name) ) {
+    fc.name <- "avg_diff"
+  }
+  # fc.name <- fc.name %||% "avg_diff"
+  data <- t(x = Seurat::Embeddings(object = object))  # transpose as the reduction appears to be transposed.
+  if (! is.null(x = features) ) {
+    data <- data[features, ]
+  }
+
+  # does the size match?
+  if ( is.null(x = cells.clusters) ) {
+    clusters <- Seurat::Idents(object = object)
+  } else {
+    clusters <- cells.clusters
+  }
+  # clusters <- cells.clusters %||% Seurat::Idents(object = object)
+
+  toc()
+  tic("FastFoldChange.DimReduc mean")
+  # Calculate avg difference.  This is just rowMeans.
+  fc.results <- bigde::ComputeFoldChange(data, clusters,
+    calc_percents = FALSE, fc_name = fc.name, 
+    use_expm1 = FALSE, min_threshold = 0.0, 
+    use_log = FALSE, log_base = 2.0, use_pseudocount = FALSE, 
+    return.dataframe = return.dataframe,
+    threads = future::nbrOfWorkers())
+
+  toc()
+  print("TCP SEURAT: FastFoldChange.DimReduc DONE")
+  return(fc.results)
+}
+
+#' @rdname FastFoldChange
+#' @param features Subset a particular features.
+#' @param group.by Regroup cells into a different identity class prior to
+#' calculating fold change (see example in \code{\link{FastFindMarkers}})
+#' @param subset.ident Subset a particular identity class prior to regrouping.
+#' Only relevant if group.by is set (see example in \code{\link{FastFindMarkers}})
+#' @param assay Assay to use in fold change calculation.  mutually exclusive with reduction
+#' @param reduction Reduction to use - will calculate average difference on cell embeddings
+#' @param slot Slot to pull data from
+#' @param pseudocount.use Pseudocount to add to averaged expression values when
+#' calculating logFC. 1 by default.
+#' @param base The base with respect to which logarithms are computed.
+#' @param fc.name Name of the fold change, average difference, or custom function column
+#' in the output data.frame
+#'
+#' @concept differential_expression
+#' @importFrom Seurat DefaultAssay
+#' @importFrom Seurat Idents
+#' @name FastFoldChange
+#' @export
+#' @method FastFoldChange Seurat
+FastFoldChange.Seurat <- function(
+  object,
+  cells.clusters = NULL,
+  features = NULL,
+  group.by = NULL,
+  subset.ident = NULL,
+  assay = NULL,
+  reduction = NULL,
+  slot = 'data',
+  pseudocount.use = 1,
+  base = 2,
+  fc.name = NULL,
+  return.dataframe = TRUE,
+  ...
+) {
+  print("TCP SEURAT: FastFoldChange.Seurat")
+  tic("FastFoldChange.Seurat init")
+  if (!is.null(x = group.by)) {
+    if (!is.null(x = subset.ident)) {
+      object <- subset(x = object, idents = subset.ident)
+    }
+    Seurat::Idents(object = object) <- group.by
+  }
+  if (!is.null(x = assay) && !is.null(x = reduction)) {
+    stop("Please only specify either assay or reduction.")
+  }
+  # select which data to use
+  if (is.null(x = reduction)) {
+    if ( is.null(x = assay) ) {
+      assay = Seurat::DefaultAssay(object = object)
+    }
+    # assay <- assay %||% Seurat::DefaultAssay(object = object)
+    data.use <- object[[assay]]
+    cellnames.use <-  colnames(x = data.use)
+  } else {
+    data.use <- object[[reduction]]
+    cellnames.use <- rownames(data.use)
+  }
+
+  if ( is.null(x = cells.clusters) ) {
+    clusters <- Seurat::Idents(object = object)
+  } else {
+    clusters <- cells.clusters
+  }
+  # clusters <- cells.clusters %||% Seurat::Idents(object = object)
+
+  toc()
+  tic("FastFoldChange.Seurat dispatch FastFoldChange")
+
+  fc.results <- FastFoldChange(
+    object = data.use,
+    cells.clusters = clusters,
+    features = features,
+    slot = slot,
+    pseudocount.use = pseudocount.use,
+    base = base,
+    fc.name = fc.name,
+    return.dataframe = return.dataframe,
+    ...
+  )
+  toc()
+  print("TCP SEURAT: FastFoldChange.Seurat DONE")
+  return(fc.results)
+}
+
+#' Fold Change
+#'
+#' Calculate log fold change and percentage of cells expressing each feature
+#' for different identity classes.
+#'
+#' If the slot is \code{scale.data} or a reduction is specified, average difference
+#' is returned instead of log fold change and the column is named "avg_diff".
+#' Otherwise, log2 fold change is returned with column named "avg_log2_FC".
+#'
+# @examples
+# data("pbmc_small")
+# FastFoldChange(pbmc_small, ident.1 = 1)
+#'
+#' @param object A Seurat object
+#' @param ... Arguments passed to other methods
+#' @rdname FastFoldChange
+#' @export FastFoldChange
+#' @return Returns a data.frame
+#' @seealso \code{FastFindMarkers}
+FastFoldChange <- function(object, ...) {
+  UseMethod(generic = 'FastFoldChange', object = object)
+}
+
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+# Internal
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+# Check the existence of a package.  from Seurat utilities.R
+#
+# @param ... Package names
+# @param error If true, throw an error if the package doesn't exist
+#
+# @return Invisibly returns boolean denoting if the package is installed
+#
+fastDEPackageCheck <- function(..., error = TRUE) {
+  pkgs <- unlist(x = c(...), use.names = FALSE)
+  package.installed <- vapply(
+    X = pkgs,
+    FUN = requireNamespace,
+    FUN.VALUE = logical(length = 1L),
+    quietly = TRUE
+  )
+  if (error && any(!package.installed)) {
+    stop(
+      "Cannot find the following packages: ",
+      paste(pkgs[!package.installed], collapse = ', '),
+      ". Please install"
+    )
+  }
+  invisible(x = package.installed)
+}
+
+
+FastPerformDE <- function(
+  object,
+  cells.clusters,
+  features,
+  test.use,
+  verbose,
+  return.dataframe = TRUE,
+  ...
+) {
+  print("TCP SEURAT: PerformDE")
+  tic("PerformDE compute")
+
+  de.results <- switch(
+    EXPR = test.use,
+    'wilcox' = FastWilcoxDETest(
+      data.use = object[features, , drop = FALSE],
+      cells.clusters = cells.clusters,
+      verbose = verbose,
+      return.dataframe = return.dataframe,
+      ...
+    ),
+    stop("Unknown test: ", test.use)
+  )
+  toc()
+  print("TCP SEURAT: PerformDE DONE")
+  
+  return(de.results)
+}
+
+
+
+#' Differential expression using Wilcoxon Rank Sum
+#'
+#' Identifies differentially expressed genes between two groups of cells using
+#' a Wilcoxon Rank Sum test. Makes use of limma::rankSumTestWithCorrelation for a
+#' more efficient implementation of the wilcoxon test. Thanks to Yunshun Chen and
+#' Gordon Smyth for suggesting the limma implementation.
+#'
+#' @param data.use Data matrix to test
+#' @param cells.clusters cell labels, integer cluster ids for each cell.  array of size same as number of samples
+#' @param verbose Print a progress bar
+#' @param ... Extra parameters passed to wilcox.test
+#'
+#' @return Returns a p-value matrix of putative differentially expressed
+#' features, with genes in rows and clusters in columns.
+#'
+#' @importFrom BioQC wmwTest
+#' @importFrom pracma repmat
+#'
+#' @export
+#'
+# @examples
+# data("pbmc_small")
+# pbmc_small
+# WilcoxDETest(pbmc_small, cells.1 = WhichCells(object = pbmc_small, idents = 1),
+#             cells.2 = WhichCells(object = pbmc_small, idents = 2))
+#
+FastWilcoxDETest <- function(
+  data.use,
+  cells.clusters,
+  verbose = TRUE,
+  return.dataframe = TRUE,
+  ...
+) {
+  bigde.check <- fastDEPackageCheck("bigde", error = FALSE)
+  bioqc.check <- fastDEPackageCheck("BioQC", error = FALSE)
+
+  # input has each row being a gene, and each column a cell (sample).  -
+  #    based on reading of the naive wilcox.test imple in Seurat.
+  L <- unique(sort(cells.clusters))
+
+  if ( bigde.check[1] ) {
+    # bigde input is expected to : each row is a gene, each column is a sample
+    message("USING BigDE")
+    # two sided : 2
+    p_val <- bigde::wmwfast(data.use, cells.clusters, rtype = as.integer(2), 
+            continuity_correction = TRUE,
+            as_dataframe = return.dataframe, threads = future::nbrOfWorkers())
+  } else if ( bioqc.check[1] ) {
+    message("USING BIOQC")
+
+    labels = list()
+    for (c in L) {
+      inds[[c]] <- cells.clusters %in% c
+    }
+    p_val <- BioQC::wmwTest(matrix(data.use), inds, valType = "p.two.sided")
+
+    # TODO: test this part.
+    if (return.dataframe) {
+      clusters <- as.vector(pracma::repmat(rownames(p_val), ncol(p_val), 1))  # clusters repeated nfeatures number of times
+      genenames <- as.vector(pracma::repmat(colnames(p_val), length(L), 1 ))  # gene names, repeated the number of times as num of clusters.
+      p_val <- data.frame(c(as.vector(p_val), clusters, genenames))
+      colnames(p_val) <- c("p_val", "cluster", "gene")
+    } else {
+      # just a matrix returned.
+      colnames(p_val) <- colnames(data.use)
+    }
+  } else {
+    message("Please install either BioQC or BigDE (bigde preferred)")
+  }
+  return(p_val)
+}

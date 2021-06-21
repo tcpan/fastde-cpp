@@ -5,9 +5,9 @@
 
 using namespace Rcpp;
 
-// FoldChangeBatch
-extern SEXP FoldChangeBatch(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP fc_name, SEXP use_expm1, SEXP min_threshold, SEXP use_log, SEXP log_base, SEXP use_pseudocount, SEXP as_dataframe, SEXP threads);
-RcppExport SEXP _bigde_FoldChangeBatch(SEXP matrixSEXP, SEXP labelsSEXP, SEXP calc_percentsSEXP, SEXP fc_nameSEXP, SEXP use_expm1SEXP, SEXP min_thresholdSEXP, SEXP use_logSEXP, SEXP log_baseSEXP, SEXP use_pseudocountSEXP, SEXP as_dataframeSEXP, SEXP threadsSEXP) {
+// ComputeFoldChange
+extern SEXP ComputeFoldChange(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP fc_name, SEXP use_expm1, SEXP min_threshold, SEXP use_log, SEXP log_base, SEXP use_pseudocount, SEXP as_dataframe, SEXP threads);
+RcppExport SEXP _bigde_ComputeFoldChange(SEXP matrixSEXP, SEXP labelsSEXP, SEXP calc_percentsSEXP, SEXP fc_nameSEXP, SEXP use_expm1SEXP, SEXP min_thresholdSEXP, SEXP use_logSEXP, SEXP log_baseSEXP, SEXP use_pseudocountSEXP, SEXP as_dataframeSEXP, SEXP threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -22,7 +22,27 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< SEXP >::type use_pseudocount(use_pseudocountSEXP);
     Rcpp::traits::input_parameter< SEXP >::type as_dataframe(as_dataframeSEXP);
     Rcpp::traits::input_parameter< SEXP >::type threads(threadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(FoldChangeBatch(matrix, labels, calc_percents, fc_name, use_expm1, min_threshold, use_log, log_base, use_pseudocount, as_dataframe, threads));
+    rcpp_result_gen = Rcpp::wrap(ComputeFoldChange(matrix, labels, calc_percents, fc_name, use_expm1, min_threshold, use_log, log_base, use_pseudocount, as_dataframe, threads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// FilterFoldChange
+extern SEXP FilterFoldChange(SEXP fc, SEXP pct1, SEXP pct2, SEXP init_mask, SEXP min_pct, SEXP min_diff_pct, SEXP logfc_threshold, SEXP only_pos, SEXP not_count, SEXP threads);
+RcppExport SEXP _bigde_FilterFoldChange(SEXP fcSEXP, SEXP pct1SEXP, SEXP pct2SEXP, SEXP init_maskSEXP, SEXP min_pctSEXP, SEXP min_diff_pctSEXP, SEXP logfc_thresholdSEXP, SEXP only_posSEXP, SEXP not_countSEXP, SEXP threadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type fc(fcSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type pct1(pct1SEXP);
+    Rcpp::traits::input_parameter< SEXP >::type pct2(pct2SEXP);
+    Rcpp::traits::input_parameter< SEXP >::type init_mask(init_maskSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type min_pct(min_pctSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type min_diff_pct(min_diff_pctSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type logfc_threshold(logfc_thresholdSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type only_pos(only_posSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type not_count(not_countSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type threads(threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(FilterFoldChange(fc, pct1, pct2, init_mask, min_pct, min_diff_pct, logfc_threshold, only_pos, not_count, threads));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -44,7 +64,8 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_bigde_FoldChangeBatch", (DL_FUNC) &_bigde_FoldChangeBatch, 11},
+    {"_bigde_ComputeFoldChange", (DL_FUNC) &_bigde_ComputeFoldChange, 11},
+    {"_bigde_FilterFoldChange", (DL_FUNC) &_bigde_FilterFoldChange, 10},
     {"_bigde_wmwfast", (DL_FUNC) &_bigde_wmwfast, 6},
     {NULL, NULL, 0}
 };
