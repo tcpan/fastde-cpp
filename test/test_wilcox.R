@@ -47,7 +47,6 @@ fastdewilcox[, 1]
 
 tic("fastde_df")
 # time and run BioQC
-fastdewilcox_df <- matrix(, ncol = ncol(wilcox), nrow = nrow(wilcox) )
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
 fastdewilcox_df <- fastde::wmwfast(input, labels, rtype=as.integer(2), 
     continuity_correction=TRUE, as_dataframe = TRUE, threads = as.integer(4))

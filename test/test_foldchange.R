@@ -1,10 +1,12 @@
-# library(Seurat)
+library(Seurat)
 
 library(rhdf5)
 
-# library(fastde)
+library(fastde)   # loading library can take a while (3 s) if not preloaded here.
 
 library(tictoc)
+
+tic("read")
 
 # read input
 input <- h5read("/home/tpan/build/wave/input.h5", "array/block0_values")
@@ -15,7 +17,9 @@ labels <- as.vector(h5read("/home/tpan/build/wave/labels.h5", "array/block0_valu
 
 colnames(input) <- genenames
 rownames(input) <- samplenames
+toc()
 
+tic("get unique labels")
 # count number of labels
 #num_labels = nlevels(labels)
 
@@ -26,22 +30,9 @@ L <- unique(sort(labels))
 
 cat(sprintf("Labels unique: %d \n", length(L)))
 
-# typeof(labels)
-# for ( i in labels) {
-#     cat(sprintf("%d, ", i))
-# }
-# cat(sprintf("\n"))
-# labels
-
-tic("fastde df")
-# time and run BioQC
-cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
-fastdefc_df <- fastde::ComputeFoldChange(input, labels, calc_percents = TRUE, fc_name = "fc", 
-    use_expm1 = FALSE, min_threshold = 0.0, use_log = FALSE, log_base = 2.0, 
-    use_pseudocount = FALSE, as_dataframe = TRUE, threads = as.integer(4))
 toc()
 
-tic("fastde df 2")
+tic("fastde df")
 # time and run BioQC
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
 fastdefc_df <- fastde::ComputeFoldChange(input, labels, calc_percents = TRUE, fc_name = "fc", 
@@ -57,6 +48,7 @@ fastdefc <- fastde::ComputeFoldChange(input, labels, calc_percents = TRUE, fc_na
     use_pseudocount = FALSE, as_dataframe = FALSE, threads = as.integer(4))
 toc()
 
+tic("Ordering")
 x <- as.integer(row.names(fastdefc$fc))
 ord <- order(x)
 x
@@ -66,7 +58,7 @@ fastdefcsorted = fastdefc$fc[ord, ]
 fastdefc_pct1_sorted = fastdefc$pct.1[ord, ]
 fastdefc_pct2_sorted = fastdefc$pct.2[ord, ]
 #fastdefc
-
+toc()
 
 fastdefcsorted
 # fastdefc$pct.1[, 1]

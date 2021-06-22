@@ -21,6 +21,7 @@ using namespace Rcpp;
 #include <unordered_set>
 #include <vector>
 #include <algorithm>
+#include <chrono>  // clock, duration
 
 // Enable C++11
 // [[Rcpp::plugins(cpp11)]]
@@ -221,7 +222,10 @@ extern SEXP ComputeFoldChange(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP
   SEXP use_log, SEXP log_base, SEXP use_pseudocount, 
   SEXP as_dataframe,
   SEXP threads) {
-  
+
+  // using Clock = std::chrono::high_resolution_clock;
+  // auto start = Clock::now();
+
   bool perc = Rf_asLogical(calc_percents);
   double min_thresh = REAL(min_threshold)[0];
   bool _use_expm1 = Rf_asLogical(use_expm1);
@@ -235,6 +239,12 @@ extern SEXP ComputeFoldChange(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP
   const size_t nsamples=NROW(matrix);  // n
   const size_t nfeatures=NCOL(matrix); // m
   
+  // auto end = Clock::now();
+  // Rprintf("extract params %ld ns\n", 
+  // std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count());
+
+  // start = Clock::now();
+
   // ========= count number of labels so we can allocate output  run the first one.
   int *label_ptr=INTEGER(labels);
   // run 1, so we can get the cluster order.
@@ -243,6 +253,13 @@ extern SEXP ComputeFoldChange(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP
   size_t label_count = info.size() - 1;   // k
   label_ptr = INTEGER(labels);   // reset to start.
   
+  // end = Clock::now();
+  // Rprintf("count cluster sizes %ld ns\n", 
+  // std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count());
+  
+  // start = Clock::now();
+
+
   int intlen = snprintf(NULL, 0, "%lu", std::numeric_limits<size_t>::max());
   char * str = reinterpret_cast<char *>(malloc(intlen + 1));
   int proc_count = 0;
@@ -265,6 +282,11 @@ extern SEXP ComputeFoldChange(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP
     }
 
   }
+  // end = Clock::now();
+  // Rprintf("set feature names %ld ns\n", 
+  // std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count());
+
+  // start = Clock::now();
 
   // ============= alloc output
   SEXP fc, p1, p2, clust, genenames, res, names, rownames, cls, dimnames;
@@ -317,6 +339,12 @@ extern SEXP ComputeFoldChange(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP
     }
   }
 
+  // end = Clock::now();
+  // Rprintf("alloc part 1 %ld ns\n", 
+  // std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count());
+
+  // start = Clock::now();
+
   // set up the output structure.
   if (_as_dataframe) {
     PROTECT(rownames = Rf_allocVector(STRSXP, label_count * nfeatures));  // dataframe column names.
@@ -354,6 +382,11 @@ extern SEXP ComputeFoldChange(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP
     ++col_id;
   }
 
+  // end = Clock::now();
+  // Rprintf("alloc part 2 %ld ns\n", 
+  // std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count());
+
+  // start = Clock::now();
 
   SET_VECTOR_ELT(res, col_id, fc);
   // convert from STRSXP to CHARSXP
@@ -393,6 +426,12 @@ extern SEXP ComputeFoldChange(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP
 
   }
 
+  // end = Clock::now();
+  // Rprintf("alloc part 3 %ld ns\n", 
+  // std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count());
+  
+  // start = Clock::now();
+
   // Rprintf("inputsize  r %lu c %lu , output r %lu c %lu \n", nsamples, nfeatures, NROW(res), NCOL(res));
 
   // double *matColPtr = REAL(matrix); // pointer to the current column of the matrix
@@ -418,8 +457,17 @@ extern SEXP ComputeFoldChange(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP
     }
   }
 
+  // end = Clock::now();
+  // Rprintf("computed %ld ns\n", 
+  // std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count());
+  
+  // start = Clock::now();
+  
   UNPROTECT(proc_count);
   free(str);
+  // end = Clock::now();
+  // Rprintf("cleaned up %ld ns\n", 
+  // std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count());
   return(res);
 }
 
