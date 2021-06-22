@@ -33,6 +33,22 @@ cat(sprintf("Labels unique: %d \n", length(L)))
 # cat(sprintf("\n"))
 # labels
 
+tic("fastde df")
+# time and run BioQC
+cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
+fastdefc_df <- fastde::ComputeFoldChange(input, labels, calc_percents = TRUE, fc_name = "fc", 
+    use_expm1 = FALSE, min_threshold = 0.0, use_log = FALSE, log_base = 2.0, 
+    use_pseudocount = FALSE, as_dataframe = TRUE, threads = as.integer(4))
+toc()
+
+tic("fastde df 2")
+# time and run BioQC
+cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
+fastdefc_df <- fastde::ComputeFoldChange(input, labels, calc_percents = TRUE, fc_name = "fc", 
+    use_expm1 = FALSE, min_threshold = 0.0, use_log = FALSE, log_base = 2.0, 
+    use_pseudocount = FALSE, as_dataframe = TRUE, threads = as.integer(4))
+toc()
+
 tic("fastde")
 # time and run BioQC
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
@@ -57,13 +73,6 @@ fastdefcsorted
 # fastdefc$pct.2[, 1]
 
 
-tic("fastde df")
-# time and run BioQC
-cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
-fastdefc_df <- fastde::ComputeFoldChange(input, labels, calc_percents = TRUE, fc_name = "fc", 
-    use_expm1 = FALSE, min_threshold = 0.0, use_log = FALSE, log_base = 2.0, 
-    use_pseudocount = FALSE, as_dataframe = TRUE, threads = as.integer(4))
-toc()
 
 print(fastdefc_df)
 

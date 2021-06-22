@@ -162,22 +162,26 @@ void wmw(IT const * in, LABEL const * labels, size_t const & count, OT * out, si
 }
 
 
-/*! \brief Fast Wilcoxon-Mann-Whitney Test
- *
- * \param matrix: an expression matrix, each row is a feature, each column corresponds to a samples
- * \param labels: an integer vector, each element indicating the group to which a sample belongs.
- * \param rtype: 
- * \parblock
- * Define f(x)=abs(log10(x))
- * 0=p(greater), 1=p(less), 2=p(twoSided), 3=U,
- * \endparblock
- * \param continuity_correction: TRUE/FALSE for continuity correction
- * \param as_dataframe: TRUE/FALSE - TRUE returns a dataframe, FALSE returns a matrix
- * \param threads:  number of concurrent threads.
- * 
- * This implementation uses normal approximation, which works reasonably well if sample size is large (say N>=20)
- * 
- */
+//' Fast Wilcoxon-Mann-Whitney Test
+//'
+//' This implementation uses normal approximation, which works reasonably well if sample size is large (say N>=20)
+//' 
+//' @rdname wmwfast
+//' @param matrix an expression matrix, each row is a feature, each column corresponds to a samples
+//' @param labels an integer vector, each element indicating the group to which a sample belongs.
+//' @param rtype 
+//' \itemize{
+//' \item{0} : p(greater)
+//' \item{1} : p(less)
+//' \item{2} : p(twoSided)
+//' \item{3} : U
+//' }
+//' @param continuity_correction TRUE/FALSE for continuity correction
+//' @param as_dataframe TRUE/FALSE - TRUE returns a dataframe, FALSE returns a matrix
+//' @param threads  number of concurrent threads.
+//' @return array or dataframe
+//' @name wmwfast
+//' @export
 // [[Rcpp::export]]
 extern SEXP wmwfast(SEXP matrix, SEXP labels, SEXP rtype, 
     SEXP continuity_correction, 
