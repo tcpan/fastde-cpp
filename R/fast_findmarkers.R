@@ -2,17 +2,31 @@ library(tictoc)
 library(Seurat)
 library(BioQC)
 
+
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 # Functions
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+get_num_threads <- function() {
+  nthreads = pmin(nbrOfWorkers(), availableCores())
+  return(nthreads)
+}
 
 #' 
 #' Gene expression markers for all identity classes
 #'
 #' Finds markers (differentially expressed genes) for each of the identity classes in a dataset
 #'
-# @inheritParams FastFindMarkers
+#' @inheritParams FastFindMarkers
 #' @param return.thresh Only return markers that have a p-value < return.thresh, or a power > return.thresh (if the test is ROC)
+#' @param node FIXME
+#' @param max.cells.per.ident FIXME
+#' @param random.seed FIXME
+#' @param latent.vars FIXME
+#' @param min.cells.feature FIXME
+#' @param min.cells.group FIXME
+#' @param mean.fxn FIXME
 #'
 #' @return Matrix containing a ranked list of putative markers, and associated
 #' statistics (p-values, ROC score, etc.)
@@ -152,11 +166,12 @@ FastFindAllMarkers <- function(
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 #' @rdname FastFindMarkers
-#' @param cells.1 Vector of cell names belonging to group 1
-#' @param cells.2 Vector of cell names belonging to group 2
+#' @param object  FIXME
+#' @param slot  FIXME
 #' @param counts Count matrix if using scale.data for DE tests. This is used for
 #' computing pct.1 and pct.2 and for filtering features based on fraction
 #' expressing
+#' @param cells.clusters cell labels, integer cluster ids for each cell.
 #' @param features Genes to test. Default is to use all genes
 #' @param logfc.threshold Limit testing to genes which show, on average, at least
 #' X-fold difference (log-scale) between the two groups of cells. Default is 0.25
@@ -165,55 +180,23 @@ FastFindAllMarkers <- function(
 #' \itemize{
 #'  \item{"wilcox"} : Identifies differentially expressed genes between two
 #'  groups of cells using a Wilcoxon Rank Sum test (default)
-#'  \item{"bimod"} : Likelihood-ratio test for single cell gene expression,
-#'  (McDavid et al., Bioinformatics, 2013)
-#'  \item{"roc"} : Identifies 'markers' of gene expression using ROC analysis.
-#'  For each gene, evaluates (using AUC) a classifier built on that gene alone,
-#'  to classify between two groups of cells. An AUC value of 1 means that
-#'  expression values for this gene alone can perfectly classify the two
-#'  groupings (i.e. Each of the cells in cells.1 exhibit a higher level than
-#'  each of the cells in cells.2). An AUC value of 0 also means there is perfect
-#'  classification, but in the other direction. A value of 0.5 implies that
-#'  the gene has no predictive power to classify the two groups. Returns a
-#'  'predictive power' (abs(AUC-0.5) * 2) ranked matrix of putative differentially
-#'  expressed genes.
-#'  \item{"t"} : Identify differentially expressed genes between two groups of
-#'  cells using the Student's t-test.
-#'  \item{"negbinom"} : Identifies differentially expressed genes between two
-#'   groups of cells using a negative binomial generalized linear model.
-#'   Use only for UMI-based datasets
-#'  \item{"poisson"} : Identifies differentially expressed genes between two
-#'   groups of cells using a poisson generalized linear model.
-#'   Use only for UMI-based datasets
-#'  \item{"LR"} : Uses a logistic regression framework to determine differentially
-#'  expressed genes. Constructs a logistic regression model predicting group
-#'  membership based on each feature individually and compares this to a null
-#'  model with a likelihood ratio test.
-#'  \item{"MAST"} : Identifies differentially expressed genes between two groups
-#'  of cells using a hurdle model tailored to scRNA-seq data. Utilizes the MAST
-#'  package to run the DE testing.
-#'  \item{"DESeq2"} : Identifies differentially expressed genes between two groups
-#'  of cells based on a model using DESeq2 which uses a negative binomial
-#'  distribution (Love et al, Genome Biology, 2014).This test does not support
-#'  pre-filtering of genes based on average difference (or percent detection rate)
-#'  between cell groups. However, genes may be pre-filtered based on their
-#'  minimum detection rate (min.pct) across both cell groups. To use this method,
-#'  please install DESeq2, using the instructions at
-#'  https://bioconductor.org/packages/release/bioc/html/DESeq2.html
 #' }
 #' @param min.pct  only test genes that are detected in a minimum fraction of
 #' min.pct cells in either of the two populations. Meant to speed up the function
 #' by not testing genes that are very infrequently expressed. Default is 0.1
 #' @param min.diff.pct  only test genes that show a minimum difference in the
 #' fraction of detection between the two groups. Set to -Inf by default
-#' @param only.pos Only return positive markers (FALSE by default)
 #' @param verbose Print a progress bar once expression testing begins
+#' @param only.pos Only return positive markers (FALSE by default)
 #' @param pseudocount.use Pseudocount to add to averaged expression values when
 #' calculating logFC. 1 by default.
 #' @param fc.results data.frame from FastFoldChange
+#' @param fc.name FIXME
+#' @param base FIXME
+#' @param return.dataframe FIXME 
+#' @return returns a data frame with FIXME 
 #'
 #' @importFrom stats p.adjust
-#'
 #' 
 #' @concept differential_expression
 #' 
@@ -271,13 +254,13 @@ FastFindMarkers.default <- function(
   # and only compute using those features when wmwtest.
   # get the baseline mask  - this is uniform for all clusters
   # get the full mask - this may vary per cluster, so fc_mask is 2D.
-  fc_mask <- bigde::FilterFoldChange(
+  fc_mask <- FilterFoldChange(
     fc.results[,fc.name], fc.results$pct.1, fc.results$pct.2,   
     init_mask = fc.results$gene %in% features,
     min_pct = min.pct, min_diff_pct = min.diff.pct, 
     logfc_threshold = logfc.threshold, only_pos = only.pos, 
     not_count = (slot != "scale.data"), 
-    threads = future::nbrOfWorkers())
+    threads = get_num_threads())
   # mask the dataframe or matrix.
 
 
@@ -364,7 +347,21 @@ FastFindMarkers.default <- function(
 }
 
 #' @rdname FastFindMarkers
-#' 
+#' @param object FIXME
+#' @param slot FIXME
+#' @param cells.clusters cell labels, integer cluster ids for each cell.
+#' @param features FIXME
+#' @param logfc.threshold FIXME
+#' @param test.use FIXME
+#' @param min.pct FIXME
+#' @param min.diff.pct FIXME
+#' @param verbose FIXME
+#' @param only.pos FIXME
+#' @param pseudocount.use FIXME
+#' @param fc.name FIXME
+#' @param base FIXmE
+#' @param return.dataframe FIXME
+#'
 #' @importFrom Seurat GetAssayData
 #' @importFrom Seurat Idents
 #' 
@@ -434,6 +431,15 @@ FastFindMarkers.Assay <- function(
 }
 
 #' @rdname FastFindMarkers
+#' @param object  FIXME
+#' @param cells.clusters cell labels, integer cluster ids for each cell.
+#' @param features  FIXME
+#' @param test.use  FIXME
+#' @param verbose  FIXME
+#' @param only.pos  FIXME
+#' @param fc.name  FIXME
+#' @param return.dataframe  FIXME
+#'
 #' @importFrom Seurat Embeddings
 #' @importFrom Seurat Idents
 #' 
@@ -480,12 +486,12 @@ FastFindMarkers.DimReduc <- function(
 
   tic("FastFindMarkers.DimReduc FastFoldChange")
   # Calculate avg difference.  This is just rowMeans.
-  fc.results <- bigde::ComputeFoldChange(data, clusters,
+  fc.results <- ComputeFoldChange(data, clusters,
     calc_percents = FALSE, fc_name = fc.name, 
     use_expm1 = FALSE, min_threshold = 0.0, 
     use_log = FALSE, log_base = 2.0, use_pseudocount = FALSE, 
-    return.dataframe = return.dataframe,
-    threads = future::nbrOfWorkers())
+    as_dataframe = return.dataframe,
+    threads = get_num_threads())
 
   toc()
 
@@ -527,25 +533,28 @@ FastFindMarkers.DimReduc <- function(
 }
 
 #' @rdname FastFindMarkers
-#' @param ident.1 Identity class to define markers for; pass an object of class
-#' \code{phylo} or 'clustertree' to find markers for a node in a cluster tree;
-#' passing 'clustertree' requires \code{\link{BuildClusterTree}} to have been run
-#' @param ident.2 A second identity class for comparison; if \code{NULL},
-#' use all other cells for comparison; if an object of class \code{phylo} or
-#' 'clustertree' is passed to \code{ident.1}, must pass a node to find markers for
-#' @param reduction Reduction to use in differential expression testing - will test for DE on cell embeddings
+#' @param object FIXME
+#' @param cells.clusters cell labels, integer cluster ids for each cell.
 #' @param group.by Regroup cells into a different identity class prior to performing differential expression (see example)
 #' @param subset.ident Subset a particular identity class prior to regrouping. Only relevant if group.by is set (see example)
 #' @param assay Assay to use in differential expression testing
 #' @param slot Slot to pull data from; note that if \code{test.use} is "negbinom", "poisson", or "DESeq2",
 #' \code{slot} will be set to "counts"
-#' @param mean.fxn Function to use for fold change or average difference calculation.
-#' If NULL, the appropriate function will be chose according to the slot used
+#' @param reduction Reduction to use in differential expression testing - will test for DE on cell embeddings
+#' @param features  FIXME
+#' @param logfc.threshold  FIXME
+#' @param test.use  FIXME
+#' @param min.pct   FIXME
+#' @param min.diff.pct  FIXME
+#' @param verbose  FIXME
+#' @param only.pos  FIXME
+#' @param pseudocount.use  FIXME
 #' @param fc.name Name of the fold change, average difference, or custom function column
 #' in the output data.frame. If NULL, the fold change column will be named
 #' according to the logarithm base (eg, "avg_log2FC"), or if using the scale.data
 #' slot "avg_diff".
 #' @param base The base with respect to which logarithms are computed.
+#' @param return.dataframe  FIXME
 #'
 #' @importFrom Seurat DefaultAssay
 #' @importFrom Seurat Idents
@@ -557,6 +566,7 @@ FastFindMarkers.DimReduc <- function(
 #' @method FastFindMarkers Seurat
 FastFindMarkers.Seurat <- function(
   object,
+  cells.clusters = NULL,
   group.by = NULL,
   subset.ident = NULL,
   assay = NULL,
@@ -600,7 +610,11 @@ FastFindMarkers.Seurat <- function(
     cellnames.use <- rownames(data.use)
   }
 
-  clusters <- Seurat::Idents(object = object)
+  if ( is.null(cells.clusters) ) {
+    clusters <- Seurat::Idents(object = object)
+  } else {
+    clusters = cells.clusters
+  }
 
   toc()
   tic("FastFindMarkers.Seurat dispatch FastFindMarkers")
@@ -632,7 +646,7 @@ FastFindMarkers.Seurat <- function(
 #'
 #' @param object An object
 #' @param ... Arguments passed to other methods and to specific DE methods
-
+#'
 #' @return data.frame with a ranked list of putative markers as rows, and associated
 #' statistics as columns (p-values, ROC score, etc., depending on the test used (\code{test.use})). The following columns are always present:
 #' \itemize{
@@ -696,9 +710,21 @@ FastFindMarkers <- function(object, ...) {
 
 
 #' @rdname FastFoldChange
-#' @param cells.1 Vector of cell names belonging to group 1
-#' @param cells.2 Vector of cell names belonging to group 2
-#' @param features Features to calculate fold change for.
+#' @param object Any object that's not a seurat
+#' @param cells.clusters cell labels, integer cluster ids for each cell.
+#' @param features Subset a particular features.
+#' @param slot Slot to pull data from; note that if \code{test.use} is "negbinom", "poisson", or "DESeq2",
+#' \code{slot} will be set to "counts"
+#' @param pseudocount.use Pseudocount to add to averaged expression values when
+#' calculating logFC. 1 by default.
+#' @param base base for log function. does not apply when slot is "scaled.data"
+#' @param fc.name Name of the fold change, average difference, or custom function column
+#' in the output data.frame
+#' @param return.dataframe if TRUE, return a dataframe, else return a 2D matrix.
+#' @return If return.dataframe == FALSE, returns a list of matrices, first is fold change values, 
+#' next 2 are percent above thresholds in the 2 classes.
+#' Else return a dataframe with the matrices reshaped as columns, values grouped by gene.
+#' 
 #' If NULL, use all features
 #' @concept differential_expression
 #' @name FastFoldChange
@@ -763,12 +789,12 @@ FastFoldChange.default <- function(
   toc()
 
   tic("FastFoldChange.default calc")
-  fc.results <- bigde::ComputeFoldChange(data, clusters,
+  fc.results <- ComputeFoldChange(data, clusters,
     calc_percents = TRUE, fc_name = fc.name, 
     use_expm1 = expm1.use, min_threshold = 0.0, 
     use_log = log.use, log_base = base, use_pseudocount = pseudocount.use, 
-    return.dataframe = return.dataframe,
-    threads = future::nbrOfWorkers())
+    as_dataframe = return.dataframe,
+    threads = get_num_threads())
 
   toc()
   print("TCP SEURAT: FastFoldChange.default DONE")
@@ -776,6 +802,21 @@ FastFoldChange.default <- function(
 }
 
 #' @rdname FastFoldChange
+#' @param object A Seurat assay object
+#' @param cells.clusters cell labels, integer cluster ids for each cell.
+#' @param features Subset a particular features.
+#' @param slot Slot to pull data from; note that if \code{test.use} is "negbinom", "poisson", or "DESeq2",
+#' \code{slot} will be set to "counts"
+#' @param pseudocount.use Pseudocount to add to averaged expression values when
+#' calculating logFC. 1 by default.
+#' @param base base for log function. does not apply when slot is "scaled.data"
+#' @param fc.name Name of the fold change, average difference, or custom function column
+#' in the output data.frame
+#' @param return.dataframe if TRUE, return a dataframe, else return a 2D matrix.
+#' @return If return.dataframe == FALSE, returns a list of matrices, first is fold change values, 
+#' next 2 are percent above thresholds in the 2 classes.
+#' Else return a dataframe with the matrices reshaped as columns, values grouped by gene.
+#'  
 #' @concept differential_expression
 #' @importFrom Seurat GetAssayData
 #' @importFrom Seurat Idents
@@ -824,6 +865,15 @@ FastFoldChange.Assay <- function(
 }
 
 #' @rdname FastFoldChange
+#' @param object A Seurat dim reduced object
+#' @param cells.clusters cell labels, integer cluster ids for each cell.
+#' @param features Subset a particular features.
+#' @param fc.name Name of the fold change, average difference, or custom function column
+#' in the output data.frame
+#' @param return.dataframe if TRUE, return a dataframe, else return a 2D matrix.
+#' @return If return.dataframe == FALSE, returns a list of 1 matrix, fold change values.
+#' Else return a dataframe with the matrix reshaped as a column, values grouped by gene.
+#' 
 #' @concept differential_expression
 #' @importFrom Seurat Embeddings
 #' @importFrom Seurat Idents
@@ -861,12 +911,12 @@ FastFoldChange.DimReduc <- function(
   toc()
   tic("FastFoldChange.DimReduc mean")
   # Calculate avg difference.  This is just rowMeans.
-  fc.results <- bigde::ComputeFoldChange(data, clusters,
+  fc.results <- ComputeFoldChange(data, clusters,
     calc_percents = FALSE, fc_name = fc.name, 
     use_expm1 = FALSE, min_threshold = 0.0, 
     use_log = FALSE, log_base = 2.0, use_pseudocount = FALSE, 
-    return.dataframe = return.dataframe,
-    threads = future::nbrOfWorkers())
+    as_dataframe = return.dataframe,
+    threads = get_num_threads())
 
   toc()
   print("TCP SEURAT: FastFoldChange.DimReduc DONE")
@@ -874,6 +924,9 @@ FastFoldChange.DimReduc <- function(
 }
 
 #' @rdname FastFoldChange
+#' 
+#' @param object A Seurat object
+#' @param cells.clusters cell labels, integer cluster ids for each cell.
 #' @param features Subset a particular features.
 #' @param group.by Regroup cells into a different identity class prior to
 #' calculating fold change (see example in \code{\link{FastFindMarkers}})
@@ -881,13 +934,19 @@ FastFoldChange.DimReduc <- function(
 #' Only relevant if group.by is set (see example in \code{\link{FastFindMarkers}})
 #' @param assay Assay to use in fold change calculation.  mutually exclusive with reduction
 #' @param reduction Reduction to use - will calculate average difference on cell embeddings
-#' @param slot Slot to pull data from
+#' @param slot Slot to pull data from; note that if \code{test.use} is "negbinom", "poisson", or "DESeq2",
+#' \code{slot} will be set to "counts"
 #' @param pseudocount.use Pseudocount to add to averaged expression values when
 #' calculating logFC. 1 by default.
 #' @param base The base with respect to which logarithms are computed.
 #' @param fc.name Name of the fold change, average difference, or custom function column
 #' in the output data.frame
-#'
+#' @param return.dataframe if TRUE, return a dataframe, else return a 2D matrix.
+#' @return If return.dataframe == FALSE, returns a list of matrices, first is fold change values, 
+#' next 2 are percent above thresholds in the 2 classes (not for dim reduc).
+#' Else return a dataframe with the matrices reshaped as columns, values grouped by gene.
+#' 
+#' 
 #' @concept differential_expression
 #' @importFrom Seurat DefaultAssay
 #' @importFrom Seurat Idents
@@ -976,7 +1035,7 @@ FastFoldChange.Seurat <- function(
 #' @param ... Arguments passed to other methods
 #' @rdname FastFoldChange
 #' @export FastFoldChange
-#' @return Returns a data.frame
+#' @return Returns a data.frame, or a list of 1 or 3 matrices.
 #' @seealso \code{FastFindMarkers}
 FastFoldChange <- function(object, ...) {
   UseMethod(generic = 'FastFoldChange', object = object)
@@ -987,7 +1046,7 @@ FastFoldChange <- function(object, ...) {
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-# Check the existence of a package.  from Seurat utilities.R
+# Check the existence of a package.  FROM Seurat utilities.R
 #
 # @param ... Package names
 # @param error If true, throw an error if the package doesn't exist
@@ -1012,7 +1071,7 @@ fastDEPackageCheck <- function(..., error = TRUE) {
   invisible(x = package.installed)
 }
 
-
+# perform differential expression computation based on test selected.
 FastPerformDE <- function(
   object,
   cells.clusters,
@@ -1051,13 +1110,15 @@ FastPerformDE <- function(
 #' more efficient implementation of the wilcoxon test. Thanks to Yunshun Chen and
 #' Gordon Smyth for suggesting the limma implementation.
 #'
-#' @param data.use Data matrix to test
+#' @param data.use Data matrix to test.  rows = features, columns = samples
 #' @param cells.clusters cell labels, integer cluster ids for each cell.  array of size same as number of samples
-#' @param verbose Print a progress bar
+#' @param verbose Print report verbosely
+#' @param return.dataframe if TRUE, return a dataframe, else return a 2D matrix.
 #' @param ... Extra parameters passed to wilcox.test
 #'
-#' @return Returns a p-value matrix of putative differentially expressed
-#' features, with genes in rows and clusters in columns.
+#' @return If return.dataframe == FALSE, returns a p-value matrix of putative differentially expressed
+#' features, with genes in rows and clusters in columns.  else return a dataframe with "p-val" column, 
+#' with results for the clusters grouped by gene.
 #'
 #' @importFrom BioQC wmwTest
 #' @importFrom pracma repmat
@@ -1077,20 +1138,20 @@ FastWilcoxDETest <- function(
   return.dataframe = TRUE,
   ...
 ) {
-  bigde.check <- fastDEPackageCheck("bigde", error = FALSE)
+  fastde.check <- fastDEPackageCheck("fastde", error = FALSE)
   bioqc.check <- fastDEPackageCheck("BioQC", error = FALSE)
 
   # input has each row being a gene, and each column a cell (sample).  -
   #    based on reading of the naive wilcox.test imple in Seurat.
   L <- unique(sort(cells.clusters))
 
-  if ( bigde.check[1] ) {
-    # bigde input is expected to : each row is a gene, each column is a sample
+  if ( fastde.check[1] ) {
+    # fastde input is expected to : each row is a gene, each column is a sample
     message("USING BigDE")
     # two sided : 2
-    p_val <- bigde::wmwfast(data.use, cells.clusters, rtype = as.integer(2), 
+    p_val <- wmwfast(data.use, cells.clusters, rtype = as.integer(2), 
             continuity_correction = TRUE,
-            as_dataframe = return.dataframe, threads = future::nbrOfWorkers())
+            as_dataframe = return.dataframe, threads = get_num_threads())
   } else if ( bioqc.check[1] ) {
     message("USING BIOQC")
 
@@ -1111,7 +1172,7 @@ FastWilcoxDETest <- function(
       colnames(p_val) <- colnames(data.use)
     }
   } else {
-    message("Please install either BioQC or BigDE (bigde preferred)")
+    message("Please install either BioQC or BigDE (fastde preferred)")
   }
   return(p_val)
 }

@@ -1,4 +1,4 @@
-#' bigde
+#' fastde
 #' 
 #' Description of your package
 #' 
@@ -6,8 +6,9 @@
 #' @author Tony Pan <tpan7@gatech.edu>
 #' @import Rcpp pracma Seurat BioQC
 #' @importFrom Rcpp evalCpp
-#' @useDynLib bigde
-#' @name bigde
+#' @import future
+#' @useDynLib fastde
+#' @name fastde
 NULL  
 
 # roxygen2 is needed to manage exports.

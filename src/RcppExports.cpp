@@ -7,7 +7,7 @@ using namespace Rcpp;
 
 // ComputeFoldChange
 extern SEXP ComputeFoldChange(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP fc_name, SEXP use_expm1, SEXP min_threshold, SEXP use_log, SEXP log_base, SEXP use_pseudocount, SEXP as_dataframe, SEXP threads);
-RcppExport SEXP _bigde_ComputeFoldChange(SEXP matrixSEXP, SEXP labelsSEXP, SEXP calc_percentsSEXP, SEXP fc_nameSEXP, SEXP use_expm1SEXP, SEXP min_thresholdSEXP, SEXP use_logSEXP, SEXP log_baseSEXP, SEXP use_pseudocountSEXP, SEXP as_dataframeSEXP, SEXP threadsSEXP) {
+RcppExport SEXP _fastde_ComputeFoldChange(SEXP matrixSEXP, SEXP labelsSEXP, SEXP calc_percentsSEXP, SEXP fc_nameSEXP, SEXP use_expm1SEXP, SEXP min_thresholdSEXP, SEXP use_logSEXP, SEXP log_baseSEXP, SEXP use_pseudocountSEXP, SEXP as_dataframeSEXP, SEXP threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -28,7 +28,7 @@ END_RCPP
 }
 // FilterFoldChange
 extern SEXP FilterFoldChange(SEXP fc, SEXP pct1, SEXP pct2, SEXP init_mask, SEXP min_pct, SEXP min_diff_pct, SEXP logfc_threshold, SEXP only_pos, SEXP not_count, SEXP threads);
-RcppExport SEXP _bigde_FilterFoldChange(SEXP fcSEXP, SEXP pct1SEXP, SEXP pct2SEXP, SEXP init_maskSEXP, SEXP min_pctSEXP, SEXP min_diff_pctSEXP, SEXP logfc_thresholdSEXP, SEXP only_posSEXP, SEXP not_countSEXP, SEXP threadsSEXP) {
+RcppExport SEXP _fastde_FilterFoldChange(SEXP fcSEXP, SEXP pct1SEXP, SEXP pct2SEXP, SEXP init_maskSEXP, SEXP min_pctSEXP, SEXP min_diff_pctSEXP, SEXP logfc_thresholdSEXP, SEXP only_posSEXP, SEXP not_countSEXP, SEXP threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -48,7 +48,7 @@ END_RCPP
 }
 // wmwfast
 extern SEXP wmwfast(SEXP matrix, SEXP labels, SEXP rtype, SEXP continuity_correction, SEXP as_dataframe, SEXP threads);
-RcppExport SEXP _bigde_wmwfast(SEXP matrixSEXP, SEXP labelsSEXP, SEXP rtypeSEXP, SEXP continuity_correctionSEXP, SEXP as_dataframeSEXP, SEXP threadsSEXP) {
+RcppExport SEXP _fastde_wmwfast(SEXP matrixSEXP, SEXP labelsSEXP, SEXP rtypeSEXP, SEXP continuity_correctionSEXP, SEXP as_dataframeSEXP, SEXP threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -64,13 +64,13 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_bigde_ComputeFoldChange", (DL_FUNC) &_bigde_ComputeFoldChange, 11},
-    {"_bigde_FilterFoldChange", (DL_FUNC) &_bigde_FilterFoldChange, 10},
-    {"_bigde_wmwfast", (DL_FUNC) &_bigde_wmwfast, 6},
+    {"_fastde_ComputeFoldChange", (DL_FUNC) &_fastde_ComputeFoldChange, 11},
+    {"_fastde_FilterFoldChange", (DL_FUNC) &_fastde_FilterFoldChange, 10},
+    {"_fastde_wmwfast", (DL_FUNC) &_fastde_wmwfast, 6},
     {NULL, NULL, 0}
 };
 
-RcppExport void R_init_bigde(DllInfo *dll) {
+RcppExport void R_init_fastde(DllInfo *dll) {
     R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
     R_useDynamicSymbols(dll, FALSE);
 }

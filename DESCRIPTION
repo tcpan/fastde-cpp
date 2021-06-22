@@ -1,4 +1,4 @@
-Package: bigde
+Package: fastde
 Type: Package
 Title: performs differential expression fast
 Version: 1.0
@@ -7,12 +7,13 @@ Author: Tony Pan
 Maintainer: Tony Pan <tpan7@gatech.edu>
 Description: One paragraph description of what the package does as one
         or more full sentences.
-License: Apache
+License: GPL-3 | file LICENSE
 Imports: 
         Rcpp (>= 1.0.6),
         pracma,
         Seurat,
-        BioQC
+        BioQC,
+        future
 LinkingTo: Rcpp
 RoxygenNote: 7.1.1
 Encoding: UTF-8

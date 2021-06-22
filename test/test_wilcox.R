@@ -2,7 +2,7 @@ library(BioQC)
 
 library(rhdf5)
 
-library(bigde)
+library(fastde)
 
 library(tictoc)
 
@@ -34,29 +34,29 @@ cat(sprintf("Labels unique: %d \n", length(L)))
 # }
 # cat(sprintf("\n"))
 
-tic("bigde")
+tic("fastde")
 # time and run BioQC
-bigdewilcox <- matrix(, ncol = ncol(wilcox), nrow = nrow(wilcox) )
+fastdewilcox <- matrix(, ncol = ncol(wilcox), nrow = nrow(wilcox) )
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
-bigdewilcox <- bigde::wmwfast(input, labels, rtype=as.integer(2), 
+fastdewilcox <- fastde::wmwfast(input, labels, rtype=as.integer(2), 
     continuity_correction=TRUE, as_dataframe = FALSE, threads = as.integer(4))
 toc()
 
-bigdewilcox[, 1]
+fastdewilcox[, 1]
 
 
-tic("bigde_df")
+tic("fastde_df")
 # time and run BioQC
-bigdewilcox_df <- matrix(, ncol = ncol(wilcox), nrow = nrow(wilcox) )
+fastdewilcox_df <- matrix(, ncol = ncol(wilcox), nrow = nrow(wilcox) )
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
-bigdewilcox_df <- bigde::wmwfast(input, labels, rtype=as.integer(2), 
+fastdewilcox_df <- fastde::wmwfast(input, labels, rtype=as.integer(2), 
     continuity_correction=TRUE, as_dataframe = TRUE, threads = as.integer(4))
 toc()
 
-print(bigdewilcox_df)
-# bigdewilcox_df$p_val
-# bigdewilcox_df$cluster
-# bigdewilcox_df$genes
+print(fastdewilcox_df)
+# fastdewilcox_df$p_val
+# fastdewilcox_df$cluster
+# fastdewilcox_df$genes
 
 
 
@@ -193,15 +193,15 @@ Rwilcox[, 1]
 
 
 ## compare by calculating the residuals.
-res = Rwilcox - bigdewilcox
+res = Rwilcox - fastdewilcox
 residual = sqrt(mean(res * res))
 
-cat(sprintf("R naive vs bigde residual tail = %f\n", residual))
+cat(sprintf("R naive vs fastde residual tail = %f\n", residual))
 
-res = BioQCwilcox2[, 0:5] - bigdewilcox[, 0:5]
+res = BioQCwilcox2[, 0:5] - fastdewilcox[, 0:5]
 residual = sqrt(mean(res * res))
 
-cat(sprintf("BioQC vs bigde residual = %f\n", residual))
+cat(sprintf("BioQC vs fastde residual = %f\n", residual))
 
 # res = BioQCwilcox2[, 0:5] - Rwilcox[, 0:5]
 # residual = sqrt(mean(res * res))
@@ -214,8 +214,8 @@ cat(sprintf("BioQC vs bigde residual = %f\n", residual))
 
 # cat(sprintf("Limma vs R naive residual = %f\n", residual))
 
-res = Limmawilcox - bigdewilcox
+res = Limmawilcox - fastdewilcox
 residual = sqrt(mean(res * res))
 
-cat(sprintf("Limma vs bigde residual = %f\n", residual))
+cat(sprintf("Limma vs fastde residual = %f\n", residual))
 

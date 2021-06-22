@@ -43,4 +43,4 @@ src/*.o
 src/*.so
 man/*.Rd
 **.bak
-
+src/*.rds

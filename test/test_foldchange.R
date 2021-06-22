@@ -2,7 +2,7 @@
 
 library(rhdf5)
 
-# library(bigde)
+# library(fastde)
 
 library(tictoc)
 
@@ -33,39 +33,39 @@ cat(sprintf("Labels unique: %d \n", length(L)))
 # cat(sprintf("\n"))
 # labels
 
-tic("bigde")
+tic("fastde")
 # time and run BioQC
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
-bigdefc <- bigde::ComputeFoldChange(input, labels, calc_percents = TRUE, fc_name = "fc", 
+fastdefc <- fastde::ComputeFoldChange(input, labels, calc_percents = TRUE, fc_name = "fc", 
     use_expm1 = FALSE, min_threshold = 0.0, use_log = FALSE, log_base = 2.0, 
     use_pseudocount = FALSE, as_dataframe = FALSE, threads = as.integer(4))
 toc()
 
-x <- as.integer(row.names(bigdefc$fc))
+x <- as.integer(row.names(fastdefc$fc))
 ord <- order(x)
 x
 ord
 
-bigdefcsorted = bigdefc$fc[ord, ]
-bigdefc_pct1_sorted = bigdefc$pct.1[ord, ]
-bigdefc_pct2_sorted = bigdefc$pct.2[ord, ]
-#bigdefc
+fastdefcsorted = fastdefc$fc[ord, ]
+fastdefc_pct1_sorted = fastdefc$pct.1[ord, ]
+fastdefc_pct2_sorted = fastdefc$pct.2[ord, ]
+#fastdefc
 
 
-bigdefcsorted
-# bigdefc$pct.1[, 1]
-# bigdefc$pct.2[, 1]
+fastdefcsorted
+# fastdefc$pct.1[, 1]
+# fastdefc$pct.2[, 1]
 
 
-tic("bigde df")
+tic("fastde df")
 # time and run BioQC
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
-bigdefc_df <- bigde::ComputeFoldChange(input, labels, calc_percents = TRUE, fc_name = "fc", 
+fastdefc_df <- fastde::ComputeFoldChange(input, labels, calc_percents = TRUE, fc_name = "fc", 
     use_expm1 = FALSE, min_threshold = 0.0, use_log = FALSE, log_base = 2.0, 
     use_pseudocount = FALSE, as_dataframe = TRUE, threads = as.integer(4))
 toc()
 
-print(bigdefc_df)
+print(fastdefc_df)
 
 
 # time and run wilcox.test
@@ -110,19 +110,19 @@ seuratfc
 
 
 ## compare by calculating the residuals.
-res = seuratfc - bigdefcsorted
+res = seuratfc - fastdefcsorted
 residual = sqrt(mean(res * res))
 
-cat(sprintf("R naive vs bigde residual fc = %f\n", residual))
+cat(sprintf("R naive vs fastde residual fc = %f\n", residual))
 
 
-res = seuratperc1 - bigdefc_pct1_sorted
+res = seuratperc1 - fastdefc_pct1_sorted
 residual = sqrt(mean(res * res))
 
-cat(sprintf("R naive vs bigde residual pct.1 = %f\n", residual))
+cat(sprintf("R naive vs fastde residual pct.1 = %f\n", residual))
 
 
-res = seuratperc2 - bigdefc_pct2_sorted
+res = seuratperc2 - fastdefc_pct2_sorted
 residual = sqrt(mean(res * res))
 
-cat(sprintf("R naive vs bigde residual pct.2 = %f\n", residual))
+cat(sprintf("R naive vs fastde residual pct.2 = %f\n", residual))

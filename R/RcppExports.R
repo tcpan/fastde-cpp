@@ -2,14 +2,14 @@
 # Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 ComputeFoldChange <- function(matrix, labels, calc_percents, fc_name, use_expm1, min_threshold, use_log, log_base, use_pseudocount, as_dataframe, threads) {
-    .Call('_bigde_ComputeFoldChange', PACKAGE = 'bigde', matrix, labels, calc_percents, fc_name, use_expm1, min_threshold, use_log, log_base, use_pseudocount, as_dataframe, threads)
+    .Call('_fastde_ComputeFoldChange', PACKAGE = 'fastde', matrix, labels, calc_percents, fc_name, use_expm1, min_threshold, use_log, log_base, use_pseudocount, as_dataframe, threads)
 }
 
 FilterFoldChange <- function(fc, pct1, pct2, init_mask, min_pct, min_diff_pct, logfc_threshold, only_pos, not_count, threads) {
-    .Call('_bigde_FilterFoldChange', PACKAGE = 'bigde', fc, pct1, pct2, init_mask, min_pct, min_diff_pct, logfc_threshold, only_pos, not_count, threads)
+    .Call('_fastde_FilterFoldChange', PACKAGE = 'fastde', fc, pct1, pct2, init_mask, min_pct, min_diff_pct, logfc_threshold, only_pos, not_count, threads)
 }
 
 wmwfast <- function(matrix, labels, rtype, continuity_correction, as_dataframe, threads) {
-    .Call('_bigde_wmwfast', PACKAGE = 'bigde', matrix, labels, rtype, continuity_correction, as_dataframe, threads)
+    .Call('_fastde_wmwfast', PACKAGE = 'fastde', matrix, labels, rtype, continuity_correction, as_dataframe, threads)
 }
 
