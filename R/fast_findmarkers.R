@@ -57,7 +57,7 @@ FastFindAllMarkers <- function(
   assay = NULL,
   features = NULL,
   logfc.threshold = 0.25,
-  test.use = 'wilcox',
+  test.use = 'fastwmw',
   slot = 'data',
   min.pct = 0.1,
   min.diff.pct = -Inf,
@@ -78,10 +78,10 @@ FastFindAllMarkers <- function(
 ) {
   # call ours if possible.  conditiions:
   #   node is null
-  #   test.use = "wilcox"
+  #   test.use = "fastwmw"
 
   # what does this do?
-  if ( (is.null(x = node)) && (test.use == "wilcox") && (is.null(x = mean.fxn)) ) {
+  if ((test.use == "fastwmw") || (test.use == "bioqc")) {
   
     # Idents get the cell identity (not name), which correspond to cluster ids? 
     idents.clusters = Seurat::Idents(object = object)
@@ -99,7 +99,7 @@ FastFindAllMarkers <- function(
       assay = assay,
       features = features,
       logfc.threshold = logfc.threshold,
-      test.use = "wilcox",
+      test.use = test.use,
       slot = slot,
       min.pct = min.pct,
       min.diff.pct = min.diff.pct,
@@ -166,7 +166,7 @@ FastFindAllMarkers <- function(
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 #' @rdname FastFindMarkers
-#' @param object  FIXME
+#' @param object  Seurat data, in sparse matrix of class dgCMatrix.  1 gene per row, 1 cell per col
 #' @param slot  FIXME
 #' @param counts Count matrix if using scale.data for DE tests. This is used for
 #' computing pct.1 and pct.2 and for filtering features based on fraction
@@ -178,8 +178,10 @@ FastFindAllMarkers <- function(
 #' Increasing logfc.threshold speeds up the function, but can miss weaker signals.
 #' @param test.use Denotes which test to use. Available options are:
 #' \itemize{
-#'  \item{"wilcox"} : Identifies differentially expressed genes between two
-#'  groups of cells using a Wilcoxon Rank Sum test (default)
+#'  \item{"fastwmw"} : Identifies differentially expressed genes between two
+#'  groups of cells using a Wilcoxon Rank Sum test.  fast Wilcoxon test variant.
+#'  \item{"bioqc"} : Identifies differentially expressed genes between two
+#'  groups of cells using a Wilcoxon Rank Sum test.  BioQC Wilcoxon test variant
 #' }
 #' @param min.pct  only test genes that are detected in a minimum fraction of
 #' min.pct cells in either of the two populations. Meant to speed up the function
@@ -190,7 +192,6 @@ FastFindAllMarkers <- function(
 #' @param only.pos Only return positive markers (FALSE by default)
 #' @param pseudocount.use Pseudocount to add to averaged expression values when
 #' calculating logFC. 1 by default.
-#' @param fc.results data.frame from FastFoldChange
 #' @param fc.name FIXME
 #' @param base FIXME
 #' @param return.dataframe FIXME 
@@ -210,27 +211,34 @@ FastFindMarkers.default <- function(
   cells.clusters = NULL,
   features = NULL,
   logfc.threshold = 0.25,
-  test.use = 'wilcox',
+  test.use = 'fastwmw',
   min.pct = 0.1,
   min.diff.pct = -Inf,
   verbose = TRUE,
   only.pos = FALSE,
   pseudocount.use = 1,
-  fc.results = NULL,
   fc.name = NULL,
   base = 2,
   return.dataframe = TRUE,
   ...
 ) {
-  print("TCP SEURAT: FastFindMarkers.default")
+  print("TCP FASTDE: FastFindMarkers.default")
 
   tic("FastFindMarkers.assay FastFoldChange")
+  # print(object[1:20, 1:10])
+  # print(as.matrix(object[1:20, 1:10]))
+
+
+  if (! is.null(features)) {
+    data <- object[features, , drop=FALSE]
+  } else {
+    data <- object
+  }
 
   # need to do this first - results will be used to filter.
   fc.results <- FastFoldChange(
-    object = object,
+    object = data,
     cells.clusters = cells.clusters,
-    features = features,
     slot = slot,
     pseudocount.use = pseudocount.use,
     base = base,
@@ -239,32 +247,53 @@ FastFindMarkers.default <- function(
     ...
   )
 
+  colidx <- which(! colnames(fc.results) %in% c("cluster", "gene", "pct.1", "pct.2"))[1]
+  fc.name <- colnames(fc.results)[colidx]
+
+
   toc()
+  print(fc.results[[fc.name]][1:20])
+
+
   tic("FinMarkers.default load")
   # reform to data frame.
 
   # reset parameters so no feature filtering is performed
-  data <- switch(
-    EXPR = slot,
-    'scale.data' = counts,
-    object
-  )
 
   # Compute a set of features for each cluster, 
   # and only compute using those features when wmwtest.
   # get the baseline mask  - this is uniform for all clusters
   # get the full mask - this may vary per cluster, so fc_mask is 2D.
+  if (is.null(features)) {
+    imask <- NULL
+  } else {
+    imask <- fc.results$gene %in% features
+  }
+
+  # print(colnames(fc.results))
+  # print(fc.name)
+  # print(fc.results[[fc.name]][1:20])
+  # print(fc.results$pct.1[1:20])
+  # print(fc.results$pct.2[1:20])
+  # print(imask)
+  # print(min.pct)
+  # print(min.diff.pct)
+  # print(logfc.threshold)
+  # print(only.pos)
+  # print(slot != "scale.data")
+  # print(get_num_threads())
   fc_mask <- FilterFoldChange(
-    fc.results[,fc.name], fc.results$pct.1, fc.results$pct.2,   
-    init_mask = fc.results$gene %in% features,
+    fc.results[[colidx]], fc.results$pct.1, fc.results$pct.2,   
+    init_mask = imask,
     min_pct = min.pct, min_diff_pct = min.diff.pct, 
     logfc_threshold = logfc.threshold, only_pos = only.pos, 
     not_count = (slot != "scale.data"), 
     threads = get_num_threads())
   # mask the dataframe or matrix.
+  print(fc_mask[1:20])
 
 
-  # print("TCP SEURAT: FastFindMarkers.default 1")
+  # print("TCP FASTDE: FastFindMarkers.default 1")
   # # feature selection (based on percentages)
   # alpha.min <- pmax(fc.results$pct.1, fc.results$pct.2)
   # names(x = alpha.min) <- rownames(x = fc.results)
@@ -274,7 +303,7 @@ FastFindMarkers.default <- function(
   #   return(fc.results[features, ])
   # }
 
-  # print("TCP SEURAT: FastFindMarkers.default 2")
+  # print("TCP FASTDE: FastFindMarkers.default 2")
   # alpha.diff <- alpha.min - pmin(fc.results$pct.1, fc.results$pct.2)
   # features <- names(
   #   x = which(x = alpha.min >= min.pct & alpha.diff >= min.diff.pct)
@@ -311,9 +340,8 @@ FastFindMarkers.default <- function(
   # because fc_mask is 2D, we compute the DE for all specified features.
   tic("FastFindMarkers.default performDE")
   de.results <- FastPerformDE(
-    object = object,
+    object = data,
     cells.clusters = cells.clusters,
-    features = features,
     test.use = test.use,
     verbose = verbose,
     return.dataframe = return.dataframe,
@@ -342,7 +370,7 @@ FastFindMarkers.default <- function(
   # )
 
   toc()
-  print("TCP SEURAT: FastFindMarkers.default DONE")
+  print("TCP FASTDE: FastFindMarkers.default DONE")
   return(de.results)
 }
 
@@ -376,7 +404,7 @@ FastFindMarkers.Assay <- function(
   cells.clusters = NULL,
   features = NULL,
   logfc.threshold = 0.25,
-  test.use = 'wilcox',
+  test.use = 'fastwmw',
   min.pct = 0.1,
   min.diff.pct = -Inf,
   verbose = TRUE,
@@ -387,7 +415,7 @@ FastFindMarkers.Assay <- function(
   return.dataframe = TRUE,
   ...
 ) {
-  print("TCP SEURAT: FastFindMarkers.assay")
+  print("TCP FASTDE: FastFindMarkers.assay")
 
   tic("FastFindMarkers.assay load")
   data.use <- Seurat::GetAssayData(object = object, slot = slot)
@@ -426,7 +454,7 @@ FastFindMarkers.Assay <- function(
     ...
   )
   toc()
-  print("TCP SEURAT: FastFindMarkers.assay DONE")
+  print("TCP FASTDE: FastFindMarkers.assay DONE")
   return(de.results)
 }
 
@@ -452,7 +480,7 @@ FastFindMarkers.DimReduc <- function(
   object,
   cells.clusters = NULL,
   features = NULL,
-  test.use = "wilcox",
+  test.use = "fastwmw",
   verbose = TRUE,
   only.pos = FALSE,
   fc.name = NULL,
@@ -460,7 +488,7 @@ FastFindMarkers.DimReduc <- function(
   ...
 
 ) {
-  print("TCP SEURAT: FastFindMarkers.DimReduc")
+  print("TCP FASTDE: FastFindMarkers.DimReduc")
 
 
   tic("FastFindMarkers.DimReduc load")
@@ -468,9 +496,9 @@ FastFindMarkers.DimReduc <- function(
     fc.name <- "avg_diff"
   }
   # fc.name <- fc.name %||% "avg_diff"
-  data <- t(x = Seurat::Embeddings(object = object))
+  data <- Seurat::Embeddings(object = object)
   if (! is.null(x = features) ) {
-    data <- data[features, ]
+    data <- data[, features, drop=FALSE]
   }
   # does the size match?
   if ( is.null(x = cells.clusters) ) {
@@ -479,6 +507,10 @@ FastFindMarkers.DimReduc <- function(
     clusters <- cells.clusters
   }
   # clusters <- cells.clusters %||% Seurat::Idents(object = object)  
+  if (! is.factor(clusters)) {
+    clusters <- as.factor(clusters)
+  }
+  labels <- levels(clusters)
 
   toc()
 
@@ -486,12 +518,19 @@ FastFindMarkers.DimReduc <- function(
 
   tic("FastFindMarkers.DimReduc FastFoldChange")
   # Calculate avg difference.  This is just rowMeans.
-  fc.results <- ComputeFoldChange(data, clusters,
+  fc.results <- ComputeFoldChange(as.matrix(data), as.integer(clusters),
     calc_percents = FALSE, fc_name = fc.name, 
     use_expm1 = FALSE, min_threshold = 0.0, 
     use_log = FALSE, log_base = 2.0, use_pseudocount = FALSE, 
     as_dataframe = return.dataframe,
     threads = get_num_threads())
+  if (return.dataframe == FALSE) {
+    fc.results$avg_diff <- t(fc.results$avg_diff)
+  }
+  if (! is.factor(fc.results$cluster) ) {
+    fc.results$cluster <- as.factor(fc.results$cluster)
+  }
+  levels(fc.results$cluster) <- labels
 
   toc()
 
@@ -528,7 +567,7 @@ FastFindMarkers.DimReduc <- function(
   #   n = nrow(x = object)
   # )
   toc()
-  print("TCP SEURAT: FastFindMarkers.DimReduc DONE")
+  print("TCP FASTDE: FastFindMarkers.DimReduc DONE")
   return(de.results)
 }
 
@@ -574,7 +613,7 @@ FastFindMarkers.Seurat <- function(
   reduction = NULL,
   features = NULL,
   logfc.threshold = 0.25,
-  test.use = "wilcox",
+  test.use = "fastwmw",
   min.pct = 0.1,
   min.diff.pct = -Inf,
   verbose = TRUE,
@@ -585,7 +624,7 @@ FastFindMarkers.Seurat <- function(
   return.dataframe = TRUE,
   ...
 ) {
-  print("TCP SEURAT: FastFindMarkers.Seurat")
+  print("TCP FASTDE: FastFindMarkers.Seurat")
   tic("FastFindMarkers.Seurat setup")
 
   if (!is.null(x = group.by)) {
@@ -636,7 +675,7 @@ FastFindMarkers.Seurat <- function(
     ...
   )
   toc()
-  print("TCP SEURAT: FastFindMarkers.Seurat DONE")
+  print("TCP FASTDE: FastFindMarkers.Seurat DONE")
   return(de.results)
 }
 
@@ -741,7 +780,7 @@ FastFoldChange.default <- function(
   return.dataframe = TRUE,
   ...
 ) {
-  print("TCP SEURAT: FastFoldChange.default")
+  print("TCP FASTDE: FastFoldChange.default")
   tic("FastFoldChange.default setup")
 
   log.use <- ifelse(
@@ -759,6 +798,12 @@ FastFoldChange.default <- function(
     clusters <- Seurat::Idents(object = object)
   } else {
     clusters <- cells.clusters
+  }
+  if ( is.null(clusters) ) {
+    message("ERROR:  null cluster")
+  } else {
+    message("using cluster names")
+    print(levels(clusters))
   }
   # clusters <- cells.clusters %||% Seurat::Idents(object = object)
 
@@ -781,23 +826,27 @@ FastFoldChange.default <- function(
   #   no = paste0("avg_log", base.text, "FC")
   # )
   
-  if (is.null(features)) {
-    data <- object[features, ]
+  if (! is.null(features)) {
+    data <- object[features, , drop=FALSE]
   } else {
     data <- object
   }
   toc()
-
+  
   tic("FastFoldChange.default calc")
-  fc.results <- ComputeFoldChange(data, clusters,
+  fc.results <- ComputeFoldChange(t(as.matrix(data)), as.integer(clusters),
     calc_percents = TRUE, fc_name = fc.name, 
     use_expm1 = expm1.use, min_threshold = 0.0, 
     use_log = log.use, log_base = base, use_pseudocount = pseudocount.use, 
     as_dataframe = return.dataframe,
     threads = get_num_threads())
-
+  if (return.dataframe == FALSE) {
+    fc.results[[fc.name]] <- t(fc.results[[fc.name]])
+    fc.results$pct.1 <- t(fc.results$pct.1)
+    fc.results$pct.2 <- t(fc.results$pct.2)
+  }
   toc()
-  print("TCP SEURAT: FastFoldChange.default DONE")
+  print("TCP FASTDE: FastFoldChange.default DONE")
   return(fc.results)
 }
 
@@ -834,7 +883,7 @@ FastFoldChange.Assay <- function(
   return.dataframe = TRUE,
   ...
 ) {
-  print("TCP SEURAT: FastFoldChange.Assay")
+  print("TCP FASTDE: FastFoldChange.Assay")
   tic("FastFoldChange.Assay setup")
   data <- Seurat::GetAssayData(object = object, slot = slot)
 
@@ -860,7 +909,7 @@ FastFoldChange.Assay <- function(
     ...
   )
   toc()
-  print("TCP SEURAT: FastFoldChange.Assay DONE")
+  print("TCP FASTDE: FastFoldChange.Assay DONE")
   return(fc.results)
 }
 
@@ -888,16 +937,16 @@ FastFoldChange.DimReduc <- function(
   return.dataframe = TRUE,
   ...
 ) {
-  print("TCP SEURAT: FastFoldChange.DimReduc")
+  print("TCP FASTDE: FastFoldChange.DimReduc")
   tic("FastFoldChange.DimReduc init")
 
   if ( is.null(fc.name) ) {
     fc.name <- "avg_diff"
   }
   # fc.name <- fc.name %||% "avg_diff"
-  data <- t(x = Seurat::Embeddings(object = object))  # transpose as the reduction appears to be transposed.
+  data <- x = Seurat::Embeddings(object = object)  # transpose as the reduction appears to be transposed.
   if (! is.null(x = features) ) {
-    data <- data[features, ]
+    data <- data[, features, drop=FALSE]
   }
 
   # does the size match?
@@ -911,15 +960,18 @@ FastFoldChange.DimReduc <- function(
   toc()
   tic("FastFoldChange.DimReduc mean")
   # Calculate avg difference.  This is just rowMeans.
-  fc.results <- ComputeFoldChange(data, clusters,
+  fc.results <- ComputeFoldChange(as.matrix(data), as.integer(clusters),
     calc_percents = FALSE, fc_name = fc.name, 
     use_expm1 = FALSE, min_threshold = 0.0, 
     use_log = FALSE, log_base = 2.0, use_pseudocount = FALSE, 
     as_dataframe = return.dataframe,
     threads = get_num_threads())
+  if (return.dataframe == FALSE) {
+    fc.results$avg_diff <- t(fc.results$avg_diff)
+  }
 
   toc()
-  print("TCP SEURAT: FastFoldChange.DimReduc DONE")
+  print("TCP FASTDE: FastFoldChange.DimReduc DONE")
   return(fc.results)
 }
 
@@ -968,7 +1020,7 @@ FastFoldChange.Seurat <- function(
   return.dataframe = TRUE,
   ...
 ) {
-  print("TCP SEURAT: FastFoldChange.Seurat")
+  print("TCP FASTDE: FastFoldChange.Seurat")
   tic("FastFoldChange.Seurat init")
   if (!is.null(x = group.by)) {
     if (!is.null(x = subset.ident)) {
@@ -1014,7 +1066,7 @@ FastFoldChange.Seurat <- function(
     ...
   )
   toc()
-  print("TCP SEURAT: FastFoldChange.Seurat DONE")
+  print("TCP FASTDE: FastFoldChange.Seurat DONE")
   return(fc.results)
 }
 
@@ -1075,19 +1127,32 @@ fastDEPackageCheck <- function(..., error = TRUE) {
 FastPerformDE <- function(
   object,
   cells.clusters,
-  features,
-  test.use,
-  verbose,
+  features = NULL,
+  test.use = "fastwmw",
+  verbose = FALSE,
   return.dataframe = TRUE,
   ...
 ) {
-  print("TCP SEURAT: PerformDE")
+  print("TCP FASTDE: PerformDE")
   tic("PerformDE compute")
+
+  if (! is.null(features)) {
+    data <- object[features, , drop = FALSE]
+  } else {
+    data <- object
+  }
 
   de.results <- switch(
     EXPR = test.use,
-    'wilcox' = FastWilcoxDETest(
-      data.use = object[features, , drop = FALSE],
+    'fastwmw' = FastWilcoxDETest(
+      data.use = data,
+      cells.clusters = cells.clusters,
+      verbose = verbose,
+      return.dataframe = return.dataframe,
+      ...
+    ),
+    'bioqc' = BioQCDETest(
+      data.use = data,
       cells.clusters = cells.clusters,
       verbose = verbose,
       return.dataframe = return.dataframe,
@@ -1096,11 +1161,80 @@ FastPerformDE <- function(
     stop("Unknown test: ", test.use)
   )
   toc()
-  print("TCP SEURAT: PerformDE DONE")
+  print("TCP FASTDE: PerformDE DONE")
   
   return(de.results)
 }
 
+
+
+#' Differential expression using Wilcoxon Rank Sum
+#'
+#' Identifies differentially expressed genes between two groups of cells using
+#' a Wilcoxon Rank Sum test. Makes use of limma::rankSumTestWithCorrelation for a
+#' more efficient implementation of the wilcoxon test. Thanks to Yunshun Chen and
+#' Gordon Smyth for suggesting the limma implementation.
+#'
+#' @param data.use Data matrix to test.  rows = features, columns = samples
+#' @param cells.clusters cell labels, integer cluster ids for each cell.  array of size same as number of samples
+#' @param verbose Print report verbosely
+#' @param return.dataframe if TRUE, return a dataframe, else return a 2D matrix.
+#' @param ... Extra parameters passed to wilcox.test
+#'
+#' @return If return.dataframe == FALSE, returns a p-value matrix of putative differentially expressed
+#' features, with genes in rows and clusters in columns.  else return a dataframe with "p-val" column, 
+#' with results for the clusters grouped by gene.
+#'
+#' @export
+#'
+# @examples
+# data("pbmc_small")
+# pbmc_small
+# WilcoxDETest(pbmc_small, cells.1 = WhichCells(object = pbmc_small, idents = 1),
+#             cells.2 = WhichCells(object = pbmc_small, idents = 2))
+#
+FastWilcoxDETest <- function(
+  data.use,
+  cells.clusters,
+  verbose = TRUE,
+  return.dataframe = TRUE,
+  ...
+) {
+  # input has each row being a gene, and each column a cell (sample).  -
+  #    based on reading of the naive wilcox.test imple in Seurat.
+  # fastde input is expected to : each row is a gene, each column is a sample
+  message("USING FastDE")
+
+  if (! is.factor(cells.clusters)) {
+    cells.clusters <- as.factor(cells.clusters)
+  }
+  labels <- levels(cells.clusters)
+  # two sided : 2
+  # print(head(data.use))
+  p_val <- wmwfast(t(as.matrix(data.use)), as.integer(cells.clusters), rtype = as.integer(2), 
+          continuity_correction = TRUE,
+          as_dataframe = return.dataframe, threads = get_num_threads())
+
+
+  if ( return.dataframe == TRUE ) {
+    if (! is.factor(p_val$cluster)) {
+      p_val$cluster <- as.factor(p_val$cluster)
+      print(length(levels(p_val$cluster)))
+      print(length(labels))
+      print(length(p_val$cluster))
+      levels(p_val$cluster) <- labels
+    } else {
+      print(length(levels(p_val$cluster)))
+    }
+    print(head(p_val$cluster))
+    print(head(p_val$gene))
+    print(head(p_val$p_val))
+  } else {
+    p_val <- t(p_val)
+  }
+  
+  return(p_val)
+}
 
 
 #' Differential expression using Wilcoxon Rank Sum
@@ -1131,48 +1265,64 @@ FastPerformDE <- function(
 # WilcoxDETest(pbmc_small, cells.1 = WhichCells(object = pbmc_small, idents = 1),
 #             cells.2 = WhichCells(object = pbmc_small, idents = 2))
 #
-FastWilcoxDETest <- function(
+BioQCDETest <- function(
   data.use,
   cells.clusters,
   verbose = TRUE,
   return.dataframe = TRUE,
   ...
 ) {
-  fastde.check <- fastDEPackageCheck("fastde", error = FALSE)
   bioqc.check <- fastDEPackageCheck("BioQC", error = FALSE)
 
   # input has each row being a gene, and each column a cell (sample).  -
   #    based on reading of the naive wilcox.test imple in Seurat.
-  L <- unique(sort(cells.clusters))
+  if (! is.factor(cells.clusters)) {
+    cells.clusters <- as.factor(cells.clusters)
+  }
+  LL <- levels(cells.clusters)
+  print(cells.clusters[1:20])
+  print(LL)
 
-  if ( fastde.check[1] ) {
-    # fastde input is expected to : each row is a gene, each column is a sample
-    message("USING BigDE")
-    # two sided : 2
-    p_val <- wmwfast(data.use, cells.clusters, rtype = as.integer(2), 
-            continuity_correction = TRUE,
-            as_dataframe = return.dataframe, threads = get_num_threads())
-  } else if ( bioqc.check[1] ) {
+  i <- 1
+  if ( bioqc.check[1] ) {
     message("USING BIOQC")
 
     labels = list()
-    for (c in L) {
-      inds[[c]] <- cells.clusters %in% c
+    for (i in 1:length(LL)) {
+      labels[[i]] <- as.integer(cells.clusters) %in% i
     }
-    p_val <- BioQC::wmwTest(matrix(data.use), inds, valType = "p.two.sided")
+    p_val <- BioQC::wmwTest(t(as.matrix(data.use)), labels, valType = "p.two.sided")
+    # p_val HERE has clusters in rows and features/genes in columns
 
     # TODO: test this part.
     if (return.dataframe) {
-      clusters <- as.vector(pracma::repmat(rownames(p_val), ncol(p_val), 1))  # clusters repeated nfeatures number of times
-      genenames <- as.vector(pracma::repmat(colnames(p_val), length(L), 1 ))  # gene names, repeated the number of times as num of clusters.
-      p_val <- data.frame(c(as.vector(p_val), clusters, genenames))
-      colnames(p_val) <- c("p_val", "cluster", "gene")
+      clusters <- rep(1:length(LL), time=nrow(data.use))  # clusters repeated nfeatures number of times
+      print(clusters[1:50])
+      clusters <- as.factor(clusters)
+      print(length(clusters))
+      levels(clusters) <- LL
+
+      genes <- as.factor(rownames(data.use))
+      genenames <- levels(genes)
+      genes <- rep(as.integer(genes), each = length(LL))
+      genes <- as.factor(genes)
+      levels(genes) <- genenames
+      print(genes[1:50])
+      print(length(genes))
+
+      p_val <- data.frame(cbind(clusters, genes, as.vector(p_val)))
+      print(dim(p_val))
+      print(p_val[1:10, , drop=FALSE])
+      colnames(p_val) <- c("cluster", "gene", "p_val")
+
     } else {
+      p_val = t(p_val)
       # just a matrix returned.
-      colnames(p_val) <- colnames(data.use)
+      rownames(p_val) <- rownames(data.use)
+      colnames(p_val) <- LL
     }
   } else {
-    message("Please install either BioQC or BigDE (fastde preferred)")
+    message("Please install the BioQC package")
   }
   return(p_val)
 }

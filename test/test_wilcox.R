@@ -22,7 +22,7 @@ rownames(input) <- samplenames
 
 cat(sprintf("test size:  r %d X c %d.\n", nrow(wilcox), ncol(wilcox)))
 cat(sprintf("input size:  r %d X c %d\n", nrow(input), ncol(input)))
-cat(sprintf("Labels rows: %d \n", length(labels)))
+cat(sprintf("Labels: %d \n", length(labels)))
 
 L <- unique(sort(labels))
 
@@ -36,13 +36,10 @@ cat(sprintf("Labels unique: %d \n", length(L)))
 
 tic("fastde")
 # time and run BioQC
-fastdewilcox <- matrix(, ncol = ncol(wilcox), nrow = nrow(wilcox) )
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
 fastdewilcox <- fastde::wmwfast(input, labels, rtype=as.integer(2), 
     continuity_correction=TRUE, as_dataframe = FALSE, threads = as.integer(4))
 toc()
-
-fastdewilcox[, 1]
 
 
 tic("fastde_df")
@@ -70,7 +67,6 @@ for ( c in L ) {
 BioQCwilcox2 <- BioQC::wmwTest(input, inds, valType = "p.two.sided")
 toc()
 
-BioQCwilcox2[, 1]
 
 
 # tic("BioQC3")
@@ -89,7 +85,6 @@ BioQCwilcox2[, 1]
 # }
 # toc()
 
-# BioQCwilcox3
 
 
 
@@ -118,8 +113,6 @@ for ( gene in 1:ncol(input) ) {
     }
 }
 toc()
-
-Limmawilcox[, 1]
 # warnings()
 
 
@@ -166,7 +159,16 @@ for ( gene in 1:ncol(input) ) {
 }
 toc()
 
+
+fastdewilcox[, 1]
+BioQCwilcox2[, 1]
+Limmawilcox[, 1]
 Rwilcox[, 1]
+
+fastdewilcox[1, ]
+BioQCwilcox2[1, ]
+Limmawilcox[1, ]
+Rwilcox[1, ]
 
 
 # # time and run wilcox.test

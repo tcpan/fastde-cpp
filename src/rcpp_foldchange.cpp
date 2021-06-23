@@ -202,17 +202,17 @@ void foldchange_logmean(std::unordered_map<LABEL, clust_info> const & sums,
 //' https://stackoverflow.com/questions/38338270/how-to-return-a-named-vecsxp-when-writing-r-extensions
 //' 
 //' @rdname ComputeFoldChange
-//' @param matrix: an expression matrix, each row is a feature, each column corresponds to a samples
-//' @param labels: an integer vector, each element indicating the group to which a sample belongs.
-//' @param calc_percents:  a boolean to indicate whether to compute percents or not.
-//' @param fc_name: column name to use for the fold change results 
-//' @param use_expm1: for "data", use expm1
-//' @param min_threshold: minimum threshold to count towards pct.1 and pct.2 percentages.
-//' @param use_log: for "data" and default log type, indicate log of the sum is to be used.
-//' @param log_base: base for the log
-//' @param use_pseudocount: for "data" and default log type, add pseudocount after log.
-//' @param as_dataframe: TRUE/FALSE.  TRUE = return a linearized dataframe.  FALSE = return matrices.
-//' @param threads: number of threads to use
+//' @param matrix an expression matrix, COLUMN-MAJOR, each row is a sample, each column a sample
+//' @param labels an integer vector, each element indicating the group to which a sample belongs.
+//' @param calc_percents  a boolean to indicate whether to compute percents or not.
+//' @param fc_name column name to use for the fold change results 
+//' @param use_expm1 for "data", use expm1
+//' @param min_threshold minimum threshold to count towards pct.1 and pct.2 percentages.
+//' @param use_log for "data" and default log type, indicate log of the sum is to be used.
+//' @param log_base base for the log
+//' @param use_pseudocount for "data" and default log type, add pseudocount after log.
+//' @param as_dataframe TRUE/FALSE.  TRUE = return a linearized dataframe.  FALSE = return matrices.
+//' @param threads number of threads to use
 //' @return array or dataframe
 //' @name ComputeFoldChange
 //' @export
@@ -247,7 +247,7 @@ extern SEXP ComputeFoldChange(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP
 
   // ========= count number of labels so we can allocate output  run the first one.
   int *label_ptr=INTEGER(labels);
-  // run 1, so we can get the cluster order.
+  // run 1, so we can get the cluster order.  threshold data is ignore.
   std::unordered_map<int, clust_info> info =
       foldchange_stats(REAL(matrix), label_ptr, nsamples, min_thresh, false);
   size_t label_count = info.size() - 1;   // k
@@ -280,7 +280,6 @@ extern SEXP ComputeFoldChange(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP
       SET_STRING_ELT(features, j, Rf_mkChar(str));
       memset(str, 0, intlen + 1);
     }
-
   }
   // end = Clock::now();
   // Rprintf("set feature names %ld ns\n", 
@@ -294,7 +293,7 @@ extern SEXP ComputeFoldChange(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP
   int col_id = 0;
 
   PROTECT(res = Rf_allocVector(VECSXP, ncols));   // cluster id and gene names are repeated.
-  PROTECT(names = Rf_allocVector(STRSXP, ncols));
+  PROTECT(names = Rf_allocVector(STRSXP, ncols));  // col names
   proc_count += 2;
 
   if (_as_dataframe) {
@@ -354,6 +353,7 @@ extern SEXP ComputeFoldChange(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP
     int * clust_ptr = INTEGER(clust);
     SEXP * features_ptr = STRING_PTR(features);
     size_t j = 0;
+    // outer group = features, inner order = cluster
     for (size_t i = 0; i < nfeatures; ++i) {
       for (auto item : info) {
         if (item.first == std::numeric_limits<int>::max()) continue;
@@ -477,16 +477,16 @@ extern SEXP ComputeFoldChange(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP
 //'  https://stackoverflow.com/questions/38338270/how-to-return-a-named-vecsxp-when-writing-r-extensions
 //' 
 //' @rdname FilterFoldChange
-//' @param fc: foldchange values, either as a vector or a matrix
-//' @param pct1: percent greater than threshold (0) in class 1.
-//' @param pct2: percent greater than threshold (0) in class 2.
-//' @param init_mask:  initial mask, based on an external "features" vector.
-//' @param min_pct: minimum threshold for max pct1, pct2
-//' @param min_diff_pct: minimum threshold for difference between max and min {pct1, pct2}
-//' @param logfc_threshold: if not scaled.data, then compare to the logfc.
-//' @param only_pos: keep only positive fc value, and not use abs when thresholding.
-//' @param not_count:  not scaled.data
-//' @param threads: number of threads to use
+//' @param fc foldchange values, either as a vector or a matrix.  if matrix: 1 gene per col, 1 clust per row
+//' @param pct1 percent greater than threshold (0) in class 1.
+//' @param pct2 percent greater than threshold (0) in class 2.
+//' @param init_mask  initial mask, based on an external "features" vector.
+//' @param min_pct minimum threshold for max pct1, pct2
+//' @param min_diff_pct minimum threshold for difference between max and min {pct1, pct2}
+//' @param logfc_threshold if not scaled.data, then compare to the logfc.
+//' @param only_pos keep only positive fc value, and not use abs when thresholding.
+//' @param not_count  not scaled.data
+//' @param threads number of threads to use
 //' @return array of same shape as fc
 //' @name FilterFoldChange
 //' @export
@@ -510,94 +510,53 @@ extern SEXP FilterFoldChange(SEXP fc, SEXP pct1, SEXP pct2,
   bool _only_pos = Rf_asLogical(only_pos);  // operate on 
   bool _not_count = Rf_asLogical(not_count);
 
-  int nthreads=INTEGER(threads)[0];
+  int nthreads=Rf_asInteger(threads);
   if (nthreads < 1) nthreads = 1;
 
   bool has_init = (TYPEOF(init_mask) != NILSXP);
 
   // ========= count number of labels so we can allocate output  run the first one.  
-  const size_t nclusters=NROW(fc);  // n
-  const size_t nfeatures=NCOL(fc); // m
-
   int proc_count = 0;
 
   omp_set_num_threads(nthreads);
-
   SEXP mask;
-  int *init_ptr = LOGICAL(init_mask);
-  double *fc_ptr = REAL(fc);
-  double *pct1_ptr = REAL(pct1);
-  double *pct2_ptr = REAL(pct2);
-  int *mask_ptr = LOGICAL(mask);
-  double mx, mn;
-  bool out;
-  size_t offset;
-  if (nfeatures > 1) {
+
+  size_t nelem;
+  if ( Rf_isMatrix(fc) ) {
+    size_t nclusters=NROW(fc);  // n
+    size_t nfeatures=NCOL(fc); // m
+    nelem = nclusters * nfeatures;
+
+    Rprintf("filter matrix\n");
     PROTECT(mask = Rf_allocMatrix(LGLSXP, nclusters, nfeatures));
     ++proc_count;
+  } else if ( Rf_isVector(fc) ){
+    nelem = Rf_length(fc);
 
-    // ======= compute.
-#pragma omp parallel for num_threads(nthreads) private(init_ptr, fc_ptr, pct1_ptr, pct2_ptr, mask_ptr, mx, mn, out, offset)
-    for(size_t i=0; i < nfeatures; ++i) {
-      offset = i * nclusters;
-      init_ptr = LOGICAL(init_mask) + offset;
-      fc_ptr = REAL(fc) + offset;
-      pct1_ptr = REAL(pct1) + offset;
-      pct2_ptr = REAL(pct2) + offset;
-      mask_ptr = LOGICAL(mask) + offset;
-
-      for(size_t j=0; j < nclusters; ++j) {
-        out = (has_init ? *init_ptr : true);
-
-        // alpha.min <- pmax(fc.results$pct.1, fc.results$pct.2)
-        // features <- names(x = which(x = alpha.min >= min.pct))
-        mx = std::max(*pct1_ptr, *pct2_ptr);
-        out &= (mx >= _min_pct);
-        // alpha.diff <- alpha.min - pmin(fc.results$pct.1, fc.results$pct.2)
-        // x = which(x = alpha.min >= min.pct & alpha.diff >= min.diff.pct)
-        mn = std::min(*pct1_ptr, *pct2_ptr);
-        out &= ((mx - mn) >= _min_diff_pct);
-
-
-        // if (slot != "scale.data") {
-        //   total.diff <- fc.results[, 1] #first column is logFC
-        //   features.diff <- if (only.pos) {
-        //     names(x = which(x = total.diff >= logfc.threshold))
-        //   } else {
-        //     names(x = which(x = abs(x = total.diff) >= logfc.threshold))
-        //   }
-        mn = _only_pos ? *fc_ptr : fabs(*fc_ptr);
-        //   features <- intersect(x = features, y = features.diff)
-        // }
-        if (_not_count) {
-          out &= (mn >= _logfc_threshold);
-        }
-
-        // if (only.pos)
-        // de.results <- de.results[de.results[, fc.name] > 0, , drop = FALSE]
-        //              | _only_pos   | !_only_pos 
-        //  fc_ptr > 0  | y           |   y
-        //  fc_ptr <= 0 | n           |   y
-        if (_only_pos) out &= (*fc_ptr > 0);
-
-        *mask_ptr = out;
-
-        if (has_init) ++init_ptr;
-        ++fc_ptr;
-        ++pct1_ptr;
-        ++pct2_ptr;
-        ++mask_ptr;
-      }
-    }
-
-  } else {
-    PROTECT(mask = Rf_allocVector(LGLSXP, nclusters));
+    Rprintf("filter data.frame\n");
+    PROTECT(mask = Rf_allocVector(LGLSXP, nelem));
     ++proc_count;
+  }
 
     // ======= compute.
-    // ======= compute.
-#pragma omp parallel for num_threads(nthreads) schedule(static) private(init_ptr, fc_ptr, pct1_ptr, pct2_ptr, mask_ptr, mx, mn, out)
-    for(size_t j=0; j < nclusters; ++j) {
+#pragma omp parallel num_threads(nthreads)
+  {
+    int *init_ptr = has_init ? LOGICAL(init_mask) : nullptr;
+    double *fc_ptr = REAL(fc);
+    double *pct1_ptr = REAL(pct1);
+    double *pct2_ptr = REAL(pct2);
+    double mx, mn;
+    bool out;
+    int * mask_ptr = LOGICAL(mask);
+    
+    int tid = omp_get_thread_num();
+    size_t block = nelem / nthreads;
+    size_t rem = nelem - nthreads * block;
+    size_t offset = tid * block + (tid > rem ? rem : tid);
+    int nid = tid + 1;
+    size_t end = nid * block + (nid > rem ? rem : nid);
+
+    for(size_t j=offset; j < end; ++j) {
         out = (has_init ? init_ptr[j] : true);
         // alpha.min <- pmax(fc.results$pct.1, fc.results$pct.2)
         // features <- names(x = which(x = alpha.min >= min.pct))
@@ -616,10 +575,10 @@ extern SEXP FilterFoldChange(SEXP fc, SEXP pct1, SEXP pct2,
         //     names(x = which(x = abs(x = total.diff) >= logfc.threshold))
         //   }
         mx = fc_ptr[j];
-        mn = _only_pos ? mx : fabs(mx);
         //   features <- intersect(x = features, y = features.diff)
         // }
         if (_not_count) {
+          mn = _only_pos ? mx : fabs(mx);
           out &= (mn >= _logfc_threshold);
         }
 
@@ -632,7 +591,6 @@ extern SEXP FilterFoldChange(SEXP fc, SEXP pct1, SEXP pct2,
 
         mask_ptr[j] = out;
     }
-
   }
   // set the row and col names.
   // https://stackoverflow.com/questions/5709940/r-extension-in-c-setting-matrix-row-column-names

@@ -48,7 +48,7 @@ fastdefc <- fastde::ComputeFoldChange(input, labels, calc_percents = TRUE, fc_na
     use_pseudocount = FALSE, as_dataframe = FALSE, threads = as.integer(4))
 toc()
 
-tic("Ordering")
+tic("Ordering by cluster num")
 x <- as.integer(row.names(fastdefc$fc))
 ord <- order(x)
 x

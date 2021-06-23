@@ -167,7 +167,7 @@ void wmw(IT const * in, LABEL const * labels, size_t const & count, OT * out, si
 //' This implementation uses normal approximation, which works reasonably well if sample size is large (say N>=20)
 //' 
 //' @rdname wmwfast
-//' @param matrix an expression matrix, each row is a feature, each column corresponds to a samples
+//' @param matrix an expression matrix, COLUMN-MAJOR, each col is a feature, each row a sample
 //' @param labels an integer vector, each element indicating the group to which a sample belongs.
 //' @param rtype 
 //' \itemize{
@@ -335,7 +335,7 @@ extern SEXP wmwfast(SEXP matrix, SEXP labels, SEXP rtype,
 #pragma omp parallel for num_threads(nthreads) 
   for(size_t i=0; i < nfeatures; ++i) {
     // directly compute matrix and res pointers.
-    Rprintf("thread %d processing feature %d\n", omp_get_thread_num(), i);
+    // Rprintf("thread %d processing feature %d\n", omp_get_thread_num(), i);
     wmw(REAL(matrix) + i * nsamples, label_ptr, nsamples, REAL(pv) + i * label_count, label_count, type, continuity);
   }
 
