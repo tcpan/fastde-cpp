@@ -744,6 +744,7 @@ FastFindMarkers <- function(object, ...) {
 #' @param fc.name Name of the fold change, average difference, or custom function column
 #' in the output data.frame
 #' @param return.dataframe if TRUE, return a dataframe, else return a 2D matrix.
+#' @param verbose Print report verbosely
 #' @return If return.dataframe == FALSE, returns a list of matrices, first is fold change values, 
 #' next 2 are percent above thresholds in the 2 classes.
 #' Else return a dataframe with the matrices reshaped as columns, values grouped by gene.
@@ -847,6 +848,7 @@ FastFoldChange.default <- function(
 #' @param fc.name Name of the fold change, average difference, or custom function column
 #' in the output data.frame
 #' @param return.dataframe if TRUE, return a dataframe, else return a 2D matrix.
+#' @param verbose Print report verbosely
 #' @return If return.dataframe == FALSE, returns a list of matrices, first is fold change values, 
 #' next 2 are percent above thresholds in the 2 classes.
 #' Else return a dataframe with the matrices reshaped as columns, values grouped by gene.
@@ -907,6 +909,7 @@ FastFoldChange.Assay <- function(
 #' @param fc.name Name of the fold change, average difference, or custom function column
 #' in the output data.frame
 #' @param return.dataframe if TRUE, return a dataframe, else return a 2D matrix.
+#' @param verbose Print report verbosely
 #' @return If return.dataframe == FALSE, returns a list of 1 matrix, fold change values.
 #' Else return a dataframe with the matrix reshaped as a column, values grouped by gene.
 #' 
@@ -981,6 +984,7 @@ FastFoldChange.DimReduc <- function(
 #' @param fc.name Name of the fold change, average difference, or custom function column
 #' in the output data.frame
 #' @param return.dataframe if TRUE, return a dataframe, else return a 2D matrix.
+#' @param verbose Print report verbosely
 #' @return If return.dataframe == FALSE, returns a list of matrices, first is fold change values, 
 #' next 2 are percent above thresholds in the 2 classes (not for dim reduc).
 #' Else return a dataframe with the matrices reshaped as columns, values grouped by gene.
