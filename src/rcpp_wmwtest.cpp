@@ -197,14 +197,17 @@ extern SEXP wmwfast(SEXP matrix, SEXP labels, SEXP rtype,
     SEXP continuity_correction, 
     SEXP as_dataframe,
     SEXP threads) {
-  const int type=INTEGER(rtype)[0];
+  // Rprintf("here 1\n");
+
+  const int type=Rf_asInteger(rtype);
   if (type > 3) Rprintf("ERROR: unsupported type: %d. Supports only greater, less, twosided, and U\n", type);
-  int nthreads=INTEGER(threads)[0];
+  int nthreads=Rf_asInteger(threads);
   if (nthreads < 1) nthreads = 1;
   bool continuity = Rf_asLogical(continuity_correction);
   const size_t nsamples=NROW(matrix);  // n
   const size_t nfeatures=NCOL(matrix); // m
   bool _as_dataframe = Rf_asLogical(as_dataframe);
+  // Rprintf("here 2\n");
   
   // get the number of unique labels.
   int *label_ptr=INTEGER(labels);
@@ -216,6 +219,7 @@ extern SEXP wmwfast(SEXP matrix, SEXP labels, SEXP rtype,
   std::vector<int> sorted_labels(info.begin(), info.end());
   std::sort(sorted_labels.begin(), sorted_labels.end());
   label_ptr = INTEGER(labels);
+  // Rprintf("here 3\n");
 
   int intlen = snprintf(NULL, 0, "%lu", std::numeric_limits<size_t>::max());
   char * str = reinterpret_cast<char *>(malloc(intlen + 1));
@@ -239,6 +243,7 @@ extern SEXP wmwfast(SEXP matrix, SEXP labels, SEXP rtype,
     }
 
   }
+  // Rprintf("here 4\n");
 
   // double *matColPtr; // pointer to the current column of the matrix
   SEXP res, pv, clust, genenames, names, rownames, cls;
@@ -277,6 +282,7 @@ extern SEXP wmwfast(SEXP matrix, SEXP labels, SEXP rtype,
     ++proc_count;
 
   }
+  // Rprintf("here 5\n");
 
   // alloc output res (list?)
   if (_as_dataframe) {
@@ -333,18 +339,35 @@ extern SEXP wmwfast(SEXP matrix, SEXP labels, SEXP rtype,
     SET_VECTOR_ELT(names, 1, features);  // columns  = features (genes)
     Rf_setAttrib(pv, R_DimNamesSymbol, names);
   }
+  // Rprintf("here 6\n");
 
   // Rprintf("inputsize  r %lu c %lu , output r %lu c %lu \n", nsamples, nfeatures, NROW(res), NCOL(res));
 
   omp_set_num_threads(nthreads);
+  Rprintf("THREADING: using %d threads\n", nthreads);
 
-#pragma omp parallel for num_threads(nthreads) 
-  for(size_t i=0; i < nfeatures; ++i) {
-    // directly compute matrix and res pointers.
-    // Rprintf("thread %d processing feature %d\n", omp_get_thread_num(), i);
-    wmw(REAL(matrix) + i * nsamples, label_ptr, nsamples, REAL(pv) + i * label_count, label_count, type, continuity);
+
+#pragma omp parallel num_threads(nthreads)
+  {
+    int tid = omp_get_thread_num();
+    size_t block = nfeatures / nthreads;
+    size_t rem = nfeatures - nthreads * block;
+    size_t offset = tid * block + (tid > rem ? rem : tid);
+    int nid = tid + 1;
+    size_t end = nid * block + (nid > rem ? rem : nid);
+
+    double *matptr = REAL(matrix) + offset * nsamples;
+    double *pvptr = REAL(pv) + offset * label_count;
+
+    for(size_t i=offset; i < end; ++i) {
+      // directly compute matrix and res pointers.
+      // Rprintf("thread %d processing feature %d\n", omp_get_thread_num(), i);
+      wmw(matptr, label_ptr, nsamples, pvptr, label_count, type, continuity);
+      matptr += nsamples;
+      pvptr += label_count;
+    }
   }
-
+  // Rprintf("here 7\n");
 
   UNPROTECT(proc_count);
   free(str);

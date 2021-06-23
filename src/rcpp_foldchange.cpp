@@ -129,8 +129,8 @@ void foldchange_percents(std::unordered_map<LABEL, clust_info> const & sums,
   clust_info val;
   for (auto key : sorted_labels) {
     val = sums.at(key);
-    percent1[i] = static_cast<double>(val.thresh_count) / static_cast<double>(val.count);
-    percent2[i] = static_cast<double>(thresh_count - val.thresh_count) / static_cast<double>(count - val.count);
+    percent1[i] = round(static_cast<double>(val.thresh_count) / static_cast<double>(val.count) * 1000.0) * 0.001;
+    percent2[i] = round(static_cast<double>(thresh_count - val.thresh_count) / static_cast<double>(count - val.count) * 1000.0) * 0.001;
     ++i;
     // order of entry is same as order of sums traversal.
   }
@@ -254,14 +254,14 @@ extern SEXP ComputeFoldChange(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP
   // auto start = Clock::now();
 
   bool perc = Rf_asLogical(calc_percents);
-  double min_thresh = REAL(min_threshold)[0];
+  double min_thresh = Rf_asReal(min_threshold);
   bool _use_expm1 = Rf_asLogical(use_expm1);
   bool _use_log = Rf_asLogical(use_log);
-  double _log_base = REAL(log_base)[0];
+  double _log_base = Rf_asReal(log_base);
   bool _use_pseudocount = Rf_asLogical(use_pseudocount);
   bool _as_dataframe = Rf_asLogical(as_dataframe);
 
-  int nthreads=INTEGER(threads)[0];
+  int nthreads=Rf_asInteger(threads);
   if (nthreads < 1) nthreads = 1;
   const size_t nsamples=NROW(matrix);  // n
   const size_t nfeatures=NCOL(matrix); // m
@@ -467,26 +467,46 @@ extern SEXP ComputeFoldChange(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP
   // double *matColPtr = REAL(matrix); // pointer to the current column of the matrix
   
   omp_set_num_threads(nthreads);
+  Rprintf("THREADING: using %d threads\n", nthreads);
 
   // ======= compute.
-#pragma omp parallel for num_threads(nthreads)
-  for(size_t i=0; i < nfeatures; ++i) {
-    std::unordered_map<int, clust_info> info =
-      foldchange_stats(REAL(matrix) + i * nsamples, label_ptr, nsamples, min_thresh, _use_expm1);
+#pragma omp parallel num_threads(nthreads)
+  {
+    
+    int tid = omp_get_thread_num();
+    size_t block = nfeatures / nthreads;
+    size_t rem = nfeatures - nthreads * block;
+    size_t offset = tid * block + (tid > rem ? rem : tid);
+    int nid = tid + 1;
+    size_t end = nid * block + (nid > rem ? rem : nid);
 
-    // if percent is required, calc
-    size_t out_offset = i * label_count;
-    if (perc) {
-      foldchange_percents(info, REAL(p1) + out_offset, REAL(p2) + out_offset);
-    }
+    double *mat_ptr = REAL(matrix) + offset * nsamples;
+    double *fc_ptr = REAL(fc) + offset * label_count;
+    double *p1_ptr = REAL(p1) + offset * label_count;
+    double *p2_ptr = REAL(p2) + offset * label_count;
 
-    if (_use_log) {
-      foldchange_logmean(info, REAL(fc) + out_offset, _use_pseudocount, _log_base);
-    } else {
-      foldchange_mean(info, REAL(fc) + out_offset);
+    for(size_t i=offset; i < end; ++i) {
+      std::unordered_map<int, clust_info> info =
+        foldchange_stats(mat_ptr, label_ptr, nsamples, min_thresh, _use_expm1);
+
+      // if percent is required, calc
+      size_t out_offset = i * label_count;
+      if (perc) {
+        foldchange_percents(info, p1_ptr, p2_ptr);
+      }
+
+      if (_use_log) {
+        foldchange_logmean(info, fc_ptr, _use_pseudocount, _log_base);
+      } else {
+        foldchange_mean(info, fc_ptr);
+      }
+
+      mat_ptr += nsamples;
+      p1_ptr += label_count;
+      p2_ptr += label_count;
+      fc_ptr += label_count;
     }
   }
-
   // end = Clock::now();
   // Rprintf("computed %ld ns\n", 
   // std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count());
@@ -549,6 +569,7 @@ extern SEXP FilterFoldChange(SEXP fc, SEXP pct1, SEXP pct2,
   int proc_count = 0;
 
   omp_set_num_threads(nthreads);
+  Rprintf("THREADING: using %d threads\n", nthreads);
   SEXP mask;
 
   size_t nelem;
@@ -557,13 +578,13 @@ extern SEXP FilterFoldChange(SEXP fc, SEXP pct1, SEXP pct2,
     size_t nfeatures=NCOL(fc); // m
     nelem = nclusters * nfeatures;
 
-    Rprintf("filter matrix\n");
+    // Rprintf("filter matrix\n");
     PROTECT(mask = Rf_allocMatrix(LGLSXP, nclusters, nfeatures));
     ++proc_count;
   } else if ( Rf_isVector(fc) ){
     nelem = Rf_length(fc);
 
-    Rprintf("filter data.frame\n");
+    // Rprintf("filter data.frame\n");
     PROTECT(mask = Rf_allocVector(LGLSXP, nelem));
     ++proc_count;
   }

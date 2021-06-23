@@ -4,7 +4,7 @@
 #' 
 #' @docType package
 #' @author Tony Pan <tpan7@gatech.edu>
-#' @import Rcpp pracma Seurat BioQC
+#' @import Rcpp tictoc Seurat BioQC
 #' @importFrom Rcpp evalCpp
 #' @import future
 #' @useDynLib fastde

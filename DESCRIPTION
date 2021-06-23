@@ -10,8 +10,8 @@ Description: One paragraph description of what the package does as one
 License: GPL-3 | file LICENSE
 Imports: 
         Rcpp (>= 1.0.6),
-        pracma,
         Seurat,
+        tictoc,
         BioQC,
         future
 LinkingTo: Rcpp
