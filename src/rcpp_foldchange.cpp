@@ -113,15 +113,24 @@ void foldchange_percents(std::unordered_map<LABEL, clust_info> const & sums,
   size_t thresh_count = sums.at(std::numeric_limits<LABEL>::max()).thresh_count;
   // Rprintf("%lu %lu %lu %f\n", label_count, count, thresh_count, sums.at(std::numeric_limits<LABEL>::max()).sum);
   
+  std::vector<int> sorted_labels;
+  int key;
+  for (auto item : sums) {
+    key = item.first;
+    if (key == std::numeric_limits<int>::max()) continue;
+    sorted_labels.emplace_back(key);
+  }
+  std::sort(sorted_labels.begin(), sorted_labels.end());
+
   // for each gene/cluster combo, report fold change, and percent above threshold
   double mean1 = 0;
   double mean2 = 0;
   size_t i = 0;
-  for (auto item : sums) {
-    if (item.first == std::numeric_limits<LABEL>::max()) continue;  // skip the max count
-
-    percent1[i] = static_cast<double>(item.second.thresh_count) / static_cast<double>(item.second.count);
-    percent2[i] = static_cast<double>(thresh_count - item.second.thresh_count) / static_cast<double>(count - item.second.count);
+  clust_info val;
+  for (auto key : sorted_labels) {
+    val = sums.at(key);
+    percent1[i] = static_cast<double>(val.thresh_count) / static_cast<double>(val.count);
+    percent2[i] = static_cast<double>(thresh_count - val.thresh_count) / static_cast<double>(count - val.count);
     ++i;
     // order of entry is same as order of sums traversal.
   }
@@ -140,15 +149,24 @@ void foldchange_mean(std::unordered_map<LABEL, clust_info> const & sums,
   size_t count = sums.at(std::numeric_limits<LABEL>::max()).count;
   // Rprintf("MEAN: %lu %lu %lu %f\n", sums.size(), count, sums.at(std::numeric_limits<LABEL>::max()).thresh_count, total_sum);
 
+  std::vector<int> sorted_labels;
+  int key;
+  for (auto item : sums) {
+    key = item.first;
+    if (key == std::numeric_limits<int>::max()) continue;
+    sorted_labels.emplace_back(key);
+  }
+  std::sort(sorted_labels.begin(), sorted_labels.end());
+
   // for each gene/cluster combo, report fold change, and percent above threshold
   double mean1 = 0;
   double mean2 = 0;
   size_t i = 0;
-  for (auto item : sums) {    
-    if (item.first == std::numeric_limits<LABEL>::max()) continue;  // skip the max count
-
-    mean1 = item.second.sum / static_cast<double>(item.second.count);
-    mean2 = (total_sum - item.second.sum) / static_cast<double>(count - item.second.count);
+  clust_info val;
+  for (auto key : sorted_labels) {    
+    val = sums.at(key);
+    mean1 = val.sum / static_cast<double>(val.count);
+    mean2 = (total_sum - val.sum) / static_cast<double>(count - val.count);
     out[i] = mean1 - mean2;
     ++i;
   }
@@ -166,16 +184,25 @@ void foldchange_logmean(std::unordered_map<LABEL, clust_info> const & sums,
   double total_sum = sums.at(std::numeric_limits<LABEL>::max()).sum;
   size_t count = sums.at(std::numeric_limits<LABEL>::max()).count;
   
+  std::vector<int> sorted_labels;
+  int key;
+  for (auto item : sums) {
+    key = item.first;
+    if (key == std::numeric_limits<int>::max()) continue;
+    sorted_labels.emplace_back(key);
+  }
+  std::sort(sorted_labels.begin(), sorted_labels.end());
+
   // for each gene/cluster combo, report fold change, and percent above threshold
   double mean1 = 0;
   double mean2 = 0;
   double inv_log = 1.0 / log(base);
   size_t i = 0;
-  for (auto item : sums) {    
-    if (item.first == std::numeric_limits<LABEL>::max()) continue;  // skip the max count
-
-    mean1 = item.second.sum / static_cast<double>(item.second.count);
-    mean2 = (total_sum - item.second.sum) / static_cast<double>(count - item.second.count);
+  clust_info val;
+  for (auto key : sorted_labels) {    
+    val = sums.at(key);
+    mean1 = val.sum / static_cast<double>(val.count);
+    mean2 = (total_sum - val.sum) / static_cast<double>(count - val.count);
     if (base == 2.0) {
       mean1 = log2(mean1 + pseudocount);
       mean2 = log2(mean2 + pseudocount);
@@ -251,6 +278,14 @@ extern SEXP ComputeFoldChange(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP
   std::unordered_map<int, clust_info> info =
       foldchange_stats(REAL(matrix), label_ptr, nsamples, min_thresh, false);
   size_t label_count = info.size() - 1;   // k
+  std::vector<int> sorted_labels;
+  int key;
+  for (auto item : info) {
+    key = item.first;
+    if (key == std::numeric_limits<int>::max()) continue;
+    sorted_labels.emplace_back(key);
+  }
+  std::sort(sorted_labels.begin(), sorted_labels.end());
   label_ptr = INTEGER(labels);   // reset to start.
   
   // end = Clock::now();
@@ -319,10 +354,7 @@ extern SEXP ComputeFoldChange(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP
     ++proc_count;
     int key;
     size_t j = 0;
-    for (auto item : info) {
-      key = item.first;
-      if (key == std::numeric_limits<int>::max()) continue;
-
+    for (auto key : sorted_labels) {
       sprintf(str, "%d", key);
       SET_STRING_ELT(clust, j, Rf_mkChar(str));
       memset(str, 0, intlen + 1);
@@ -355,11 +387,9 @@ extern SEXP ComputeFoldChange(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP
     size_t j = 0;
     // outer group = features, inner order = cluster
     for (size_t i = 0; i < nfeatures; ++i) {
-      for (auto item : info) {
-        if (item.first == std::numeric_limits<int>::max()) continue;
-
+      for (auto key : sorted_labels) {
         // rotate through cluster labels for this feature.        
-        *clust_ptr = item.first;
+        *clust_ptr = key;
         ++clust_ptr;
 
         // same feature name for the set of cluster

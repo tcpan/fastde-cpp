@@ -63,7 +63,7 @@ FilterFoldChange <- function(fc, pct1, pct2, init_mask, min_pct, min_diff_pct, l
 #' @param continuity_correction TRUE/FALSE for continuity correction
 #' @param as_dataframe TRUE/FALSE - TRUE returns a dataframe, FALSE returns a matrix
 #' @param threads  number of concurrent threads.
-#' @return array or dataframe
+#' @return array or dataframe.  for each gene/feature, the rows for the clusters are ordered by id.
 #' @name wmwfast
 #' @export
 wmwfast <- function(matrix, labels, rtype, continuity_correction, as_dataframe, threads) {

@@ -58,7 +58,7 @@ void wmw(IT const * in, LABEL const * labels, size_t const & count, OT * out, si
       temp.emplace_back(in[i], labels[i]);
   }
 
-  // sort 
+  // sort by label...
   std::sort(temp.begin(), temp.end(), [](std::pair<IT, LABEL> const & a, std::pair<IT, LABEL> const & b){
       return a.first < b.first;
   });
@@ -112,7 +112,14 @@ void wmw(IT const * in, LABEL const * labels, size_t const & count, OT * out, si
   // need to count ties...
   rank_sums[temp[0].second].second += rank;
 
-    
+  std::vector<LABEL> sorted_labels;
+  for (auto item : rank_sums) {
+    key = item.first;
+    if (key == std::numeric_limits<LABEL>::max()) continue;
+
+    sorted_labels.emplace_back(key);
+  }
+  std::sort(sorted_labels.begin(), sorted_labels.end());
   // dealing with ties amongst multiple classes?
   // since final differential comparisons are one vs all others, and the ties are split so 0.5 is added for all.
 
@@ -122,10 +129,12 @@ void wmw(IT const * in, LABEL const * labels, size_t const & count, OT * out, si
   double c1 = static_cast<double>(count + 1);
   double cc_1 = static_cast<double>(count * (count - 1));
   constexpr double inv12 = 1.0 / 12.0;
-  for (size_t i = 0; i < label_count; ++i) {
-      key = i+1;
-      R = static_cast<double>(rank_sums[key].second) * 0.5;
-      n1 = rank_sums[key].first;
+  size_t i = 0;
+  std::pair<size_t, size_t> val;
+  for (auto key : sorted_labels) {
+    val = rank_sums[key];
+      R = static_cast<double>(val.second) * 0.5;
+      n1 = val.first;
 
       // compute U stats
       prod = static_cast<double>(n1 * (count - n1));
@@ -156,6 +165,7 @@ void wmw(IT const * in, LABEL const * labels, size_t const & count, OT * out, si
           out[i] = 1.0 - 0.5 * erfc( -z * M_SQRT1_2 );  // this is 1-CDF = survival function
       else
           out[i] = std::min(U1, U2);
+      ++i;
 
   }
 
@@ -179,7 +189,7 @@ void wmw(IT const * in, LABEL const * labels, size_t const & count, OT * out, si
 //' @param continuity_correction TRUE/FALSE for continuity correction
 //' @param as_dataframe TRUE/FALSE - TRUE returns a dataframe, FALSE returns a matrix
 //' @param threads  number of concurrent threads.
-//' @return array or dataframe
+//' @return array or dataframe.  for each gene/feature, the rows for the clusters are ordered by id.
 //' @name wmwfast
 //' @export
 // [[Rcpp::export]]
@@ -198,12 +208,13 @@ extern SEXP wmwfast(SEXP matrix, SEXP labels, SEXP rtype,
   
   // get the number of unique labels.
   int *label_ptr=INTEGER(labels);
-  std::unordered_map<int, int> info;
+  std::unordered_set<int> info;
   for (size_t l = 0; l < nsamples; ++l, ++label_ptr) {
-    info[*label_ptr] = l;
+    info.insert(*label_ptr);
   }
   size_t label_count = info.size();
-  info[std::numeric_limits<int>::max()] = nsamples;   // this is just to make the iteration order consistent
+  std::vector<int> sorted_labels(info.begin(), info.end());
+  std::sort(sorted_labels.begin(), sorted_labels.end());
   label_ptr = INTEGER(labels);
 
   int intlen = snprintf(NULL, 0, "%lu", std::numeric_limits<size_t>::max());
@@ -254,10 +265,7 @@ extern SEXP wmwfast(SEXP matrix, SEXP labels, SEXP rtype,
     ++proc_count;
     int key;
     size_t j = 0;
-    for (auto item : info) {
-      key = item.first;
-      if (key == std::numeric_limits<int>::max()) continue;
-
+    for (auto key : sorted_labels) {
       // create string and set in clust.
       sprintf(str, "%d", key);
       SET_STRING_ELT(clust, j, Rf_mkChar(str));
@@ -280,11 +288,9 @@ extern SEXP wmwfast(SEXP matrix, SEXP labels, SEXP rtype,
     SEXP * features_ptr = STRING_PTR(features);
     size_t j = 0;
     for (size_t i = 0; i < nfeatures; ++i) {
-      for (auto item : info) {
-        if (item.first == std::numeric_limits<int>::max()) continue;
-
+      for (auto key : sorted_labels) {
         // rotate through cluster labels for this feature.        
-        *clust_ptr = item.first;
+        *clust_ptr = key;
         ++clust_ptr;
 
         // same feature name for the set of cluster

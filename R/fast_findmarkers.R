@@ -120,10 +120,10 @@ FastFindAllMarkers <- function(
     
     # print error messgaes.
     if (nrow(x = gde.all) == 0) {
-      warning("No DE genes identified", call. = FALSE, immediate. = TRUE)
+      warning("FASTDE No DE genes identified", call. = FALSE, immediate. = TRUE)
     }
     if (length(x = messages) > 0) {
-      warning("The following tests were not performed: ", call. = FALSE, immediate. = TRUE)
+      warning("FASTDE The following tests were not performed: ", call. = FALSE, immediate. = TRUE)
       for (i in 1:length(x = messages)) {
         if (!is.null(x = messages[[i]])) {
           warning("When testing ", idents.all[i], " versus all:\n\t", messages[[i]], call. = FALSE, immediate. = TRUE)
@@ -527,10 +527,7 @@ FastFindMarkers.DimReduc <- function(
   if (return.dataframe == FALSE) {
     fc.results$avg_diff <- t(fc.results$avg_diff)
   }
-  if (! is.factor(fc.results$cluster) ) {
-    fc.results$cluster <- as.factor(fc.results$cluster)
-  }
-  levels(fc.results$cluster) <- labels
+  fc.results$cluster <- factor(as.numeric(fc.results$cluster), labels=labels)
 
   toc()
 
@@ -1203,12 +1200,19 @@ FastWilcoxDETest <- function(
   # input has each row being a gene, and each column a cell (sample).  -
   #    based on reading of the naive wilcox.test imple in Seurat.
   # fastde input is expected to : each row is a gene, each column is a sample
-  message("USING FastDE")
-
+  message("USING FastWilcoxDE")
+  print(rownames(data.use[1:20, ]))
+  print(cells.clusters[1:20]) 
   if (! is.factor(cells.clusters)) {
     cells.clusters <- as.factor(cells.clusters)
   }
   labels <- levels(cells.clusters)
+  print(as.numeric(cells.clusters[1:20]))
+  print(cells.clusters[1:20])
+  
+  # NOTE: label's order may be different - cluster ids are stored in unordered_map so order may be different.
+  # IMPORTANT PART IS THE SAME ID is kep.
+
   # two sided : 2
   # print(head(data.use))
   p_val <- wmwfast(t(as.matrix(data.use)), as.integer(cells.clusters), rtype = as.integer(2), 
@@ -1217,20 +1221,18 @@ FastWilcoxDETest <- function(
 
 
   if ( return.dataframe == TRUE ) {
-    if (! is.factor(p_val$cluster)) {
-      p_val$cluster <- as.factor(p_val$cluster)
-      print(length(levels(p_val$cluster)))
-      print(length(labels))
-      print(length(p_val$cluster))
-      levels(p_val$cluster) <- labels
-    } else {
-      print(length(levels(p_val$cluster)))
-    }
-    print(head(p_val$cluster))
-    print(head(p_val$gene))
-    print(head(p_val$p_val))
+    print("head of p_val orig")
+    print(p_val[1:20, ])
+
+    p_val$cluster <- factor(as.numeric(p_val$cluster), labels = labels)
+    p_val$gene <- factor(as.numeric(p_val$gene), labels = rownames(data.use))  
+         
+    print("head of p_val")
+    print(p_val[1:20, ])
   } else {
     p_val <- t(p_val)
+    colnames(p_val) <- labels
+    rownames(p_val) <- rownames(data.use)
   }
   
   return(p_val)
@@ -1273,47 +1275,58 @@ BioQCDETest <- function(
   ...
 ) {
   bioqc.check <- fastDEPackageCheck("BioQC", error = FALSE)
+  message("USING BioQC")
+  print(rownames(data.use[1:20, ]))
 
   # input has each row being a gene, and each column a cell (sample).  -
   #    based on reading of the naive wilcox.test imple in Seurat.
+  print(cells.clusters[1:20])
   if (! is.factor(cells.clusters)) {
     cells.clusters <- as.factor(cells.clusters)
   }
   LL <- levels(cells.clusters)
-  print(cells.clusters[1:20])
+  print(as.numeric(cells.clusters[1:20]))
   print(LL)
 
-  i <- 1
   if ( bioqc.check[1] ) {
-    message("USING BIOQC")
 
     labels = list()
     for (i in 1:length(LL)) {
       labels[[i]] <- as.integer(cells.clusters) %in% i
     }
-    p_val <- BioQC::wmwTest(t(as.matrix(data.use)), labels, valType = "p.two.sided")
+    pv <- BioQC::wmwTest(t(as.matrix(data.use)), labels, valType = "p.two.sided")
     # p_val HERE has clusters in rows and features/genes in columns
 
     # TODO: test this part.
     if (return.dataframe) {
+      # NOTE that bioqc is iterating the cluster labels in numeric order, so no need for factor here.
       clusters <- rep(1:length(LL), time=nrow(data.use))  # clusters repeated nfeatures number of times
-      print(clusters[1:50])
-      clusters <- as.factor(clusters)
-      print(length(clusters))
-      levels(clusters) <- LL
+      print(clusters[1:20])
 
-      genes <- as.factor(rownames(data.use))
-      genenames <- levels(genes)
-      genes <- rep(as.integer(genes), each = length(LL))
-      genes <- as.factor(genes)
-      levels(genes) <- genenames
-      print(genes[1:50])
-      print(length(genes))
+      # use rep to make the genes vector, which need numeric.
+      # so need to convert rownames to factor
+      # but now also need to get levels, as the mapping may be different.
+      print(rownames(data.use)[1:20])
+      genesf <- as.factor(rownames(data.use))
+      gene_labels <- levels(genesf)  # 
+      print(as.numeric(genesf[1:20]))
+      print(genesf[1:20])
 
-      p_val <- data.frame(cbind(clusters, genes, as.vector(p_val)))
-      print(dim(p_val))
-      print(p_val[1:10, , drop=FALSE])
+      # genenames <- levels(genes)
+      genes <- rep(as.numeric(genesf), each = length(LL))
+      # genes <- as.factor(genes)
+      # levels(genes) <- c(genenames)
+      print(genes[1:20])
+      # print(length(genes))
+
+      p_val <- data.frame(cbind(clusters, genes, as.vector(pv)))
       colnames(p_val) <- c("cluster", "gene", "p_val")
+      print(p_val[1:20, , drop=FALSE])
+
+      p_val$cluster <- factor(as.numeric(p_val$cluster), labels = LL)
+      p_val$gene <- factor(as.numeric(p_val$gene), labels = gene_labels)      
+      print("head of p_val")
+      print(p_val[1:20, , drop=FALSE])
 
     } else {
       p_val = t(p_val)
