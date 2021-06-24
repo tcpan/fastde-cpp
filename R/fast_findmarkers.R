@@ -227,6 +227,8 @@ FastFindMarkers.default <- function(
 
   if (verbose) { tic("FastFindMarkers.assay FastFoldChange")  }
 
+  str(object)
+  print(dim(object))
 
   if (! is.null(features)) {
     data <- object[features, , drop=FALSE]
@@ -502,9 +504,9 @@ FastFindMarkers.DimReduc <- function(
 
   # NOT subsample cell groups if they are too large
 
-  tic("FastFindMarkers.DimReduc FastPerformFC")
   # Calculate avg difference.  This is just rowMeans.
-  fc.results <- FastPerformFC(data, clusters,
+  tic("FastFindMarkers.DimReduc denseFoldChange")
+  fc.results <- densePerformFC(data, clusters,
     features_as_rows = FALSE,
     calc_percents = FALSE, fc_name = fc.name, 
     use_expm1 = FALSE, min_threshold = 0.0, 
@@ -815,8 +817,8 @@ FastFoldChange.default <- function(
   }
   if (verbose) { toc() }
   
-  tic("FastFoldChange.default FastPerformFC")
-  fc.results <- FastPerformFC(data, clusters,
+  tic("FastFoldChange.default denseFoldChange")
+  fc.results <- densePerformFC(data, clusters,
     features_as_rows = TRUE,
     calc_percents = TRUE, fc_name = fc.name, 
     use_expm1 = expm1.use, min_threshold = 0.0, 
@@ -941,9 +943,9 @@ FastFoldChange.DimReduc <- function(
   # clusters <- cells.clusters %||% Seurat::Idents(object = object)
 
   if (verbose) { toc() }
-  tic("FastFoldChange.DimReduc FastPerformFC")
+  tic("FastFoldChange.DimReduc denseFoldChange")
   # Calculate avg difference.  This is just rowMeans.
-  fc.results <- FastPerformFC(data, clusters,
+  fc.results <- densePerformFC(data, clusters,
     features_as_rows = FALSE,
     calc_percents = FALSE, fc_name = fc.name, 
     use_expm1 = FALSE, min_threshold = 0.0, 
