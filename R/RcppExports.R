@@ -46,6 +46,20 @@ FilterFoldChange <- function(fc, pct1, pct2, init_mask, min_pct, min_diff_pct, l
     .Call('_fastde_FilterFoldChange', PACKAGE = 'fastde', fc, pct1, pct2, init_mask, min_pct, min_diff_pct, logfc_threshold, only_pos, not_count, threads)
 }
 
+#' R Sparse Matrix Transpose
+#'
+#' This implementation directly constructs the new sparse matrix.  
+#'     Output is also column-major, so there is random memory writes.
+#' 
+#' @rdname sp_transpose
+#' @param sp_matrix a sparse matrix, of the form dgCMatrix
+#' @return sp_matrix, transposed.
+#' @name sp_transpose
+#' @export
+sp_transpose <- function(sp_matrix) {
+    .Call('_fastde_sp_transpose', PACKAGE = 'fastde', sp_matrix)
+}
+
 #' Fast Wilcoxon-Mann-Whitney Test for dense matrix
 #'
 #' This implementation uses normal approximation, which works reasonably well if sample size is large (say N>=20)

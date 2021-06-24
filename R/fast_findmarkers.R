@@ -230,9 +230,6 @@ FastFindMarkers.default <- function(
   # print(object[1:20, 1:10])
   # print(as.matrix(object[1:20, 1:10]))
 
-  str(object)
-  print(dim(object))
-
   if (! is.null(features)) {
     data <- object[features, , drop=FALSE]
   } else {
@@ -356,7 +353,7 @@ FastFindMarkers.default <- function(
   # Bonferroni correction in R is just multiplication by n then clampped to 1.  p.adjust require n >= length(p)
   # note that the total number of results may be more than n since we collect all features and clusters.  Do this ourselve.
   n <- nrow(x=object)
-  de.results@p_val_adj <- pmin(1, n * de.results$p_val)
+  de.results$p_val_adj <- pmin(1, n * de.results$p_val)
   # de.results$p_val_adj = p.adjust(
   #   p = de.results$p_val,
   #   method = "bonferroni",
