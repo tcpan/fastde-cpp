@@ -351,11 +351,14 @@ FastFindMarkers.default <- function(
   # sort.  first order by cluster, then by p_val, and finally by avg_diff.
   de.results <- de.results[order(de.results$cluster, de.results$p_val, -de.results[, fc.name]), ]
   # Bonferroni correction in R is just multiplication by n then clampped to 1.  p.adjust require n >= length(p)
-  de.results$p_val_adj = p.adjust(
-    p = de.results$p_val,
-    method = "bonferroni",
-    n = nrow(x = object)
-  )
+  # note that the total number of results may be more than n since we collect all features and clusters.  Do this ourselve.
+  n <- nrow(x=object)
+  de.results@p_val_adj <- pmin(1, n * de.results$p_val)
+  # de.results$p_val_adj = p.adjust(
+  #   p = de.results$p_val,
+  #   method = "bonferroni",
+  #   n = nrow(x = object)
+  # )
 
   if (verbose) { toc() }
   if (verbose) { print("TCP FASTDE: FastFindMarkers.default DONE") }
