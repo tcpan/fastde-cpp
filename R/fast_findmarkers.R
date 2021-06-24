@@ -199,6 +199,7 @@ FastFindAllMarkers <- function(
 #' @return returns a data frame with FIXME 
 #'
 #' @importFrom stats p.adjust
+#' @importFrom utils str
 #' 
 #' @concept differential_expression
 #' 
@@ -940,7 +941,7 @@ FastFoldChange.DimReduc <- function(
     fc.name <- "avg_diff"
   }
   # fc.name <- fc.name %||% "avg_diff"
-  data <- x = Seurat::Embeddings(object = object)  # transpose as the reduction appears to be transposed.
+  data <- Seurat::Embeddings(object = object)  # transpose as the reduction appears to be transposed.
   if (! is.null(x = features) ) {
     data <- data[, features, drop=FALSE]
   }
@@ -1224,7 +1225,7 @@ FastWilcoxDETest <- function(
   # two sided : 2
   # print(head(data.use))
   tic("FastWilcoxDETest wmwfast")
-  p_val <- wmwfast(t(as.matrix(data.use)), as.integer(cells.clusters), rtype = as.integer(2), 
+  p_val <- densewmwfast(t(as.matrix(data.use)), as.integer(cells.clusters), rtype = as.integer(2), 
           continuity_correction = TRUE,
           as_dataframe = return.dataframe, threads = get_num_threads())
   toc()
