@@ -35,7 +35,7 @@ toc()
 tic("fastde df")
 # time and run BioQC
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
-fastdefc_df <- fastde::ComputeFoldChange(input, labels, calc_percents = TRUE, fc_name = "fc", 
+fastdefc_df <- fastde::denseFoldChange(input, labels, calc_percents = TRUE, fc_name = "fc", 
     use_expm1 = FALSE, min_threshold = 0.0, use_log = FALSE, log_base = 2.0, 
     use_pseudocount = FALSE, as_dataframe = TRUE, threads = as.integer(4))
 toc()
@@ -43,7 +43,7 @@ toc()
 tic("fastde")
 # time and run BioQC
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
-fastdefc <- fastde::ComputeFoldChange(input, labels, calc_percents = TRUE, fc_name = "fc", 
+fastdefc <- fastde::denseFoldChange(input, labels, calc_percents = TRUE, fc_name = "fc", 
     use_expm1 = FALSE, min_threshold = 0.0, use_log = FALSE, log_base = 2.0, 
     use_pseudocount = FALSE, as_dataframe = FALSE, threads = as.integer(4))
 toc()

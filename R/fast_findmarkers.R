@@ -229,6 +229,8 @@ FastFindMarkers.default <- function(
   # print(object[1:20, 1:10])
   # print(as.matrix(object[1:20, 1:10]))
 
+  str(object)
+  print(dim(object))
 
   if (! is.null(features)) {
     data <- object[features, , drop=FALSE]
@@ -351,11 +353,14 @@ FastFindMarkers.default <- function(
   # sort.  first order by cluster, then by p_val, and finally by avg_diff.
   de.results <- de.results[order(de.results$cluster, de.results$p_val, -de.results[, fc.name]), ]
   # Bonferroni correction in R is just multiplication by n then clampped to 1.  p.adjust require n >= length(p)
-  de.results$p_val_adj = p.adjust(
-    p = de.results$p_val,
-    method = "bonferroni",
-    n = nrow(x = object)
-  )
+  # note that the total number of results may be more than n since we collect all features and clusters.  Do this ourselve.
+  n <- nrow(x=object)
+  de.results@p_val_adj <- pmin(1, n * de.results$p_val)
+  # de.results$p_val_adj = p.adjust(
+  #   p = de.results$p_val,
+  #   method = "bonferroni",
+  #   n = nrow(x = object)
+  # )
 
   if (verbose) { toc() }
   if (verbose) { print("TCP FASTDE: FastFindMarkers.default DONE") }
@@ -504,9 +509,9 @@ FastFindMarkers.DimReduc <- function(
 
   # NOT subsample cell groups if they are too large
 
-  tic("FastFindMarkers.DimReduc ComputeFoldChange")
+  tic("FastFindMarkers.DimReduc denseFoldChange")
   # Calculate avg difference.  This is just rowMeans.
-  fc.results <- ComputeFoldChange(as.matrix(data), as.integer(clusters),
+  fc.results <- denseFoldChange(as.matrix(data), as.integer(clusters),
     calc_percents = FALSE, fc_name = fc.name, 
     use_expm1 = FALSE, min_threshold = 0.0, 
     use_log = FALSE, log_base = 2, use_pseudocount = FALSE, 
@@ -819,8 +824,8 @@ FastFoldChange.default <- function(
   }
   if (verbose) { toc() }
   
-  tic("FastFoldChange.default ComputeFoldChange")
-  fc.results <- ComputeFoldChange(t(as.matrix(data)), as.integer(clusters),
+  tic("FastFoldChange.default denseFoldChange")
+  fc.results <- denseFoldChange(t(as.matrix(data)), as.integer(clusters),
     calc_percents = TRUE, fc_name = fc.name, 
     use_expm1 = expm1.use, min_threshold = 0.0, 
     use_log = log.use, log_base = base, use_pseudocount = pseudocount.use, 
@@ -949,9 +954,9 @@ FastFoldChange.DimReduc <- function(
   # clusters <- cells.clusters %||% Seurat::Idents(object = object)
 
   if (verbose) { toc() }
-  tic("FastFoldChange.DimReduc ComputeFoldChange")
+  tic("FastFoldChange.DimReduc denseFoldChange")
   # Calculate avg difference.  This is just rowMeans.
-  fc.results <- ComputeFoldChange(as.matrix(data), as.integer(clusters),
+  fc.results <- denseFoldChange(as.matrix(data), as.integer(clusters),
     calc_percents = FALSE, fc_name = fc.name, 
     use_expm1 = FALSE, min_threshold = 0.0, 
     use_log = FALSE, log_base = 2, use_pseudocount = FALSE, 
