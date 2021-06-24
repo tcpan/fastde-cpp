@@ -938,7 +938,7 @@ FastFoldChange.DimReduc <- function(
     fc.name <- "avg_diff"
   }
   # fc.name <- fc.name %||% "avg_diff"
-  data <- x = Seurat::Embeddings(object = object)  # transpose as the reduction appears to be transposed.
+  data <- Seurat::Embeddings(object = object)  # transpose as the reduction appears to be transposed.
   if (! is.null(x = features) ) {
     data <- data[, features, drop=FALSE]
   }
