@@ -37,7 +37,7 @@ cat(sprintf("Labels unique: %d \n", length(L)))
 tic("fastde")
 # time and run BioQC
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
-fastdewilcox <- fastde::wmwfast(input, labels, rtype=as.integer(2), 
+fastdewilcox <- fastde::densewmwfast(input, labels, rtype=as.integer(2), 
     continuity_correction=TRUE, as_dataframe = FALSE, threads = as.integer(4))
 toc()
 
@@ -45,7 +45,7 @@ toc()
 tic("fastde_df")
 # time and run BioQC
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
-fastdewilcox_df <- fastde::wmwfast(input, labels, rtype=as.integer(2), 
+fastdewilcox_df <- fastde::densewmwfast(input, labels, rtype=as.integer(2), 
     continuity_correction=TRUE, as_dataframe = TRUE, threads = as.integer(4))
 toc()
 

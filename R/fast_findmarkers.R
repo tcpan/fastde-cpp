@@ -228,9 +228,6 @@ FastFindMarkers.default <- function(
 
   if (verbose) { tic("FastFindMarkers.assay FastFoldChange")  }
 
-  str(object)
-  print(dim(object))
-
   if (! is.null(features)) {
     data <- object[features, , drop=FALSE]
   } else {
