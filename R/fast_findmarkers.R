@@ -199,6 +199,7 @@ FastFindAllMarkers <- function(
 #' @return returns a data frame with FIXME 
 #'
 #' @importFrom stats p.adjust
+#' @importFrom utils str
 #' 
 #' @concept differential_expression
 #' 
@@ -1348,6 +1349,7 @@ FastWilcoxDETest <- function(
   # two sided : 2
   # print(head(data.use))
   tic("FastWilcoxDETest wmwfast")
+<<<<<<< HEAD
   if (features.as.rows == TRUE) {
     # features in rows
     nfeatures = nrow(data.use)
@@ -1406,6 +1408,9 @@ FastWilcoxDETest <- function(
       }
 
       pv <- wmwfast(dd, as.integer(cells.clusters), rtype = as.integer(2), 
+=======
+  p_val <- densewmwfast(t(as.matrix(data.use)), as.integer(cells.clusters), rtype = as.integer(2), 
+>>>>>>> ENH: refactored wmwtest
           continuity_correction = TRUE,
           as_dataframe = return.dataframe, threads = get_num_threads())
 
