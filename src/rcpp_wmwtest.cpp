@@ -40,6 +40,91 @@ using namespace Rcpp;
 #define NCOL(x) INTEGER(GET_DIM((x)))[1]
 #endif
 
+// ids points to start of the column's positive element row ids
+// x  points to the start fo the columns positive element values
+// count is hte number of positive elements in the column.
+template <typename IT, typename IDX, typename LABEL>
+void sparse_wmw_summary(IT const * in, IDX const * ids, size_t const & nz_count, 
+  LABEL const * labels, size_t const & count, 
+  std::unordered_map<LABEL, std::pair<size_t, size_t>> & rank_sums, double & tie_sum) {
+
+  // tuplize in and labels.
+  if (count == 0) return;
+  assert((count < 20) && "ERROR: count is too small (< 20) for a normal approximation\n");
+  // if (count < 100) {
+  //     printf("WARNING: count is small for a normal approximation: %ld\n", count);
+  // }
+
+  // ============== populate the sort structure and Sort ONLY NON-ZERO ENTRIES.  if any input is actually 0.0, skip
+  std::vector<std::pair<IT, LABEL>> temp;
+  temp.reserve(nz_count);
+  for (size_t i = 0; i < nz_count; ++i) {
+      if (in[i] != static_cast<IT>(0.0))
+        temp.emplace_back(in[i], labels[ids[i]]);  
+  }
+  size_t nzc = temp.size();  // actual number of non-zero entries.
+  // sort by label...
+  std::sort(temp.begin(), temp.end(), [](std::pair<IT, LABEL> const & a, std::pair<IT, LABEL> const & b){
+      return a.first < b.first;
+  });
+
+  // assign rank and accumulate count and rank
+  rank_sums.clear();  // random access of this...
+
+  // to handle ties, we need 0.5.  To make comparison easier and not float based, double the rank value here and divide later.
+  // actually, we may need to have median of the tie ranks.
+  // here is an approach:  keep undoubled rank, walk once from front, and once from back.  if ties, do not change rank until value changes.  each sum /2 would give correct rank
+  //    at end of tie, reset to use array index as rank.
+  // any tie detection would need 1x iteration.   each tie would need another pass to get median so may break prefetching, but this may not be common?
+  // should minimize writes in the big array as well.
+
+  // ** NEED TO SEPARATELY HANDLE ZEROS.  note that ALL ZEROS are tied for all elements.
+
+  // first search for zero in the temp, then process separately.
+  // should scan the labels to count each label.  This can be done just once.
+
+  size_t rank = 1;
+  double tie;
+  tie_sum = 0.0;
+  LABEL key = temp[0].second;
+  // insert first
+  if (rank_sums.count(key) == 0) rank_sums[key] = std::make_pair(1, rank);
+  else {
+      ++rank_sums[key].first;
+      rank_sums[key].second += rank;
+  }
+  // forward walk
+  for (size_t i = 1; i < count; ++i) {
+      // rank update
+      if (temp[i-1].first < temp[i].first) {  // ties are dealt with only when exiting ties.
+          tie = i + 1 - rank;  // rank is of the first element in the tie.
+          tie_sum += tie * tie * tie - tie;
+          rank = i + 1;  // not tie, so advance to new rank
+      } // ELSE tie, so don't change the rank  (note :  this is the lower of the range for median)
+      key = temp[i].second;
+      // add rank to sum
+      if (rank_sums.count(key) == 0) rank_sums[key] = std::make_pair(1, rank);
+      else {
+          ++rank_sums[key].first;
+          rank_sums[key].second += rank;
+      }
+  }
+    
+  // reverse walk
+  rank = count;
+  for (size_t i = count - 1; i > 0; --i) {
+      // add rank to sum
+      rank_sums[temp[i].second].second += rank;
+
+      // rank update
+      if (temp[i].first > temp[i-1].first) rank = i;  // not tie, so advance to new rank
+      // ELSE tie, so don't change the rank  (note :  this is the higher of the range for median)
+  }
+  // need to count ties...
+  rank_sums[temp[0].second].second += rank;
+
+}
+
 template <typename IT, typename LABEL>
 void dense_wmw_summary(IT const * in, LABEL const * labels, size_t const & count, 
   std::unordered_map<LABEL, std::pair<size_t, size_t>> & rank_sums, double & tie_sum) {
@@ -114,6 +199,7 @@ void dense_wmw_summary(IT const * in, LABEL const * labels, size_t const & count
   rank_sums[temp[0].second].second += rank;
 
 }
+
 
 // types:  0 = greater, 1 = less, 2 = twosided (default), 3 = U
 template <typename LABEL, typename OT>
