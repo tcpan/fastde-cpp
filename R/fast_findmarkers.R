@@ -1114,7 +1114,7 @@ FastPerformFC <- function(data, clusters,
   # print(nsamples)
 
   # get the number of features to process at a time.
-  max_elem <- 16*1024*1024
+  max_elem <- 1024*1024*1024
   block_size <- pmin(max_elem %/% nsamples, nfeatures)
   nblocks <- (nfeatures + block_size - 1) %/% block_size
   # print("block size, nblocks")
@@ -1361,7 +1361,7 @@ FastWilcoxDETest <- function(
   # print(nfeatures)
   # print(nsamples)
   # get the number of features to process at a time.
-  max_elem <- 16*1024*1024
+  max_elem <- 1024*1024*1024
   block_size <- pmin(max_elem %/% nsamples, nfeatures)
   nblocks <- (nfeatures + block_size - 1) %/% block_size
   # print("block size, nblocks")
@@ -1531,7 +1531,7 @@ BioQCDETest <- function(
       nsamples = nrow(data.use)
     }
     # get the number of features to process at a time.
-    max_elem <- 16*1024*1024
+    max_elem <- 1024*1024*1024
     block_size <- pmin(max_elem %/% nsamples, nfeatures)
     nblocks <- (nfeatures + block_size - 1) %/% block_size
 
