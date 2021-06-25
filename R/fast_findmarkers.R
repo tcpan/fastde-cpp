@@ -226,8 +226,6 @@ FastFindMarkers.default <- function(
   if (verbose) { print("TCP FASTDE: FastFindMarkers.default") }
 
   if (verbose) { tic("FastFindMarkers.assay FastFoldChange")  }
-  # print(object[1:20, 1:10])
-  # print(as.matrix(object[1:20, 1:10]))
 
 
   if (! is.null(features)) {
@@ -333,6 +331,7 @@ FastFindMarkers.default <- function(
   de.results <- FastPerformDE(
     object = data,
     cells.clusters = cells.clusters,
+    features.as.rows = TRUE,
     test.use = test.use,
     verbose = verbose,
     return.dataframe = return.dataframe,
@@ -498,27 +497,20 @@ FastFindMarkers.DimReduc <- function(
     clusters <- cells.clusters
   }
   # clusters <- cells.clusters %||% Seurat::Idents(object = object)  
-  if (! is.factor(clusters)) {
-    clusters <- as.factor(clusters)
-  }
-  labels <- levels(clusters)
 
   if (verbose) { toc() }
 
   # NOT subsample cell groups if they are too large
 
-  tic("FastFindMarkers.DimReduc ComputeFoldChange")
+  tic("FastFindMarkers.DimReduc FastPerformFC")
   # Calculate avg difference.  This is just rowMeans.
-  fc.results <- ComputeFoldChange(as.matrix(data), as.integer(clusters),
+  fc.results <- FastPerformFC(data, clusters,
+    features_as_rows = FALSE,
     calc_percents = FALSE, fc_name = fc.name, 
     use_expm1 = FALSE, min_threshold = 0.0, 
     use_log = FALSE, log_base = 2, use_pseudocount = FALSE, 
     as_dataframe = return.dataframe,
     threads = get_num_threads())
-  if (return.dataframe == FALSE) {
-    fc.results$avg_diff <- t(fc.results$avg_diff)
-  }
-  fc.results$cluster <- factor(as.numeric(fc.results$cluster), labels=labels)
   toc()
 
   if (verbose) { tic("FastFindMarkers.DimReduc PerformDE") }
@@ -526,6 +518,7 @@ FastFindMarkers.DimReduc <- function(
   de.results <- FastPerformDE(
     object = data,
     cells.clusters = clusters,
+    features.as.rows = FALSE,
     test.use = test.use,
     verbose = verbose,
     return.dataframe = return.dataframe,
@@ -822,18 +815,14 @@ FastFoldChange.default <- function(
   }
   if (verbose) { toc() }
   
-  tic("FastFoldChange.default ComputeFoldChange")
-  fc.results <- ComputeFoldChange(t(as.matrix(data)), as.integer(clusters),
+  tic("FastFoldChange.default FastPerformFC")
+  fc.results <- FastPerformFC(data, clusters,
+    features_as_rows = TRUE,
     calc_percents = TRUE, fc_name = fc.name, 
     use_expm1 = expm1.use, min_threshold = 0.0, 
     use_log = log.use, log_base = base, use_pseudocount = pseudocount.use, 
     as_dataframe = return.dataframe,
     threads = get_num_threads())
-  if (return.dataframe == FALSE) {
-    fc.results[[fc.name]] <- t(fc.results[[fc.name]])
-    fc.results$pct.1 <- t(fc.results$pct.1)
-    fc.results$pct.2 <- t(fc.results$pct.2)
-  }
   toc()
   if (verbose) { print("TCP FASTDE: FastFoldChange.default DONE") }
   return(fc.results)
@@ -952,17 +941,15 @@ FastFoldChange.DimReduc <- function(
   # clusters <- cells.clusters %||% Seurat::Idents(object = object)
 
   if (verbose) { toc() }
-  tic("FastFoldChange.DimReduc ComputeFoldChange")
+  tic("FastFoldChange.DimReduc FastPerformFC")
   # Calculate avg difference.  This is just rowMeans.
-  fc.results <- ComputeFoldChange(as.matrix(data), as.integer(clusters),
+  fc.results <- FastPerformFC(data, clusters,
+    features_as_rows = FALSE,
     calc_percents = FALSE, fc_name = fc.name, 
     use_expm1 = FALSE, min_threshold = 0.0, 
     use_log = FALSE, log_base = 2, use_pseudocount = FALSE, 
     as_dataframe = return.dataframe,
     threads = get_num_threads())
-  if (return.dataframe == FALSE) {
-    fc.results$avg_diff <- t(fc.results$avg_diff)
-  }
   toc()
   if (verbose) { print("TCP FASTDE: FastFoldChange.DimReduc DONE") }
   return(fc.results)
@@ -1089,6 +1076,132 @@ FastFoldChange <- function(object, ...) {
   UseMethod(generic = 'FastFoldChange', object = object)
 }
 
+# incrementally perform FoldChange
+FastPerformFC <- function(data, clusters, 
+  features_as_rows = FALSE,
+  calc_percents = FALSE, 
+  fc_name = NULL, 
+  use_expm1 = FALSE, 
+  min_threshold = 0.0, 
+  use_log = FALSE, 
+  log_base = 2, 
+  use_pseudocount = FALSE,
+  as_dataframe = TRUE, 
+  threads = 1) {
+
+  # Calculate fold change incrementally - if data is too big.
+  # print("dims data.use")
+  # print(dim(data))
+
+  if (! is.factor(clusters)) {
+    clusters <- as.factor(clusters)
+  }
+
+  # ======== break up the data if needed.
+  if (features_as_rows == TRUE) {
+    # features in rows
+    nfeatures = nrow(data)
+    # samples in columns
+    nsamples = ncol(data)
+  } else {
+    # features in columns already
+    nfeatures = ncol(data)
+    # samples in rows.
+    nsamples = nrow(data)
+  }
+  # print("nfeatures, nsamples")
+  # print(nfeatures)
+  # print(nsamples)
+
+  # get the number of features to process at a time.
+  max_elem <- 16*1024*1024
+  block_size <- pmin(max_elem %/% nsamples, nfeatures)
+  nblocks <- (nfeatures + block_size - 1) %/% block_size
+  # print("block size, nblocks")
+  # print(block_size)
+  # print(nblocks)
+
+  # need to put features into columns.
+  if (features_as_rows == TRUE) {
+    # slice and transpose
+    dd <- t(as.matrix(data[1:block_size, ]))
+  } else {
+    # slice the data
+    dd <- as.matrix(data[, 1:block_size])
+  }
+  # output has features in columns, and clusters in rows
+  fc.results <- ComputeFoldChange(dd, as.integer(clusters),
+    calc_percents = calc_percents, fc_name = fc_name, 
+    use_expm1 = use_expm1, min_threshold = min_threshold, 
+    use_log = use_log, log_base = log_base, use_pseudocount = use_pseudocount, 
+    as_dataframe = as_dataframe,
+    threads = threads)
+  if (as_dataframe == FALSE) {
+    # return data the same way we got it
+    if (features_as_rows == TRUE) {
+      fc.results[[fc_name]] <- t(fc.results[[fc_name]])   # put features back in rows
+      if (calc_percents == TRUE) {
+        fc.results$pct.1 <- t(fc.results$pct.1)   # now features are in rows
+        fc.results$pct.2 <- t(fc.results$pct.2)   # now features are in rows
+      }
+    }
+  } # if dataframe, already in the right format.
+  # print("dims fc.results 1")
+  # print(dim(fc.results))
+
+  if (nblocks > 1) {
+    for (i in 1:(nblocks - 1)) {
+      # compute bounds 
+      start <- i * block_size + 1
+      end <- pmin(nfeatures, (i + 1) * block_size )
+      # slice the data
+      if (features_as_rows == TRUE) {
+        # slice and transpose
+        dd <- t(as.matrix(data[start:end, ]))
+      } else {
+        # slice the data
+        dd <- as.matrix(data[, start:end])
+      }
+
+      fcr <- ComputeFoldChange(dd, as.integer(clusters),
+        calc_percents = calc_percents, fc_name = fc_name, 
+        use_expm1 = use_expm1, min_threshold = min_threshold, 
+        use_log = use_log, log_base = log_base, use_pseudocount = use_pseudocount, 
+        as_dataframe = as_dataframe,
+        threads = threads)
+
+      if (as_dataframe == TRUE)  {
+        fc.results <- rbind(fc.results, fcr)
+      } else {
+        # return data the same way we got it
+        if (features_as_rows == TRUE) {
+          fc.results[[fc_name]] <- rbind(fc.results[[fc_name]], t(fcr[[fc_name]]))
+          if (calc_percents == TRUE) {
+            fc.results$pct.1 <- rbind(fc.results, t(fcr$pct.1))   # now features are in rows
+            fc.results$pct.2 <- rbind(fc.results, t(fcr$pct.2))   # now features are in rows
+          }
+        } else {
+          fc.results[[fc_name]] <- cbind(fc.results[[fc_name]], fcr[[fc_name]])
+          if (calc_percents == TRUE) {
+            fc.results$pct.1 <- cbind(fc.results, fcr$pct.1)   # features are in cols
+            fc.results$pct.2 <- cbind(fc.results, fcr$pct.2)   # features are in cols
+          }
+        }
+      }
+      # print("dims fc.results i")
+      # print(dim(fc.results))
+
+    }
+  }
+  # print("dims fc.results final")
+  # print(dim(fc.results))
+  if (as_dataframe == TRUE) {
+    fc.results$cluster <- factor(as.numeric(fc.results$cluster), labels=levels(clusters))
+  }
+  return(fc.results)
+
+}
+
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 # Internal
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1123,6 +1236,7 @@ fastDEPackageCheck <- function(..., error = TRUE) {
 FastPerformDE <- function(
   object,
   cells.clusters,
+  features.as.rows = FALSE,
   features = NULL,
   test.use = "fastwmw",
   verbose = FALSE,
@@ -1135,16 +1249,20 @@ FastPerformDE <- function(
   tic("FastPerformDE")
 
   if (! is.null(features)) {
-    data <- object[features, , drop = FALSE]
+    if (features.as.rows == TRUE) {
+      data <- object[features, , drop = FALSE]
+    } else {
+      data <- object[, features, drop = FALSE]
+    }
   } else {
     data <- object
   }
-
   de.results <- switch(
     EXPR = test.use,
     'fastwmw' = FastWilcoxDETest(
       data.use = data,
       cells.clusters = cells.clusters,
+      features.as.rows = features.as.rows,
       verbose = verbose,
       return.dataframe = return.dataframe,
       ...
@@ -1152,6 +1270,7 @@ FastPerformDE <- function(
     'bioqc' = BioQCDETest(
       data.use = data,
       cells.clusters = cells.clusters,
+      features.as.rows = features.as.rows,
       verbose = verbose,
       return.dataframe = return.dataframe,
       ...
@@ -1176,6 +1295,7 @@ FastPerformDE <- function(
 #'
 #' @param data.use Data matrix to test.  rows = features, columns = samples
 #' @param cells.clusters cell labels, integer cluster ids for each cell.  array of size same as number of samples
+#' @param features.as.rows controls transpose
 #' @param verbose Print report verbosely
 #' @param return.dataframe if TRUE, return a dataframe, else return a 2D matrix.
 #' @param ... Extra parameters passed to wilcox.test
@@ -1195,6 +1315,7 @@ FastPerformDE <- function(
 FastWilcoxDETest <- function(
   data.use,
   cells.clusters,
+  features.as.rows,
   verbose = FALSE,
   return.dataframe = TRUE,
   ...
@@ -1216,16 +1337,93 @@ FastWilcoxDETest <- function(
     print(cells.clusters[1:20])
   }
 
+  # print("dims data.use")
+  # print(dim(data.use))
+
   # NOTE: label's order may be different - cluster ids are stored in unordered_map so order may be different.
   # IMPORTANT PART IS THE SAME ID is kep.
 
   # two sided : 2
   # print(head(data.use))
   tic("FastWilcoxDETest wmwfast")
-  p_val <- wmwfast(t(as.matrix(data.use)), as.integer(cells.clusters), rtype = as.integer(2), 
+  if (features.as.rows == TRUE) {
+    # features in rows
+    nfeatures = nrow(data.use)
+    # samples in columns
+    nsamples = ncol(data.use)
+  } else {
+    # features in columns already
+    nfeatures = ncol(data.use)
+    # samples in rows.
+    nsamples = nrow(data.use)
+  }
+  # print("nfeatures, nsamples")
+  # print(nfeatures)
+  # print(nsamples)
+  # get the number of features to process at a time.
+  max_elem <- 16*1024*1024
+  block_size <- pmin(max_elem %/% nsamples, nfeatures)
+  nblocks <- (nfeatures + block_size - 1) %/% block_size
+  # print("block size, nblocks")
+  # print(block_size)
+  # print(nblocks)
+
+  # need to put features into columns.
+  if (features.as.rows == TRUE) {
+    # slice and transpose
+    dd <- t(as.matrix(data.use[1:block_size, ]))
+  } else {
+    # slice the data
+    dd <- as.matrix(data.use[, 1:block_size])
+  }
+  p_val <- wmwfast(dd, as.integer(cells.clusters), rtype = as.integer(2), 
           continuity_correction = TRUE,
           as_dataframe = return.dataframe, threads = get_num_threads())
+
+  if (return.dataframe == FALSE) {
+    # return data the same way we got it
+    if (features.as.rows == TRUE) {
+      p_val <- t(p_val)   # put features back in rows
+    }
+  } # if dataframe, already in the right format.
+  # print("dims p_val 1")
+  # print(dim(p_val))
+
+  if (nblocks > 1) {
+    for (i in 1:(nblocks - 1)) {
+      # compute bounds 
+      start <- i * block_size + 1
+      end <- pmin(nfeatures, (i + 1) * block_size )
+      # slice the data
+      if (features.as.rows == TRUE) {
+        # slice and transpose
+        dd <- t(as.matrix(data.use[start:end, ]))
+      } else {
+        # slice the data
+        dd <- as.matrix(data.use[, start:end])
+      }
+
+      pv <- wmwfast(dd, as.integer(cells.clusters), rtype = as.integer(2), 
+          continuity_correction = TRUE,
+          as_dataframe = return.dataframe, threads = get_num_threads())
+
+      if (return.dataframe == TRUE)  {
+        p_val <- rbind(p_val, pv)
+      } else {
+        # return data the same way we got it
+        if (features.as.rows == TRUE) {
+          p_val <- rbind(p_val, t(pv))
+        } else {
+          p_val <- cbind(p_val, pv)
+        }
+      }
+      # print("dims pval")
+      # print(dim(p_val))
+    }
+  }
   toc()
+  # print("dims pval final")
+  # print(dim(p_val))
 
   if ( return.dataframe == TRUE ) {
     if (verbose) {
@@ -1233,16 +1431,28 @@ FastWilcoxDETest <- function(
       print(p_val[1:20, ])
     }
     p_val$cluster <- factor(as.numeric(p_val$cluster), labels = labels)
-    p_val$gene <- factor(as.numeric(p_val$gene), labels = rownames(data.use))  
+    # gene names are same in order, but replicated nlabels times.
+    if (features.as.rows == TRUE) {
+      genesf <- as.factor(rownames(data.use))
+    } else {
+      genesf <- as.factor(colnames(data.use))
+    }
+    gene_labels <- levels(genesf)  # 
+    genes <- rep(as.numeric(genesf), each = length(labels))
+    p_val$gene <- factor(genes, labels = gene_labels)      
          
     if (verbose) {
       print("head of p_val")
       print(p_val[1:20, ])
     }
   } else {
-    p_val <- t(p_val)
-    colnames(p_val) <- labels
-    rownames(p_val) <- rownames(data.use)
+    if (features.as.rows == TRUE ) {
+      colnames(p_val) <- labels
+      rownames(p_val) <- rownames(data.use)
+    } else {
+      rownames(p_val) <- labels
+      colnames(p_val) <- colnames(data.use)
+    }
   }
   
   return(p_val)
@@ -1258,6 +1468,7 @@ FastWilcoxDETest <- function(
 #'
 #' @param data.use Data matrix to test.  rows = features, columns = samples
 #' @param cells.clusters cell labels, integer cluster ids for each cell.  array of size same as number of samples
+#' @param features.as.rows controls transpose
 #' @param verbose Print report verbosely
 #' @param return.dataframe if TRUE, return a dataframe, else return a 2D matrix.
 #' @param ... Extra parameters passed to wilcox.test
@@ -1279,6 +1490,7 @@ FastWilcoxDETest <- function(
 BioQCDETest <- function(
   data.use,
   cells.clusters,
+  features.as.rows,
   verbose = FALSE,
   return.dataframe = TRUE,
   ...
@@ -1287,12 +1499,10 @@ BioQCDETest <- function(
   message("USING BioQC")
   if (verbose) {
     print(rownames(data.use[1:20, ]))
+    print(cells.clusters[1:20])
   }
   # input has each row being a gene, and each column a cell (sample).  -
   #    based on reading of the naive wilcox.test imple in Seurat.
-  if (verbose) {
-    print(cells.clusters[1:20])
-  }
   if (! is.factor(cells.clusters)) {
     cells.clusters <- as.factor(cells.clusters)
   }
@@ -1308,24 +1518,84 @@ BioQCDETest <- function(
     for (i in 1:length(LL)) {
       labels[[i]] <- as.integer(cells.clusters) %in% i
     }
-    pv <- BioQC::wmwTest(t(as.matrix(data.use)), labels, valType = "p.two.sided")
+
+    if (features.as.rows == TRUE) {
+      # features in rows
+      nfeatures = nrow(data.use)
+      # samples in columns
+      nsamples = ncol(data.use)
+    } else {
+      # features in columns already
+      nfeatures = ncol(data.use)
+      # samples in rows.
+      nsamples = nrow(data.use)
+    }
+    # get the number of features to process at a time.
+    max_elem <- 16*1024*1024
+    block_size <- pmin(max_elem %/% nsamples, nfeatures)
+    nblocks <- (nfeatures + block_size - 1) %/% block_size
+
+    # need to put features into columns.
+    if (features.as.rows == TRUE) {
+      # slice and transpose
+      dd <- t(as.matrix(data.use[1:block_size, ]))
+    } else {
+      # slice the data
+      dd <- as.matrix(data.use[, 1:block_size])
+    }
+
+    pv <- BioQC::wmwTest(dd, labels, valType = "p.two.sided")
+    # return data the same way we got it
+    if ((return.dataframe == FALSE) && (features.as.rows == TRUE)) {
+      pv <- t(pv)   # put features back in rows
+    }
+    
+    if (nblocks > 1) {
+      for (i in 1:(nblocks - 1)) {
+        # compute bounds 
+        start <- i * block_size + 1
+        end <- pmin(nfeatures, (i + 1) * block_size )
+        # slice the data
+        if (features.as.rows == TRUE) {
+          # slice and transpose
+          dd <- t(as.matrix(data.use[start:end, ]))
+        } else {
+          # slice the data
+          dd <- as.matrix(data.use[, start:end])
+        }
+
+        pvi <- BioQC::wmwTest(dd, labels, valType = "p.two.sided")
+
+        # return data the same way we got it
+        if ((return.dataframe == FALSE) && (features.as.rows == TRUE)) {
+          pv <- rbind(pv, t(pvi))
+        } else {
+          pv <- cbind(pv, pvi)
+        }
+      }
+    }
     # p_val HERE has clusters in rows and features/genes in columns
     toc()
-    # TODO: test this part.
-    if (return.dataframe) {
+
+    if (return.dataframe  == TRUE ) {
       # NOTE that bioqc is iterating the cluster labels in numeric order, so no need for factor here.
-      clusters <- rep(1:length(LL), time=nrow(data.use))  # clusters repeated nfeatures number of times
+      clusters <- rep(1:length(LL), times=nfeatures)  # clusters repeated nfeatures number of times
       if (verbose) {
         print(clusters[1:20])
       }
       # use rep to make the genes vector, which need numeric.
       # so need to convert rownames to factor
       # but now also need to get levels, as the mapping may be different.
-      
+
       if (verbose) {
         print(rownames(data.use)[1:20])
       }
-      genesf <- as.factor(rownames(data.use))
+
+      if (features.as.rows == TRUE) {
+        genesf <- as.factor(rownames(data.use))
+      } else {
+        genesf <- as.factor(colnames(data.use))
+      }
       gene_labels <- levels(genesf)  # 
       if (verbose) {
         print(as.numeric(genesf[1:20]))
@@ -1346,17 +1616,22 @@ BioQCDETest <- function(
         print(p_val[1:20, , drop=FALSE])
       }
 
-      p_val$cluster <- factor(as.numeric(p_val$cluster), labels = LL)
-      p_val$gene <- factor(as.numeric(p_val$gene), labels = gene_labels)      
+      p_val$cluster <- factor(as.numeric(clusters), labels = LL)
+      p_val$gene <- factor(genes, labels = gene_labels)      
       if (verbose) {
         print("head of p_val")
         print(p_val[1:20, , drop=FALSE])
       }
     } else {
-      p_val = t(p_val)
       # just a matrix returned.
-      rownames(p_val) <- rownames(data.use)
-      colnames(p_val) <- LL
+      if (features.as.rows == TRUE) {
+        colnames(p_val) <- LL
+        rownames(p_val) <- rownames(data.use)
+      } else {
+        rownames(p_val) <- LL
+        colnames(p_val) <- colnames(data.use)
+      }
+
     }
   } else {
     message("Please install the BioQC package")
