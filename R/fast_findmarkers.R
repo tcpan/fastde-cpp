@@ -1346,7 +1346,6 @@ FastWilcoxDETest <- function(
   # two sided : 2
   # print(head(data.use))
   tic("FastWilcoxDETest wmwfast")
-<<<<<<< HEAD
   if (features.as.rows == TRUE) {
     # features in rows
     nfeatures = nrow(data.use)
@@ -1377,7 +1376,7 @@ FastWilcoxDETest <- function(
     # slice the data
     dd <- as.matrix(data.use[, 1:block_size])
   }
-  p_val <- wmwfast(dd, as.integer(cells.clusters), rtype = as.integer(2), 
+  p_val <- densewmwfast(dd, as.integer(cells.clusters), rtype = as.integer(2), 
           continuity_correction = TRUE,
           as_dataframe = return.dataframe, threads = get_num_threads())
 
@@ -1404,10 +1403,7 @@ FastWilcoxDETest <- function(
         dd <- as.matrix(data.use[, start:end])
       }
 
-      pv <- wmwfast(dd, as.integer(cells.clusters), rtype = as.integer(2), 
-=======
-  p_val <- densewmwfast(t(as.matrix(data.use)), as.integer(cells.clusters), rtype = as.integer(2), 
->>>>>>> ENH: refactored wmwtest
+      pv <- densewmwfast(dd, as.integer(cells.clusters), rtype = as.integer(2), 
           continuity_correction = TRUE,
           as_dataframe = return.dataframe, threads = get_num_threads())
 
