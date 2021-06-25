@@ -20,8 +20,8 @@
 #' @return array or dataframe
 #' @name denseFoldChange
 #' @export
-denseFoldChange <- function(matrix, labels, calc_percents, fc_name, use_expm1, min_threshold, use_log, log_base, use_pseudocount, as_dataframe, threads) {
-    .Call('_fastde_denseFoldChange', PACKAGE = 'fastde', matrix, labels, calc_percents, fc_name, use_expm1, min_threshold, use_log, log_base, use_pseudocount, as_dataframe, threads)
+ComputeFoldChange <- function(matrix, labels, calc_percents, fc_name, use_expm1, min_threshold, use_log, log_base, use_pseudocount, as_dataframe, threads) {
+    .Call('_fastde_ComputeFoldChange', PACKAGE = 'fastde', matrix, labels, calc_percents, fc_name, use_expm1, min_threshold, use_log, log_base, use_pseudocount, as_dataframe, threads)
 }
 
 #' Fold Change
@@ -103,7 +103,7 @@ sp_transpose <- function(sp_matrix) {
 #' @return array or dataframe.  for each gene/feature, the rows for the clusters are ordered by id.
 #' @name densewmwfast
 #' @export
-densewmwfast <- function(matrix, labels, rtype, continuity_correction, as_dataframe, threads) {
-    .Call('_fastde_densewmwfast', PACKAGE = 'fastde', matrix, labels, rtype, continuity_correction, as_dataframe, threads)
+wmwfast <- function(matrix, labels, rtype, continuity_correction, as_dataframe, threads) {
+    .Call('_fastde_wmwfast', PACKAGE = 'fastde', matrix, labels, rtype, continuity_correction, as_dataframe, threads)
 }
 
