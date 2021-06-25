@@ -503,8 +503,8 @@ FastFindMarkers.DimReduc <- function(
   # NOT subsample cell groups if they are too large
 
   # Calculate avg difference.  This is just rowMeans.
-  tic("FastFindMarkers.DimReduc denseFoldChange")
-  fc.results <- densePerformFC(data, clusters,
+  tic("FastFindMarkers.DimReduc FastPerformFC")
+  fc.results <- FastPerformFC(data, clusters,
     features_as_rows = FALSE,
     calc_percents = FALSE, fc_name = fc.name, 
     use_expm1 = FALSE, min_threshold = 0.0, 
@@ -815,8 +815,8 @@ FastFoldChange.default <- function(
   }
   if (verbose) { toc() }
   
-  tic("FastFoldChange.default denseFoldChange")
-  fc.results <- densePerformFC(data, clusters,
+  tic("FastFoldChange.default FastPerformFC")
+  fc.results <- FastPerformFC(data, clusters,
     features_as_rows = TRUE,
     calc_percents = TRUE, fc_name = fc.name, 
     use_expm1 = expm1.use, min_threshold = 0.0, 
@@ -941,9 +941,9 @@ FastFoldChange.DimReduc <- function(
   # clusters <- cells.clusters %||% Seurat::Idents(object = object)
 
   if (verbose) { toc() }
-  tic("FastFoldChange.DimReduc denseFoldChange")
+  tic("FastFoldChange.DimReduc FastPerformFC")
   # Calculate avg difference.  This is just rowMeans.
-  fc.results <- densePerformFC(data, clusters,
+  fc.results <- FastPerformFC(data, clusters,
     features_as_rows = FALSE,
     calc_percents = FALSE, fc_name = fc.name, 
     use_expm1 = FALSE, min_threshold = 0.0, 
@@ -1376,7 +1376,7 @@ FastWilcoxDETest <- function(
     # slice the data
     dd <- as.matrix(data.use[, 1:block_size])
   }
-  p_val <- densewmwfast(dd, as.integer(cells.clusters), rtype = as.integer(2), 
+  p_val <- wmwfast(dd, as.integer(cells.clusters), rtype = as.integer(2), 
           continuity_correction = TRUE,
           as_dataframe = return.dataframe, threads = get_num_threads())
 
@@ -1403,7 +1403,7 @@ FastWilcoxDETest <- function(
         dd <- as.matrix(data.use[, start:end])
       }
 
-      pv <- densewmwfast(dd, as.integer(cells.clusters), rtype = as.integer(2), 
+      pv <- wmwfast(dd, as.integer(cells.clusters), rtype = as.integer(2), 
           continuity_correction = TRUE,
           as_dataframe = return.dataframe, threads = get_num_threads())
 

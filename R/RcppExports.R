@@ -5,7 +5,7 @@
 #' 
 #' https://stackoverflow.com/questions/38338270/how-to-return-a-named-vecsxp-when-writing-r-extensions
 #' 
-#' @rdname denseFoldChange
+#' @rdname ComputeFoldChange
 #' @param matrix an expression matrix, COLUMN-MAJOR, each row is a sample, each column a sample
 #' @param labels an integer vector, each element indicating the group to which a sample belongs.
 #' @param calc_percents  a boolean to indicate whether to compute percents or not.
@@ -18,10 +18,10 @@
 #' @param as_dataframe TRUE/FALSE.  TRUE = return a linearized dataframe.  FALSE = return matrices.
 #' @param threads number of threads to use
 #' @return array or dataframe
-#' @name denseFoldChange
+#' @name ComputeFoldChange
 #' @export
-denseFoldChange <- function(matrix, labels, calc_percents, fc_name, use_expm1, min_threshold, use_log, log_base, use_pseudocount, as_dataframe, threads) {
-    .Call('_fastde_denseFoldChange', PACKAGE = 'fastde', matrix, labels, calc_percents, fc_name, use_expm1, min_threshold, use_log, log_base, use_pseudocount, as_dataframe, threads)
+ComputeFoldChange <- function(matrix, labels, calc_percents, fc_name, use_expm1, min_threshold, use_log, log_base, use_pseudocount, as_dataframe, threads) {
+    .Call('_fastde_ComputeFoldChange', PACKAGE = 'fastde', matrix, labels, calc_percents, fc_name, use_expm1, min_threshold, use_log, log_base, use_pseudocount, as_dataframe, threads)
 }
 
 #' Filter based on FoldChange
@@ -64,7 +64,7 @@ sp_transpose <- function(sp_matrix) {
 #'
 #' This implementation uses normal approximation, which works reasonably well if sample size is large (say N>=20)
 #' 
-#' @rdname densewmwfast
+#' @rdname wmwfast
 #' @param matrix an expression matrix, COLUMN-MAJOR, each col is a feature, each row a sample
 #' @param labels an integer vector, each element indicating the group to which a sample belongs.
 #' @param rtype 
@@ -78,9 +78,9 @@ sp_transpose <- function(sp_matrix) {
 #' @param as_dataframe TRUE/FALSE - TRUE returns a dataframe, FALSE returns a matrix
 #' @param threads  number of concurrent threads.
 #' @return array or dataframe.  for each gene/feature, the rows for the clusters are ordered by id.
-#' @name densewmwfast
+#' @name wmwfast
 #' @export
-densewmwfast <- function(matrix, labels, rtype, continuity_correction, as_dataframe, threads) {
-    .Call('_fastde_densewmwfast', PACKAGE = 'fastde', matrix, labels, rtype, continuity_correction, as_dataframe, threads)
+wmwfast <- function(matrix, labels, rtype, continuity_correction, as_dataframe, threads) {
+    .Call('_fastde_wmwfast', PACKAGE = 'fastde', matrix, labels, rtype, continuity_correction, as_dataframe, threads)
 }
 

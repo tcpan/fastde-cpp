@@ -17,6 +17,7 @@ using namespace Rcpp;
 
 #include <cmath>  // sqrt
 #include <tuple>
+#include <map>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -31,23 +32,18 @@ using namespace Rcpp;
 
 #include <omp.h>
 
-#ifndef NROW
-#define NROW(x) INTEGER(GET_DIM((x)))[0]
-#endif
-
-#ifndef NCOL
-#define NCOL(x) INTEGER(GET_DIM((x)))[1]
-#endif
+#include "common.hpp"
 
 struct clust_info {
   double sum;
   size_t thresh_count;
-  size_t count;
 };
+
 
 // compute base info for foldchange.  
 // if expm1 is used, then it's suitable to replace seurat "data" fold change
 // else it is used for "scaled.data" or default action.
+// NOTE this has an extra entry for the total for the whole "in" array.
 template <typename IT, typename LABEL>
 void dense_foldchange_summary(
   IT const * in, LABEL const * labels, size_t const & count,
@@ -59,7 +55,7 @@ void dense_foldchange_summary(
   if (count == 0) return;
 
   // assign rank and accumulate.
-  clust_info total = { .sum = 0.0, .thresh_count = 0, .count = 0};
+  clust_info total = { .sum = 0.0, .thresh_count = 0 };
 
   LABEL key;
   IT val, vv;
@@ -70,11 +66,10 @@ void dense_foldchange_summary(
       val = in[i];
       vv = std::expm1(val);
 
-      if (sums.count(key) == 0) sums[key] = { .sum=vv, .thresh_count = (val > min_thresh), .count =1 };
+      if (sums.count(key) == 0) sums[key] = { .sum=vv, .thresh_count = (val > min_thresh) };
       else {
           sums[key].sum += vv;
           sums[key].thresh_count += (val > min_thresh);
-          ++sums[key].count;
       }  
       total.thresh_count += (val > min_thresh);
       total.sum += vv;
@@ -84,52 +79,46 @@ void dense_foldchange_summary(
       key = labels[i];
       val = in[i];
 
-      if (sums.count(key) == 0) sums[key] = { .sum=val, .thresh_count = (val > min_thresh), .count =1 };
+      if (sums.count(key) == 0) sums[key] = { .sum=val, .thresh_count = (val > min_thresh) };
       else {
           sums[key].sum += val;
           sums[key].thresh_count += (val > min_thresh);
-          ++sums[key].count;
       }  
       total.thresh_count += (val > min_thresh);
       total.sum += val;
     }
   }
-  total.count = count;
   sums[std::numeric_limits<LABEL>::max()] = total;
-  // Rprintf("%lu %lu %lu %f\n", sums.size(), total.count, total.thresh_count, total.sum);
+  // Rprintf("%lu %lu %f\n", sums.size(), total.thresh_count, total.sum);
 
 }
 
 // compute percentages.  This is common amongst all variants
 // this is used in seurat foldchange.default 
 template <typename LABEL, typename PT>
-void foldchange_percents(std::unordered_map<LABEL, clust_info> const & sums, 
+void foldchange_percents(
+  std::map<LABEL, size_t> const & cl_counts, 
+  std::unordered_map<LABEL, clust_info> const & sums, 
+  size_t const & count,
   PT * percent1, PT * percent2) {
   
-  if (sums.size() == 0) return;
+  if (count == 0) return;
+  if (cl_counts.size() == 0) return;
 
-  size_t count = sums.at(std::numeric_limits<LABEL>::max()).count;
   size_t thresh_count = sums.at(std::numeric_limits<LABEL>::max()).thresh_count;
   // Rprintf("%lu %lu %lu %f\n", label_count, count, thresh_count, sums.at(std::numeric_limits<LABEL>::max()).sum);
-  
-  std::vector<int> sorted_labels;
-  int key;
-  for (auto item : sums) {
-    key = item.first;
-    if (key == std::numeric_limits<int>::max()) continue;
-    sorted_labels.emplace_back(key);
-  }
-  std::sort(sorted_labels.begin(), sorted_labels.end());
 
   // for each gene/cluster combo, report fold change, and percent above threshold
-  double mean1 = 0;
-  double mean2 = 0;
   size_t i = 0;
+  size_t cl_count;
+  LABEL key;
   clust_info val;
-  for (auto key : sorted_labels) {
+  for (auto item : cl_counts) {
+    key = item.first;
+    cl_count = item.second;
     val = sums.at(key);
-    percent1[i] = round(static_cast<double>(val.thresh_count) / static_cast<double>(val.count) * 1000.0) * 0.001;
-    percent2[i] = round(static_cast<double>(thresh_count - val.thresh_count) / static_cast<double>(count - val.count) * 1000.0) * 0.001;
+    percent1[i] = round(static_cast<double>(val.thresh_count) / static_cast<double>(cl_count) * 1000.0) * 0.001;
+    percent2[i] = round(static_cast<double>(thresh_count - val.thresh_count) / static_cast<double>(count - cl_count) * 1000.0) * 0.001;
     ++i;
     // order of entry is same as order of sums traversal.
   }
@@ -139,33 +128,31 @@ void foldchange_percents(std::unordered_map<LABEL, clust_info> const & sums,
 // compute mean .  this is used for seurat "scaled.data".  no log or pseudocount applied.
 //  Should not be used with expm1
 template <typename LABEL, typename OT>
-void foldchange_mean(std::unordered_map<LABEL, clust_info> const & sums, 
+void foldchange_mean(
+  std::map<LABEL, size_t> const & cl_counts, 
+  std::unordered_map<LABEL, clust_info> const & sums, 
+  size_t const & count,
   OT * out) {
 
-  if (sums.size() == 0) return;
- 
+  if (count == 0) return;
+  if (cl_counts.size() == 0) return;
+  
   double total_sum = sums.at(std::numeric_limits<LABEL>::max()).sum;
-  size_t count = sums.at(std::numeric_limits<LABEL>::max()).count;
   // Rprintf("MEAN: %lu %lu %lu %f\n", sums.size(), count, sums.at(std::numeric_limits<LABEL>::max()).thresh_count, total_sum);
-
-  std::vector<int> sorted_labels;
-  int key;
-  for (auto item : sums) {
-    key = item.first;
-    if (key == std::numeric_limits<int>::max()) continue;
-    sorted_labels.emplace_back(key);
-  }
-  std::sort(sorted_labels.begin(), sorted_labels.end());
 
   // for each gene/cluster combo, report fold change, and percent above threshold
   double mean1 = 0;
   double mean2 = 0;
   size_t i = 0;
+  size_t cl_count;
+  LABEL key;
   clust_info val;
-  for (auto key : sorted_labels) {    
+  for (auto item : cl_counts) {
+    key = item.first;
+    cl_count = item.second;
     val = sums.at(key);
-    mean1 = val.sum / static_cast<double>(val.count);
-    mean2 = (total_sum - val.sum) / static_cast<double>(count - val.count);
+    mean1 = val.sum / static_cast<double>(cl_count);
+    mean2 = (total_sum - val.sum) / static_cast<double>(count - cl_count);
     out[i] = mean1 - mean2;
     ++i;
   }
@@ -175,33 +162,31 @@ void foldchange_mean(std::unordered_map<LABEL, clust_info> const & sums,
 
 // compute log of mean with pseudocount.  this is used for seurat "data" and default fold change.
 template <typename LABEL, typename OT>
-void foldchange_logmean(std::unordered_map<LABEL, clust_info> const & sums, 
+void foldchange_logmean(
+  std::map<LABEL, size_t> const & cl_counts, 
+  std::unordered_map<LABEL, clust_info> const & sums, 
+  size_t const & count,
   OT * out, bool const & pseudocount = true, double const & base = 2.0) {
   
-  if (sums.size() == 0) return;
+  if (count == 0) return;
+  if (cl_counts.size() == 0) return;
 
   double total_sum = sums.at(std::numeric_limits<LABEL>::max()).sum;
-  size_t count = sums.at(std::numeric_limits<LABEL>::max()).count;
   
-  std::vector<int> sorted_labels;
-  int key;
-  for (auto item : sums) {
-    key = item.first;
-    if (key == std::numeric_limits<int>::max()) continue;
-    sorted_labels.emplace_back(key);
-  }
-  std::sort(sorted_labels.begin(), sorted_labels.end());
-
   // for each gene/cluster combo, report fold change, and percent above threshold
   double mean1 = 0;
   double mean2 = 0;
   double inv_log = 1.0 / log(base);
   size_t i = 0;
+  size_t cl_count;
+  LABEL key;
   clust_info val;
-  for (auto key : sorted_labels) {    
+  for (auto item : cl_counts) {   
+    key = item.first;
+    cl_count = item.second;
     val = sums.at(key);
-    mean1 = val.sum / static_cast<double>(val.count);
-    mean2 = (total_sum - val.sum) / static_cast<double>(count - val.count);
+    mean1 = val.sum / static_cast<double>(cl_count);
+    mean2 = (total_sum - val.sum) / static_cast<double>(count - cl_count);
     if (base == 2.0) {
       mean1 = log2(mean1 + pseudocount);
       mean2 = log2(mean2 + pseudocount);
@@ -227,7 +212,7 @@ void foldchange_logmean(std::unordered_map<LABEL, clust_info> const & sums,
 //' 
 //' https://stackoverflow.com/questions/38338270/how-to-return-a-named-vecsxp-when-writing-r-extensions
 //' 
-//' @rdname denseFoldChange
+//' @rdname ComputeFoldChange
 //' @param matrix an expression matrix, COLUMN-MAJOR, each row is a sample, each column a sample
 //' @param labels an integer vector, each element indicating the group to which a sample belongs.
 //' @param calc_percents  a boolean to indicate whether to compute percents or not.
@@ -240,10 +225,11 @@ void foldchange_logmean(std::unordered_map<LABEL, clust_info> const & sums,
 //' @param as_dataframe TRUE/FALSE.  TRUE = return a linearized dataframe.  FALSE = return matrices.
 //' @param threads number of threads to use
 //' @return array or dataframe
-//' @name denseFoldChange
+//' @name ComputeFoldChange
 //' @export
 // [[Rcpp::export]]
-extern SEXP denseFoldChange(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP fc_name, 
+extern SEXP ComputeFoldChange(
+  SEXP matrix, SEXP labels, SEXP calc_percents, SEXP fc_name, 
   SEXP use_expm1, SEXP min_threshold, 
   SEXP use_log, SEXP log_base, SEXP use_pseudocount, 
   SEXP as_dataframe,
@@ -273,13 +259,9 @@ extern SEXP denseFoldChange(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP f
 
   // ========= count number of labels so we can allocate output  run the first one.
   int *label_ptr=INTEGER(labels);
-  std::unordered_set<int> ll;
-  for (size_t l = 0; l < nsamples; ++l, ++label_ptr) {
-    ll.insert(*label_ptr);
-  }
-  size_t label_count = ll.size();
-  std::vector<int> sorted_labels(ll.begin(), ll.end());
-  std::sort(sorted_labels.begin(), sorted_labels.end());
+  std::map<int, size_t> cl_counts;
+  count_clusters(label_ptr, nsamples, cl_counts);
+  size_t label_count = cl_counts.size();
   label_ptr = INTEGER(labels);   // reset to start.
   
   // end = Clock::now();
@@ -346,10 +328,9 @@ extern SEXP denseFoldChange(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP f
     // use clust for column names.
     PROTECT(clust = Rf_allocVector(STRSXP, label_count));
     ++proc_count;
-    int key;
     size_t j = 0;
-    for (auto key : sorted_labels) {
-      sprintf(str, "%d", key);
+    for (auto item : cl_counts) {
+      sprintf(str, "%d", item.first);
       SET_STRING_ELT(clust, j, Rf_mkChar(str));
       memset(str, 0, intlen + 1);
       ++j;
@@ -381,9 +362,9 @@ extern SEXP denseFoldChange(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP f
     size_t j = 0;
     // outer group = features, inner order = cluster
     for (size_t i = 0; i < nfeatures; ++i) {
-      for (auto key : sorted_labels) {
+      for (auto item : cl_counts) {
         // rotate through cluster labels for this feature.        
-        *clust_ptr = key;
+        *clust_ptr = item.first;
         ++clust_ptr;
 
         // same feature name for the set of cluster
@@ -478,25 +459,25 @@ extern SEXP denseFoldChange(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP f
     double *fc_ptr = REAL(fc) + offset * label_count;
     double *p1_ptr = REAL(p1) + offset * label_count;
     double *p2_ptr = REAL(p2) + offset * label_count;
-    std::unordered_map<int, clust_info> info;
+    std::unordered_map<int, clust_info> cl_sums;
 
     for(size_t i=offset; i < end; ++i) {
-      dense_foldchange_summary(mat_ptr, label_ptr, nsamples, info, min_thresh, _use_expm1);
+      dense_foldchange_summary(mat_ptr, label_ptr, nsamples, cl_sums, min_thresh, _use_expm1);
 
       // if percent is required, calc
       if (perc) {
-        foldchange_percents(info, p1_ptr, p2_ptr);
+        foldchange_percents(cl_counts, cl_sums, nsamples, p1_ptr, p2_ptr);
+        p1_ptr += label_count;
+        p2_ptr += label_count;
       }
 
       if (_use_log) {
-        foldchange_logmean(info, fc_ptr, _use_pseudocount, _log_base);
+        foldchange_logmean(cl_counts, cl_sums, nsamples, fc_ptr, _use_pseudocount, _log_base);
       } else {
-        foldchange_mean(info, fc_ptr);
+        foldchange_mean(cl_counts, cl_sums, nsamples, fc_ptr);
       }
 
       mat_ptr += nsamples;
-      p1_ptr += label_count;
-      p2_ptr += label_count;
       fc_ptr += label_count;
     }
   }

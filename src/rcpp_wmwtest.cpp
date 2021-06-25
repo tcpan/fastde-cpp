@@ -32,13 +32,7 @@ using namespace Rcpp;
 // #define INV_SQRT2 0.70710678118
 // #endif
 
-#ifndef NROW
-#define NROW(x) INTEGER(GET_DIM((x)))[0]
-#endif
-
-#ifndef NCOL
-#define NCOL(x) INTEGER(GET_DIM((x)))[1]
-#endif
+#include "common.hpp"
 
 // ids points to start of the column's positive element row ids
 // x  points to the start fo the columns positive element values
@@ -125,16 +119,17 @@ void sparse_wmw_summary(IT const * in, IDX const * ids, size_t const & nz_count,
 
 }
 
+// rank_sums output:  map cluster to rank_sum.
 template <typename IT, typename LABEL>
-void dense_wmw_summary(IT const * in, LABEL const * labels, size_t const & count, 
-  std::unordered_map<LABEL, std::pair<size_t, size_t>> & rank_sums, double & tie_sum) {
+void dense_wmw_summary(
+  IT const * in, LABEL const * labels, size_t const & count, 
+  std::unordered_map<LABEL, size_t> & rank_sums, double & tie_sum) {
 
   // tuplize in and labels.
+  rank_sums.clear();
+  tie_sum = 0.0;
   if (count == 0) return;
   assert((count < 20) && "ERROR: count is too small (< 20) for a normal approximation\n");
-  // if (count < 100) {
-  //     printf("WARNING: count is small for a normal approximation: %ld\n", count);
-  // }
 
   // ============== populate the sort structure and Sort
   std::vector<std::pair<IT, LABEL>> temp;
@@ -142,14 +137,13 @@ void dense_wmw_summary(IT const * in, LABEL const * labels, size_t const & count
   for (size_t i = 0; i < count; ++i) {
       temp.emplace_back(in[i], labels[i]);
   }
-
-  // sort by label...
-  std::sort(temp.begin(), temp.end(), [](std::pair<IT, LABEL> const & a, std::pair<IT, LABEL> const & b){
+  // sort by value...
+  std::sort(temp.begin(), temp.end(), 
+    [](std::pair<IT, LABEL> const & a, std::pair<IT, LABEL> const & b){
       return a.first < b.first;
   });
 
   // assign rank and accumulate count and rank
-  rank_sums.clear();  // random access of this...
 
   // to handle ties, we need 0.5.  To make comparison easier and not float based, double the rank value here and divide later.
   // actually, we may need to have median of the tie ranks.
@@ -163,10 +157,9 @@ void dense_wmw_summary(IT const * in, LABEL const * labels, size_t const & count
   tie_sum = 0.0;
   LABEL key = temp[0].second;
   // insert first
-  if (rank_sums.count(key) == 0) rank_sums[key] = std::make_pair(1, rank);
+  if (rank_sums.count(key) == 0) rank_sums[key] = rank;
   else {
-      ++rank_sums[key].first;
-      rank_sums[key].second += rank;
+      rank_sums[key] += rank;
   }
   // forward walk
   for (size_t i = 1; i < count; ++i) {
@@ -178,10 +171,9 @@ void dense_wmw_summary(IT const * in, LABEL const * labels, size_t const & count
       } // ELSE tie, so don't change the rank  (note :  this is the lower of the range for median)
       key = temp[i].second;
       // add rank to sum
-      if (rank_sums.count(key) == 0) rank_sums[key] = std::make_pair(1, rank);
+      if (rank_sums.count(key) == 0) rank_sums[key] = rank;
       else {
-          ++rank_sums[key].first;
-          rank_sums[key].second += rank;
+          rank_sums[key] += rank;
       }
   }
     
@@ -189,36 +181,33 @@ void dense_wmw_summary(IT const * in, LABEL const * labels, size_t const & count
   rank = count;
   for (size_t i = count - 1; i > 0; --i) {
       // add rank to sum
-      rank_sums[temp[i].second].second += rank;
+      rank_sums[temp[i].second] += rank;
 
       // rank update
       if (temp[i].first > temp[i-1].first) rank = i;  // not tie, so advance to new rank
       // ELSE tie, so don't change the rank  (note :  this is the higher of the range for median)
   }
   // need to count ties...
-  rank_sums[temp[0].second].second += rank;
+  rank_sums[temp[0].second] += rank;
 
 }
 
 
 // types:  0 = greater, 1 = less, 2 = twosided (default), 3 = U
 template <typename LABEL, typename OT>
-void wmw(std::unordered_map<LABEL, std::pair<size_t, size_t>> const & rank_sums, double const & tie_sum, size_t const & count, OT * out,
+void wmw(
+  std::map<LABEL, size_t> const & cl_counts, 
+  std::unordered_map<LABEL, size_t> const & rank_sums, double const & tie_sum,
+  size_t const & count,
+  OT * out,
   int const & test_type, bool const & continuity) {
   
   // tuplize in and labels.
   if (count == 0) return;
   assert((count < 20) && "ERROR: count is too small (< 20) for a normal approximation\n");
 
-  std::vector<LABEL> sorted_labels;
-  LABEL key;
-  for (auto item : rank_sums) {
-    key = item.first;
-    if (key == std::numeric_limits<LABEL>::max()) continue;
+  if (cl_counts.size() == 0) return;
 
-    sorted_labels.emplace_back(key);
-  }
-  std::sort(sorted_labels.begin(), sorted_labels.end());
   // dealing with ties amongst multiple classes?
   // since final differential comparisons are one vs all others, and the ties are split so 0.5 is added for all.
 
@@ -229,11 +218,13 @@ void wmw(std::unordered_map<LABEL, std::pair<size_t, size_t>> const & rank_sums,
   double tie_mean = tie_sum / static_cast<double>(count * (count - 1));
   constexpr double inv12 = 1.0 / 12.0;
   size_t i = 0;
-  std::pair<size_t, size_t> val;
-  for (auto key : sorted_labels) {
+  LABEL key;
+  size_t val;
+  for (auto item : cl_counts) {
+      key = item.first;
+      n1 = item.second;
       val = rank_sums.at(key);
-      R = static_cast<double>(val.second) * 0.5;
-      n1 = val.first;
+      R = static_cast<double>(val) * 0.5;
 
       // compute U stats
       prod = static_cast<double>(n1 * (count - n1));
@@ -275,7 +266,7 @@ void wmw(std::unordered_map<LABEL, std::pair<size_t, size_t>> const & rank_sums,
 //'
 //' This implementation uses normal approximation, which works reasonably well if sample size is large (say N>=20)
 //' 
-//' @rdname densewmwfast
+//' @rdname wmwfast
 //' @param matrix an expression matrix, COLUMN-MAJOR, each col is a feature, each row a sample
 //' @param labels an integer vector, each element indicating the group to which a sample belongs.
 //' @param rtype 
@@ -289,10 +280,11 @@ void wmw(std::unordered_map<LABEL, std::pair<size_t, size_t>> const & rank_sums,
 //' @param as_dataframe TRUE/FALSE - TRUE returns a dataframe, FALSE returns a matrix
 //' @param threads  number of concurrent threads.
 //' @return array or dataframe.  for each gene/feature, the rows for the clusters are ordered by id.
-//' @name densewmwfast
+//' @name wmwfast
 //' @export
 // [[Rcpp::export]]
-extern SEXP densewmwfast(SEXP matrix, SEXP labels, SEXP rtype, 
+extern SEXP wmwfast(
+    SEXP matrix, SEXP labels, SEXP rtype, 
     SEXP continuity_correction, 
     SEXP as_dataframe,
     SEXP threads) {
@@ -310,13 +302,9 @@ extern SEXP densewmwfast(SEXP matrix, SEXP labels, SEXP rtype,
   
   // get the number of unique labels.
   int *label_ptr=INTEGER(labels);
-  std::unordered_set<int> info;
-  for (size_t l = 0; l < nsamples; ++l, ++label_ptr) {
-    info.insert(*label_ptr);
-  }
-  size_t label_count = info.size();
-  std::vector<int> sorted_labels(info.begin(), info.end());
-  std::sort(sorted_labels.begin(), sorted_labels.end());
+  std::map<int, size_t> cl_counts;
+  count_clusters(label_ptr, nsamples, cl_counts);
+  size_t label_count = cl_counts.size();
   label_ptr = INTEGER(labels);
   // Rprintf("here 3\n");
 
@@ -367,16 +355,14 @@ extern SEXP densewmwfast(SEXP matrix, SEXP labels, SEXP rtype,
     // use clust for column names.
     PROTECT(clust = Rf_allocVector(STRSXP, label_count));
     ++proc_count;
-    int key;
     size_t j = 0;
-    for (auto key : sorted_labels) {
-      // create string and set in clust.
-      sprintf(str, "%d", key);
+    for (auto item : cl_counts) {
+      sprintf(str, "%d", item.first);
       SET_STRING_ELT(clust, j, Rf_mkChar(str));
       memset(str, 0, intlen + 1);
       ++j;
     }
-    
+
     PROTECT(pv = Rf_allocMatrix(REALSXP, label_count, nfeatures));
     ++proc_count;
 
@@ -393,9 +379,9 @@ extern SEXP densewmwfast(SEXP matrix, SEXP labels, SEXP rtype,
     SEXP * features_ptr = STRING_PTR(features);
     size_t j = 0;
     for (size_t i = 0; i < nfeatures; ++i) {
-      for (auto key : sorted_labels) {
+      for (auto item : cl_counts) {
         // rotate through cluster labels for this feature.        
-        *clust_ptr = key;
+        *clust_ptr = item.first;
         ++clust_ptr;
 
         // same feature name for the set of cluster
@@ -457,13 +443,13 @@ extern SEXP densewmwfast(SEXP matrix, SEXP labels, SEXP rtype,
 
     double *matptr = REAL(matrix) + offset * nsamples;
     double *pvptr = REAL(pv) + offset * label_count;
-    std::unordered_map<int, std::pair<size_t, size_t>> rank_sums;
+    std::unordered_map<int, size_t> rank_sums;
     double tie_sum;
     for(size_t i=offset; i < end; ++i) {
       // directly compute matrix and res pointers.
       // Rprintf("thread %d processing feature %d\n", omp_get_thread_num(), i);
       dense_wmw_summary(matptr, label_ptr, nsamples, rank_sums, tie_sum);
-      wmw(rank_sums, tie_sum, nsamples, pvptr, type, continuity);
+      wmw(cl_counts, rank_sums, tie_sum, nsamples, pvptr, type, continuity);
       matptr += nsamples;
       pvptr += label_count;
     }
