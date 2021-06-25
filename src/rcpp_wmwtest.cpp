@@ -266,7 +266,7 @@ void wmw(
 //'
 //' This implementation uses normal approximation, which works reasonably well if sample size is large (say N>=20)
 //' 
-//' @rdname wmwfast
+//' @rdname densewmwfast
 //' @param matrix an expression matrix, COLUMN-MAJOR, each col is a feature, each row a sample
 //' @param labels an integer vector, each element indicating the group to which a sample belongs.
 //' @param rtype 
@@ -280,7 +280,7 @@ void wmw(
 //' @param as_dataframe TRUE/FALSE - TRUE returns a dataframe, FALSE returns a matrix
 //' @param threads  number of concurrent threads.
 //' @return array or dataframe.  for each gene/feature, the rows for the clusters are ordered by id.
-//' @name wmwfast
+//' @name densewmwfast
 //' @export
 // [[Rcpp::export]]
 extern SEXP wmwfast(

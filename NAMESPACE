@@ -9,15 +9,24 @@ S3method(FastFoldChange,DimReduc)
 S3method(FastFoldChange,Seurat)
 S3method(FastFoldChange,default)
 export(BioQCDETest)
+<<<<<<< HEAD
 export(ComputeFoldChange)
 export(ComputeSparseFoldChange)
+=======
+>>>>>>> 0fdfe692703def1ad3bbea56e42c4a3d3e6632bb
 export(FastFindAllMarkers)
 export(FastFindMarkers)
 export(FastFoldChange)
 export(FastWilcoxDETest)
 export(FilterFoldChange)
+<<<<<<< HEAD
 export(sp_transpose)
 export(wmwfast)
+=======
+export(denseFoldChange)
+export(densewmwfast)
+export(sp_transpose)
+>>>>>>> 0fdfe692703def1ad3bbea56e42c4a3d3e6632bb
 import(BioQC)
 import(Rcpp)
 import(Seurat)
