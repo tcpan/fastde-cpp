@@ -504,7 +504,14 @@ FastFindMarkers.DimReduc <- function(
 
   # Calculate avg difference.  This is just rowMeans.
   tic("FastFindMarkers.DimReduc FastPerformFC")
-  fc.results <- FastPerformFC(data, clusters,
+  
+  PerformFCFunc <- if (is(data, 'sparseMatrix'))  {
+    FastPerformSparseFC
+  } else {
+    FastPerformFC
+  }
+
+  fc.results <- PerformFCFunc(data, clusters,
     features_as_rows = FALSE,
     calc_percents = FALSE, fc_name = fc.name, 
     use_expm1 = FALSE, min_threshold = 0.0, 
@@ -744,7 +751,7 @@ FastFindMarkers <- function(object, ...) {
 #' @return If return.dataframe == FALSE, returns a list of matrices, first is fold change values, 
 #' next 2 are percent above thresholds in the 2 classes.
 #' Else return a dataframe with the matrices reshaped as columns, values grouped by gene.
-#' 
+#'
 #' If NULL, use all features
 #' @concept differential_expression
 #' @name FastFoldChange
@@ -816,7 +823,14 @@ FastFoldChange.default <- function(
   if (verbose) { toc() }
   
   tic("FastFoldChange.default FastPerformFC")
-  fc.results <- FastPerformFC(data, clusters,
+  
+  PerformFCFunc <- if (is(data, 'sparseMatrix'))  {
+    FastPerformSparseFC
+  } else {
+    FastPerformFC
+  }
+
+  fc.results <- PerformFCFunc(data, clusters,
     features_as_rows = TRUE,
     calc_percents = TRUE, fc_name = fc.name, 
     use_expm1 = expm1.use, min_threshold = 0.0, 
@@ -908,6 +922,8 @@ FastFoldChange.Assay <- function(
 #' @concept differential_expression
 #' @importFrom Seurat Embeddings
 #' @importFrom Seurat Idents
+#'
+#'
 #' @name FastFoldChange
 #' @export
 #' @method FastFoldChange DimReduc
@@ -943,7 +959,14 @@ FastFoldChange.DimReduc <- function(
   if (verbose) { toc() }
   tic("FastFoldChange.DimReduc FastPerformFC")
   # Calculate avg difference.  This is just rowMeans.
-  fc.results <- FastPerformFC(data, clusters,
+  
+  PerformFCFunc <- if (is(data, 'sparseMatrix'))  {
+    FastPerformSparseFC
+  } else {
+    FastPerformFC
+  }
+
+  fc.results <- PerformFCFunc(data, clusters,
     features_as_rows = FALSE,
     calc_percents = FALSE, fc_name = fc.name, 
     use_expm1 = FALSE, min_threshold = 0.0, 
@@ -1076,6 +1099,60 @@ FastFoldChange <- function(object, ...) {
   UseMethod(generic = 'FastFoldChange', object = object)
 }
 
+FastPerformSparseFC <- function(data, clusters, 
+  features_as_rows = FALSE,
+  calc_percents = FALSE, 
+  fc_name = NULL, 
+  use_expm1 = FALSE, 
+  min_threshold = 0.0, 
+  use_log = FALSE, 
+  log_base = 2, 
+  use_pseudocount = FALSE,
+  as_dataframe = TRUE,
+  threads = 1) {
+
+  # Calculate fold change incrementally - if data is too big.
+  # print("dims data.use")
+  # print(dim(data))
+  print("PERFORM SPARSE MAT FC")
+
+  if (! is.factor(clusters)) {
+    clusters <- as.factor(clusters)
+  }
+
+  # no need to break up the data - can't deal with larger datasets than have non-zero entries.
+
+  # need to put features into columns.
+  if (features_as_rows == TRUE) {
+    # slice and transpose
+    dd <- fastde::sp_transpose(data)
+  } else {
+    # slice the data
+    dd <- data
+  }
+  # output has features in columns, and clusters in rows
+  fc.results <- ComputeSparseFoldChange(dd, as.integer(clusters),
+    calc_percents = calc_percents, fc_name = fc_name, 
+    use_expm1 = use_expm1, min_threshold = min_threshold, 
+    use_log = use_log, log_base = log_base, use_pseudocount = use_pseudocount, 
+    as_dataframe = as_dataframe,
+    threads = threads)
+  if (as_dataframe == TRUE) {
+    fc.results$cluster <- factor(as.numeric(fc.results$cluster), labels=levels(clusters))
+  } else {
+    # return data the same way we got it
+    if (features_as_rows == TRUE) {
+      fc.results[[fc_name]] <- t(fc.results[[fc_name]])   # put features back in rows
+      if (calc_percents == TRUE) {
+        fc.results$pct.1 <- t(fc.results$pct.1)   # now features are in rows
+        fc.results$pct.2 <- t(fc.results$pct.2)   # now features are in rows
+      }
+    }
+  }
+  return(fc.results)
+}
+
+
 # incrementally perform FoldChange
 FastPerformFC <- function(data, clusters, 
   features_as_rows = FALSE,
@@ -1088,6 +1165,8 @@ FastPerformFC <- function(data, clusters,
   use_pseudocount = FALSE,
   as_dataframe = TRUE, 
   threads = 1) {
+
+  print("PERFORM DENSE MAT FC")
 
   # Calculate fold change incrementally - if data is too big.
   # print("dims data.use")

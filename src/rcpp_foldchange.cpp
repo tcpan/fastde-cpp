@@ -39,6 +39,74 @@ struct clust_info {
   size_t thresh_count;
 };
 
+// compute base info for foldchange.  
+// if expm1 is used, then it's suitable to replace seurat "data" fold change
+// else it is used for "scaled.data" or default action.
+// NOTE this has an extra entry for the total for the whole "in" array.
+template <typename IT, typename IDX, typename LABEL>
+void sparse_foldchange_summary(
+  IT const * in, IDX const * row_ids, size_t const & nz_count,
+  LABEL const * labels, size_t const & count,
+  std::map<LABEL, size_t> const & cl_counts,
+  std::unordered_map<LABEL, clust_info> & sums,
+  IT const & min_thresh = static_cast<IT>(0), 
+  bool const & exponential = false) {
+  sums.clear();  // first is per label sum, second is count above thresh min, third is per label count
+  
+  if (count == 0) return;
+  
+  // ======= first handle the non-zero counts.  also locally track the local cl counts.
+
+  // assign rank and accumulate.
+  clust_info total = { .sum = 0.0, .thresh_count = 0 };
+
+  // initialize.   z_cl_count will have the total number of implicit entries per cluster.
+  std::unordered_map<LABEL, size_t> z_cl_counts;
+  LABEL key;
+  for (auto item : cl_counts) {
+    key = item.first;
+    sums[key] = { .sum = 0.0, .thresh_count = 0 };
+    z_cl_counts[key] = item.second;
+  }
+
+  // iterate over the input and labels.
+  IDX rowid;
+  IT val, vv;
+  for (size_t i = 0; i < nz_count; ++i) {
+    val = in[i];
+    vv = exponential ? std::expm1(val) : val;  // exp(val) - 1.  if val==0, then this return 0.
+    rowid = row_ids[i];
+    key = labels[rowid];
+
+    sums[key].sum += vv;
+    sums[key].thresh_count += (val > min_thresh);
+
+    total.thresh_count += (val > min_thresh);
+    total.sum += vv;
+
+    // count the number of non-zero, then we know the number of zeros per cluster.
+    if (min_thresh < 0.0) {
+      --z_cl_counts[key];
+    }
+  }
+
+  // ========= next deal with zero counts.  this only affects thresh_count, NOT sum.
+  if (min_thresh < 0.0) {   // if min_thresh >= 0.0, then in[i] does not contribute.
+    // obviously val > min_thresh
+    total.thresh_count += count - nz_count;   // add all the implicit (zero) entries.
+
+    for (auto item : cl_counts) {
+      key = item.first;
+      sums[key].thresh_count += z_cl_counts[key];  // add all the implicit (zero) entries for the cluster.
+    }
+
+  }
+
+  // now finally set the total.
+  sums[std::numeric_limits<LABEL>::max()] = total;
+  // Rprintf("%lu %lu %f\n", sums.size(), total.thresh_count, total.sum);
+
+}
 
 // compute base info for foldchange.  
 // if expm1 is used, then it's suitable to replace seurat "data" fold change
@@ -494,6 +562,310 @@ extern SEXP ComputeFoldChange(
   // std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count());
   return(res);
 }
+
+
+//' Fold Change
+//' 
+//' https://stackoverflow.com/questions/38338270/how-to-return-a-named-vecsxp-when-writing-r-extensions
+//' 
+//' @rdname ComputeSparseFoldChange
+//' @param matrix an expression matrix, COLUMN-MAJOR, each row is a sample, each column a sample
+//' @param labels an integer vector, each element indicating the group to which a sample belongs.
+//' @param calc_percents  a boolean to indicate whether to compute percents or not.
+//' @param fc_name column name to use for the fold change results 
+//' @param use_expm1 for "data", use expm1
+//' @param min_threshold minimum threshold to count towards pct.1 and pct.2 percentages.
+//' @param use_log for "data" and default log type, indicate log of the sum is to be used.
+//' @param log_base base for the log
+//' @param use_pseudocount for "data" and default log type, add pseudocount after log.
+//' @param as_dataframe TRUE/FALSE.  TRUE = return a linearized dataframe.  FALSE = return matrices.
+//' @param threads number of threads to use
+//' @return array or dataframe
+//' @name ComputeSparseFoldChange
+//' @export
+// [[Rcpp::export]]
+extern SEXP ComputeSparseFoldChange(
+  SEXP matrix, SEXP labels, SEXP calc_percents, SEXP fc_name, 
+  SEXP use_expm1, SEXP min_threshold, 
+  SEXP use_log, SEXP log_base, SEXP use_pseudocount, 
+  SEXP as_dataframe,
+  SEXP threads) {
+
+  // using Clock = std::chrono::high_resolution_clock;
+  // auto start = Clock::now();
+
+  bool perc = Rf_asLogical(calc_percents);
+  double min_thresh = Rf_asReal(min_threshold);
+  bool _use_expm1 = Rf_asLogical(use_expm1);
+  bool _use_log = Rf_asLogical(use_log);
+  double _log_base = Rf_asReal(log_base);
+  bool _use_pseudocount = Rf_asLogical(use_pseudocount);
+  bool _as_dataframe = Rf_asLogical(as_dataframe);
+
+  int nthreads=Rf_asInteger(threads);
+  if (nthreads < 1) nthreads = 1;
+
+  S4 obj(matrix);
+  SEXP i = obj.slot("i");
+  SEXP p = obj.slot("p");  // ncol + 1
+  SEXP x = obj.slot("x");
+  SEXP dim = obj.slot("Dim");
+  SEXP dimnms = obj.slot("Dimnames");
+  // SEXP rownms = VECTOR_ELT(dimnms, 0);    // samples
+  SEXP features = VECTOR_ELT(dimnms, 1);   // features_names = columnames
+
+  size_t nsamples = INTEGER(dim)[0];   // sample count
+  size_t nfeatures = INTEGER(dim)[1];   // feature/gene count
+  size_t nelem = INTEGER(p)[nfeatures];   // since p is offsets, the ncol+1 entry has the total count.
+  
+  // auto end = Clock::now();
+  // Rprintf("extract params %ld ns\n", 
+  // std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count());
+
+  // start = Clock::now();
+
+  // ========= count number of labels so we can allocate output  run the first one.
+  int *label_ptr=INTEGER(labels);
+  std::map<int, size_t> cl_counts;
+  count_clusters(label_ptr, nsamples, cl_counts);
+  size_t label_count = cl_counts.size();
+  label_ptr = INTEGER(labels);   // reset to start.
+  
+  // end = Clock::now();
+  // Rprintf("count cluster sizes %ld ns\n", 
+  // std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count());
+  
+  // start = Clock::now();
+
+
+  int intlen = snprintf(NULL, 0, "%lu", std::numeric_limits<size_t>::max());
+  char * str = reinterpret_cast<char *>(malloc(intlen + 1));
+  int proc_count = 0;
+
+    // https://stackoverflow.com/questions/23547625/returning-a-data-frame-from-c-to-r
+
+  // GET features.
+  // check if features is null.  if so, make a new one.
+  // https://stackoverflow.com/questions/25172419/how-can-i-get-the-sexptype-of-an-sexp-value
+  if (TYPEOF(features) == NILSXP) {
+    PROTECT(features = Rf_allocVector(STRSXP, nfeatures));
+    ++proc_count;
+    
+    for (size_t j = 0; j < nfeatures; ++j) {
+      // create string and set in clust.
+      sprintf(str, "%lu", j);
+      SET_STRING_ELT(features, j, Rf_mkChar(str));
+      memset(str, 0, intlen + 1);
+    }
+  }
+  // end = Clock::now();
+  // Rprintf("set feature names %ld ns\n", 
+  // std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count());
+
+  // start = Clock::now();
+
+  // ============= alloc output
+  SEXP fc, p1, p2, clust, genenames, res, names, rownames, cls, dimnames;
+  int ncols = 1 + (perc ? 2 : 0) + (_as_dataframe ? 2 : 0);
+  int col_id = 0;
+
+  PROTECT(res = Rf_allocVector(VECSXP, ncols));   // cluster id and gene names are repeated.
+  PROTECT(names = Rf_allocVector(STRSXP, ncols));  // col names
+  proc_count += 2;
+
+  if (_as_dataframe) {
+    PROTECT(clust = Rf_allocVector(INTSXP, label_count * nfeatures));
+    PROTECT(genenames = Rf_allocVector(STRSXP, label_count * nfeatures));
+    PROTECT(fc = Rf_allocVector(REALSXP, label_count * nfeatures));
+    proc_count += 3;
+    if (perc) {
+      PROTECT(p1 = Rf_allocVector(REALSXP, label_count * nfeatures));
+      PROTECT(p2 = Rf_allocVector(REALSXP, label_count * nfeatures)); 
+      proc_count += 2;
+    }
+
+    PROTECT(cls = Rf_allocVector(STRSXP, 1)); // class attribute
+    SET_STRING_ELT(cls, 0, Rf_mkChar("data.frame"));
+    Rf_classgets(res, cls);
+
+    ++proc_count;
+
+  } else {
+    // use clust for column names.
+    PROTECT(clust = Rf_allocVector(STRSXP, label_count));
+    ++proc_count;
+    size_t j = 0;
+    for (auto item : cl_counts) {
+      sprintf(str, "%d", item.first);
+      SET_STRING_ELT(clust, j, Rf_mkChar(str));
+      memset(str, 0, intlen + 1);
+      ++j;
+    }
+    
+    PROTECT(fc = Rf_allocMatrix(REALSXP, label_count, nfeatures));
+    ++proc_count;
+    if (perc) {
+      PROTECT(p1 = Rf_allocMatrix(REALSXP, label_count, nfeatures));
+      PROTECT(p2 = Rf_allocMatrix(REALSXP, label_count, nfeatures)); 
+      proc_count += 2;
+    }
+  }
+
+  // end = Clock::now();
+  // Rprintf("alloc part 1 %ld ns\n", 
+  // std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count());
+
+  // start = Clock::now();
+
+  // set up the output structure.
+  if (_as_dataframe) {
+    PROTECT(rownames = Rf_allocVector(STRSXP, label_count * nfeatures));  // dataframe column names.
+    ++proc_count;
+
+    // make the clusters vector.
+    int * clust_ptr = INTEGER(clust);
+    SEXP * features_ptr = STRING_PTR(features);
+    size_t j = 0;
+    // outer group = features, inner order = cluster
+    for (size_t i = 0; i < nfeatures; ++i) {
+      for (auto item : cl_counts) {
+        // rotate through cluster labels for this feature.        
+        *clust_ptr = item.first;
+        ++clust_ptr;
+
+        // same feature name for the set of cluster
+        SET_STRING_ELT(genenames, j, Rf_duplicate(*features_ptr));
+
+        sprintf(str, "%lu", j);
+        SET_STRING_ELT(rownames, j, Rf_mkChar(str));
+        memset(str, 0, intlen + 1);
+  
+        ++j;
+      }
+      ++features_ptr;
+    }
+
+    SET_VECTOR_ELT(res, col_id, clust);  
+    SET_STRING_ELT(names, col_id, Rf_mkChar("cluster"));
+    ++col_id;
+    SET_VECTOR_ELT(res, col_id, genenames);
+    SET_STRING_ELT(names, col_id, Rf_mkChar("gene"));
+    ++col_id;
+  }
+
+  // end = Clock::now();
+  // Rprintf("alloc part 2 %ld ns\n", 
+  // std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count());
+
+  // start = Clock::now();
+
+  SET_VECTOR_ELT(res, col_id, fc);
+  // convert from STRSXP to CHARSXP
+  SET_STRING_ELT(names, col_id, Rf_mkChar(CHAR(STRING_ELT(fc_name, 0)))); 
+  ++col_id;
+
+  if (perc) {
+    SET_VECTOR_ELT(res, col_id, p1);
+    SET_STRING_ELT(names, col_id, Rf_mkChar("pct.1"));
+    ++col_id;
+    SET_VECTOR_ELT(res, col_id, p2);
+    SET_STRING_ELT(names, col_id, Rf_mkChar("pct.2"));
+    ++col_id;
+  }
+
+  // column names.
+  if (_as_dataframe) {
+    Rf_namesgets(res, names);
+
+    // set row names - NEEDED to print the dataframe!!!
+    Rf_setAttrib(res, R_RowNamesSymbol, rownames);
+  } else {
+    // set list element names.
+    Rf_setAttrib(res, R_NamesSymbol, names);
+
+    PROTECT(dimnames = Rf_allocVector(VECSXP, 2));
+    ++proc_count;
+    SET_VECTOR_ELT(dimnames, 0, clust);  // rows = clusters
+    SET_VECTOR_ELT(dimnames, 1, features);  // columns  = features (genes)
+
+    // https://stackoverflow.com/questions/5709940/r-extension-in-c-setting-matrix-row-column-names
+    Rf_setAttrib(fc, R_DimNamesSymbol, dimnames);
+    if (perc) {
+      Rf_setAttrib(p1, R_DimNamesSymbol, Rf_duplicate(dimnames));
+      Rf_setAttrib(p2, R_DimNamesSymbol, Rf_duplicate(dimnames));
+    }
+
+  }
+
+  // end = Clock::now();
+  // Rprintf("alloc part 3 %ld ns\n", 
+  // std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count());
+  
+  // start = Clock::now();
+
+  // Rprintf("inputsize  r %lu c %lu , output r %lu c %lu \n", nsamples, nfeatures, NROW(res), NCOL(res));
+
+  // double *matColPtr = REAL(matrix); // pointer to the current column of the matrix
+  
+  omp_set_num_threads(nthreads);
+  Rprintf("THREADING: using %d threads\n", nthreads);
+
+  // ======= compute.
+#pragma omp parallel num_threads(nthreads)
+  {
+    
+    int tid = omp_get_thread_num();
+    size_t block = nfeatures / nthreads;
+    size_t rem = nfeatures - nthreads * block;
+    size_t offset = tid * block + (tid > rem ? rem : tid);
+    int nid = tid + 1;
+    size_t end = nid * block + (nid > rem ? rem : nid);
+
+    double *mat_ptr = REAL(x);
+    int * rowid_ptr = INTEGER(i);
+    int * offset_ptr = INTEGER(p);
+    int nz_offset, nz_count;
+    double *fc_ptr = REAL(fc) + offset * label_count;
+    double *p1_ptr = REAL(p1) + offset * label_count;
+    double *p2_ptr = REAL(p2) + offset * label_count;
+    std::unordered_map<int, clust_info> cl_sums;
+
+    for(size_t i=offset; i < end; ++i) {
+      nz_offset = offset_ptr[i];
+      nz_count = offset_ptr[i+1] - nz_offset;
+      sparse_foldchange_summary(mat_ptr + nz_offset, rowid_ptr + nz_offset, nz_count,
+        label_ptr, nsamples, cl_counts, cl_sums, min_thresh, _use_expm1);
+
+      // if percent is required, calc
+      if (perc) {
+        foldchange_percents(cl_counts, cl_sums, nsamples, p1_ptr, p2_ptr);
+        p1_ptr += label_count;
+        p2_ptr += label_count;
+      }
+
+      if (_use_log) {
+        foldchange_logmean(cl_counts, cl_sums, nsamples, fc_ptr, _use_pseudocount, _log_base);
+      } else {
+        foldchange_mean(cl_counts, cl_sums, nsamples, fc_ptr);
+      }
+
+      fc_ptr += label_count;
+    }
+  }
+  // end = Clock::now();
+  // Rprintf("computed %ld ns\n", 
+  // std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count());
+  
+  // start = Clock::now();
+  
+  UNPROTECT(proc_count);
+  free(str);
+  // end = Clock::now();
+  // Rprintf("cleaned up %ld ns\n", 
+  // std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count());
+  return(res);
+}
+
 
 
 //' Filter based on FoldChange

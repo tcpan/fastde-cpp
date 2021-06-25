@@ -24,6 +24,29 @@ ComputeFoldChange <- function(matrix, labels, calc_percents, fc_name, use_expm1,
     .Call('_fastde_ComputeFoldChange', PACKAGE = 'fastde', matrix, labels, calc_percents, fc_name, use_expm1, min_threshold, use_log, log_base, use_pseudocount, as_dataframe, threads)
 }
 
+#' Fold Change
+#' 
+#' https://stackoverflow.com/questions/38338270/how-to-return-a-named-vecsxp-when-writing-r-extensions
+#' 
+#' @rdname ComputeSparseFoldChange
+#' @param matrix an expression matrix, COLUMN-MAJOR, each row is a sample, each column a sample
+#' @param labels an integer vector, each element indicating the group to which a sample belongs.
+#' @param calc_percents  a boolean to indicate whether to compute percents or not.
+#' @param fc_name column name to use for the fold change results 
+#' @param use_expm1 for "data", use expm1
+#' @param min_threshold minimum threshold to count towards pct.1 and pct.2 percentages.
+#' @param use_log for "data" and default log type, indicate log of the sum is to be used.
+#' @param log_base base for the log
+#' @param use_pseudocount for "data" and default log type, add pseudocount after log.
+#' @param as_dataframe TRUE/FALSE.  TRUE = return a linearized dataframe.  FALSE = return matrices.
+#' @param threads number of threads to use
+#' @return array or dataframe
+#' @name ComputeSparseFoldChange
+#' @export
+ComputeSparseFoldChange <- function(matrix, labels, calc_percents, fc_name, use_expm1, min_threshold, use_log, log_base, use_pseudocount, as_dataframe, threads) {
+    .Call('_fastde_ComputeSparseFoldChange', PACKAGE = 'fastde', matrix, labels, calc_percents, fc_name, use_expm1, min_threshold, use_log, log_base, use_pseudocount, as_dataframe, threads)
+}
+
 #' Filter based on FoldChange
 #' 
 #'  https://stackoverflow.com/questions/38338270/how-to-return-a-named-vecsxp-when-writing-r-extensions
