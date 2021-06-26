@@ -280,7 +280,7 @@ void foldchange_logmean(
 //' 
 //' https://stackoverflow.com/questions/38338270/how-to-return-a-named-vecsxp-when-writing-r-extensions
 //' 
-//' @rdname denseFoldChange
+//' @rdname ComputeFoldChange
 //' @param matrix an expression matrix, COLUMN-MAJOR, each row is a sample, each column a sample
 //' @param labels an integer vector, each element indicating the group to which a sample belongs.
 //' @param calc_percents  a boolean to indicate whether to compute percents or not.
@@ -293,7 +293,7 @@ void foldchange_logmean(
 //' @param as_dataframe TRUE/FALSE.  TRUE = return a linearized dataframe.  FALSE = return matrices.
 //' @param threads number of threads to use
 //' @return array or dataframe
-//' @name denseFoldChange
+//' @name ComputeFoldChange
 //' @export
 // [[Rcpp::export]]
 extern SEXP ComputeFoldChange(

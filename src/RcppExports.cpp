@@ -94,6 +94,22 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// sparsewmwfast
+extern SEXP sparsewmwfast(SEXP matrix, SEXP labels, SEXP rtype, SEXP continuity_correction, SEXP as_dataframe, SEXP threads);
+RcppExport SEXP _fastde_sparsewmwfast(SEXP matrixSEXP, SEXP labelsSEXP, SEXP rtypeSEXP, SEXP continuity_correctionSEXP, SEXP as_dataframeSEXP, SEXP threadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type matrix(matrixSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type labels(labelsSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type rtype(rtypeSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type continuity_correction(continuity_correctionSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type as_dataframe(as_dataframeSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type threads(threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(sparsewmwfast(matrix, labels, rtype, continuity_correction, as_dataframe, threads));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_fastde_ComputeFoldChange", (DL_FUNC) &_fastde_ComputeFoldChange, 11},
@@ -101,6 +117,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fastde_FilterFoldChange", (DL_FUNC) &_fastde_FilterFoldChange, 10},
     {"_fastde_sp_transpose", (DL_FUNC) &_fastde_sp_transpose, 1},
     {"_fastde_wmwfast", (DL_FUNC) &_fastde_wmwfast, 6},
+    {"_fastde_sparsewmwfast", (DL_FUNC) &_fastde_sparsewmwfast, 6},
     {NULL, NULL, 0}
 };
 

@@ -6,13 +6,15 @@ library(fastde)
 
 library(tictoc)
 
+library(Matrix)
+
 # read input
-input <- h5read("/home/tpan/build/wave/input.h5", "array/block0_values")
 labels <- as.vector(h5read("/home/tpan/build/wave/labels.h5", "array/block0_values"))
 genenames <- h5read("/home/tpan/build/wave/input.h5", "array/axis1")
 samplenames <- h5read("/home/tpan/build/wave/input.h5", "array/axis0")
 wilcox <- h5read("/home/tpan/build/wave/test-wilcox.h5", "array/block0_values")
 
+input <- rsparsematrix(length(samplenames), length(genenames), 0.1)
 
 colnames(input) <- genenames
 rownames(input) <- samplenames
@@ -37,7 +39,7 @@ cat(sprintf("Labels unique: %d \n", length(L)))
 tic("fastde")
 # time and run BioQC
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
-fastdewilcox <- fastde::wmwfast(input, labels, rtype=as.integer(2), 
+fastdewilcox <- fastde::wmwfast(as.matrix(input), labels, rtype=as.integer(2), 
     continuity_correction=TRUE, as_dataframe = FALSE, threads = as.integer(4))
 toc()
 
@@ -45,7 +47,7 @@ toc()
 tic("fastde_df")
 # time and run BioQC
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
-fastdewilcox_df <- fastde::wmwfast(input, labels, rtype=as.integer(2), 
+fastdewilcox_df <- fastde::wmwfast(as.matrix(input), labels, rtype=as.integer(2), 
     continuity_correction=TRUE, as_dataframe = TRUE, threads = as.integer(4))
 toc()
 
@@ -64,7 +66,7 @@ for ( c in L ) {
     inds[[c]] <- labels %in% c
 }
 # cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
-BioQCwilcox2 <- BioQC::wmwTest(input, inds, valType = "p.two.sided")
+BioQCwilcox2 <- BioQC::wmwTest(as.matrix(input), inds, valType = "p.two.sided")
 toc()
 
 
@@ -219,4 +221,76 @@ res = Limmawilcox - fastdewilcox
 residual = sqrt(mean(res * res))
 
 cat(sprintf("Limma vs fastde residual = %f\n", residual))
+
+
+
+#==================
+
+
+tic("fastde")
+# time and run BioQC
+cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
+fastdewilcox <- fastde::sparsewmwfast(input, labels, rtype=as.integer(2), 
+    continuity_correction=TRUE, as_dataframe = FALSE, threads = as.integer(4))
+toc()
+
+
+tic("fastde_df")
+# time and run BioQC
+cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
+fastdewilcox_df <- fastde::sparsewmwfast(input, labels, rtype=as.integer(2), 
+    continuity_correction=TRUE, as_dataframe = TRUE, threads = as.integer(4))
+toc()
+
+print(fastdewilcox_df)
+# fastdewilcox_df$p_val
+# fastdewilcox_df$cluster
+# fastdewilcox_df$genes
+
+
+
+
+
+
+
+fastdewilcox[, 1]
+BioQCwilcox2[, 1]
+Limmawilcox[, 1]
+Rwilcox[, 1]
+
+fastdewilcox[1, ]
+BioQCwilcox2[1, ]
+Limmawilcox[1, ]
+Rwilcox[1, ]
+
+
+## compare by calculating the residuals.
+res = Rwilcox - fastdewilcox
+residual = sqrt(mean(res * res))
+
+cat(sprintf("R naive vs fastde residual tail = %f\n", residual))
+
+res = BioQCwilcox2[, 0:5] - fastdewilcox[, 0:5]
+residual = sqrt(mean(res * res))
+
+cat(sprintf("BioQC vs fastde residual = %f\n", residual))
+
+# res = BioQCwilcox2[, 0:5] - Rwilcox[, 0:5]
+# residual = sqrt(mean(res * res))
+
+# cat(sprintf("BioQC vs R naive residual = %f\n", residual))
+
+
+# res = Limmawilcox - Rwilcox
+# residual = sqrt(mean(res * res))
+
+# cat(sprintf("Limma vs R naive residual = %f\n", residual))
+
+res = Limmawilcox - fastdewilcox
+residual = sqrt(mean(res * res))
+
+cat(sprintf("Limma vs fastde residual = %f\n", residual))
+
+
+
 
