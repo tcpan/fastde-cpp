@@ -1,28 +1,51 @@
 library(Seurat)
-
 library(rhdf5)
-
 library(fastde)   # loading library can take a while (3 s) if not preloaded here.
-
 library(tictoc)
-
 library(Matrix)
 
-tic("read")
+comparemat <- function(name, A, B) {
+    diff <- A - B
+    maxdiff <- max(diff)
+    mindiff <- min(diff)
+    mediandiff <- median(diff)
+    meandiff <- mean(diff * diff)
+    stdevdiff <- sd(diff * diff)
+    cat(sprintf("%s : diff range [%f, %f], median %f, mean %f, sd %f\n", 
+        name, mindiff, maxdiff, mediandiff, meandiff, stdevdiff))
+}
 
-# read input
-samplenames <- h5read("/home/tpan/build/wave/input.h5", "array/axis0")
-genenames <- h5read("/home/tpan/build/wave/input.h5", "array/axis1")
+# tic("read")
 
-input <- rsparsematrix(length(samplenames), length(genenames), 0.1)
+# # read input
+# samplenames <- h5read("/home/tpan/build/wave/input.h5", "array/axis0")
+# genenames <- h5read("/home/tpan/build/wave/input.h5", "array/axis1")
 
-labels <- as.vector(h5read("/home/tpan/build/wave/labels.h5", "array/block0_values"))
+# input <- rsparsematrix(length(samplenames), length(genenames), 0.1)
 
+# labels <- as.vector(h5read("/home/tpan/build/wave/labels.h5", "array/block0_values"))
+
+# colnames(input) <- genenames
+# rownames(input) <- samplenames
+# toc()
+
+tic("generate")
+# max is 2B.
+ncols = 10  # features
+nrows = 200000  # samples
+nclusters = 30
+
+clusters = 1:nclusters
+labels <- sample(clusters, nrows, replace = TRUE)
+
+input <- rsparsematrix(nrows, ncols, 0.05)
+
+samplenames <- paste(1:nrows);
+genenames <- paste(1:ncols);
 colnames(input) <- genenames
 rownames(input) <- samplenames
-
-
 toc()
+
 
 tic("get unique labels")
 # count number of labels
@@ -36,6 +59,54 @@ L <- unique(sort(labels))
 cat(sprintf("Labels unique: %d \n", length(L)))
 
 toc()
+
+
+
+# time and run wilcox.test
+tic("Seurat builtin")
+
+x <- t(as.matrix(input))
+colnames(x) <- samplenames
+rownames(x) <- genenames
+
+seuratfc <- matrix(c(0), ncol = ncol(input), nrow = length(L) )
+seuratperc1 <- matrix(c(0), ncol = ncol(input), nrow = length(L) )
+seuratperc2 <- matrix(c(0), ncol = ncol(input), nrow = length(L) )
+cat(sprintf("dim seuratfc %d %d\n", dim(seuratfc)[1], dim(seuratfc)[2]))
+
+rownames(seuratfc) <- L
+rownames(seuratperc1) <- L
+rownames(seuratperc2) <- L
+
+for ( c in L ) {
+    cells.1 <- which(labels %in% c)
+    cells.2 <- which(! (labels %in% c))
+
+    cat(sprintf("cells.1 %d. cells.2 %d\n", length(cells.1), length(cells.2)))
+
+    v <- Seurat::FoldChange(x, cells.1, cells.2, mean.fxn=rowMeans, fc.name="fc")
+    # cat(colnames(v))
+    # cat(sprintf(" size %d x %d, cluster %d\n", dim(v)[1], dim(v)[2], c))
+    # cat(sprintf(" output %d %f, %f\n", length(as.vector(v$fc)), as.vector(v$fc)[11], v[c,11]))
+
+    # cat(sprintf("R wilcox %f\n", v))
+    seuratfc[c, ] <- as.vector(v$fc)
+    seuratperc1[c, ] <- as.vector(v$pct.1)
+    seuratperc2[c, ] <- as.vector(v$pct.2)
+
+    # seuratfc
+
+}
+toc()
+
+# seuratfc
+# seuratperc1[, 1]
+# seuratperc2[, 1]
+
+
+
+
+
 
 tic("fastde df")
 # time and run BioQC
@@ -65,72 +136,19 @@ fastdefc_pct2_sorted = fastdefc$pct.2[ord, ]
 #fastdefc
 toc()
 
-fastdefcsorted
+# fastdefcsorted
 # fastdefc$pct.1[, 1]
 # fastdefc$pct.2[, 1]
-
 
 
 # print(fastdefc_df)
 
 
-# time and run wilcox.test
-tic("Seurat builtin")
-
-x <- t(as.matrix(input))
-
-colnames(x) <- samplenames
-rownames(x) <- genenames
-
-seuratfc <- matrix(c(0), ncol = ncol(input), nrow = length(L) )
-seuratperc1 <- matrix(c(0), ncol = ncol(input), nrow = length(L) )
-seuratperc2 <- matrix(c(0), ncol = ncol(input), nrow = length(L) )
-cat(sprintf("dim seuratfc %d %d\n", dim(seuratfc)[1], dim(seuratfc)[2]))
-
-
-for ( c in L ) {
-    cells.1 <- which(labels %in% c)
-    cells.2 <- which(! (labels %in% c))
-
-    cat(sprintf("cells.1 %d. cells.2 %d\n", length(cells.1), length(cells.2)))
-
-    v <- Seurat::FoldChange(x, cells.1, cells.2, mean.fxn=rowMeans, fc.name="fc")
-    # cat(colnames(v))
-    # cat(sprintf(" size %d x %d, cluster %d\n", dim(v)[1], dim(v)[2], c))
-    # cat(sprintf(" output %d %f, %f\n", length(as.vector(v$fc)), as.vector(v$fc)[11], v[c,11]))
-
-    # cat(sprintf("R wilcox %f\n", v))
-    seuratfc[c, ] <- as.vector(v$fc)
-    seuratperc1[c, ] <- as.vector(v$pct.1)
-    seuratperc2[c, ] <- as.vector(v$pct.2)
-
-    # seuratfc
-
-}
-toc()
-
-seuratfc
-# seuratperc1[, 1]
-# seuratperc2[, 1]
-
-
 ## compare by calculating the residuals.
-res = seuratfc - fastdefcsorted
-residual = sqrt(mean(res * res))
 
-cat(sprintf("R naive vs fastde residual fc = %f\n", residual))
-
-
-res = seuratperc1 - fastdefc_pct1_sorted
-residual = sqrt(mean(res * res))
-
-cat(sprintf("R naive vs fastde residual pct.1 = %f\n", residual))
-
-
-res = seuratperc2 - fastdefc_pct2_sorted
-residual = sqrt(mean(res * res))
-
-cat(sprintf("R naive vs fastde residual pct.2 = %f\n", residual))
+comparemat("R vs fastde fc", seuratfc, fastdefcsorted)
+comparemat("R vs fastde pct1", seuratperc1, fastdefc_pct1_sorted)
+comparemat("R vs fastde pct2", seuratperc2, fastdefc_pct2_sorted)
 
 
 
@@ -164,7 +182,7 @@ fastdefc_pct2_sorted = fastdefc$pct.2[ord, ]
 #fastdefc
 toc()
 
-fastdefcsorted
+# fastdefcsorted
 # fastdefc$pct.1[, 1]
 # fastdefc$pct.2[, 1]
 
@@ -174,23 +192,9 @@ fastdefcsorted
 
 
 
-
-
 ## compare by calculating the residuals.
-res = seuratfc - fastdefcsorted
-residual = sqrt(mean(res * res))
 
-cat(sprintf("R naive vs fastde residual fc = %f\n", residual))
-
-
-res = seuratperc1 - fastdefc_pct1_sorted
-residual = sqrt(mean(res * res))
-
-cat(sprintf("R naive vs fastde residual pct.1 = %f\n", residual))
-
-
-res = seuratperc2 - fastdefc_pct2_sorted
-residual = sqrt(mean(res * res))
-
-cat(sprintf("R naive vs fastde residual pct.2 = %f\n", residual))
+comparemat("R vs sparse fastde fc", seuratfc, fastdefcsorted)
+comparemat("R vs sparse fastde pct1", seuratperc1, fastdefc_pct1_sorted)
+comparemat("R vs sparse fastde pct2", seuratperc2, fastdefc_pct2_sorted)
 
