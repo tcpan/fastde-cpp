@@ -115,6 +115,7 @@ void sparse_foldchange_summary(
 template <typename IT, typename LABEL>
 void dense_foldchange_summary(
   IT const * in, LABEL const * labels, size_t const & count,
+  std::map<LABEL, size_t> const & cl_counts,
   std::unordered_map<LABEL, clust_info> & sums,
   IT const & min_thresh = static_cast<IT>(0), 
   bool const & exponential = false) {
@@ -125,36 +126,23 @@ void dense_foldchange_summary(
   // assign rank and accumulate.
   clust_info total = { .sum = 0.0, .thresh_count = 0 };
 
+  for (auto item : cl_counts) {
+    sums[item.first] = { .sum = 0.0, .thresh_count = 0 };
+  }
+
   LABEL key;
   IT val, vv;
   // iterate over the input and labels.
-  if (exponential) {
-    for (size_t i = 0; i < count; ++i) {
-      key = labels[i];
-      val = in[i];
-      vv = std::expm1(val);
+  for (size_t i = 0; i < count; ++i) {
+    key = labels[i];
+    val = in[i];
+    vv = exponential ? std::expm1(val) : val;
 
-      if (sums.count(key) == 0) sums[key] = { .sum=vv, .thresh_count = (val > min_thresh) };
-      else {
-          sums[key].sum += vv;
-          sums[key].thresh_count += (val > min_thresh);
-      }  
-      total.thresh_count += (val > min_thresh);
-      total.sum += vv;
-    }
-  } else {
-    for (size_t i = 0; i < count; ++i) {
-      key = labels[i];
-      val = in[i];
+    sums[key].sum += vv;
+    sums[key].thresh_count += (val > min_thresh);
 
-      if (sums.count(key) == 0) sums[key] = { .sum=val, .thresh_count = (val > min_thresh) };
-      else {
-          sums[key].sum += val;
-          sums[key].thresh_count += (val > min_thresh);
-      }  
-      total.thresh_count += (val > min_thresh);
-      total.sum += val;
-    }
+    total.thresh_count += (val > min_thresh);
+    total.sum += vv;
   }
   sums[std::numeric_limits<LABEL>::max()] = total;
   // Rprintf("%lu %lu %f\n", sums.size(), total.thresh_count, total.sum);
@@ -530,7 +518,7 @@ extern SEXP ComputeFoldChange(
     std::unordered_map<int, clust_info> cl_sums;
 
     for(size_t i=offset; i < end; ++i) {
-      dense_foldchange_summary(mat_ptr, label_ptr, nsamples, cl_sums, min_thresh, _use_expm1);
+      dense_foldchange_summary(mat_ptr, label_ptr, nsamples, cl_counts, cl_sums, min_thresh, _use_expm1);
 
       // if percent is required, calc
       if (perc) {

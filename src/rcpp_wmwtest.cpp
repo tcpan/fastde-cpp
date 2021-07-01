@@ -34,78 +34,34 @@ using namespace Rcpp;
 
 #include "common.hpp"
 
-// ids points to start of the column's positive element row ids
-// x  points to the start fo the columns positive element values
-// count is hte number of positive elements in the column.
-template <typename IT, typename IDX, typename LABEL>
-void sparse_wmw_summary(IT const * in, IDX const * ids, size_t const & nz_count, 
-  LABEL const * labels, size_t const & count, 
+
+template <typename IT, typename LABEL>
+void sparse_sum_rank(std::vector<std::pair<IT, LABEL>> const & temp, 
+  size_t const & count,
   std::map<LABEL, size_t> const & cl_counts,
-  std::unordered_map<LABEL, size_t> & rank_sums, double & tie_sum) {
-  
+  std::unordered_map<LABEL, size_t> const & z_cl_counts,
+  std::unordered_map<LABEL, size_t> & rank_sums,
+  double & tie_sum
+) {
   rank_sums.clear();
   tie_sum = 0.0;
 
-  // tuplize in and labels.
-  if (count == 0) return;
+  size_t nzc = temp.size();
 
-  assert((count < 20) && "ERROR: count is too small (< 20) for a normal approximation\n");
-  // if (count < 100) {
-  //     printf("WARNING: count is small for a normal approximation: %ld\n", count);
-  // }
-
-  // initialize ranksums, also need per cluster zero counts.
-  std::unordered_map<LABEL, size_t> z_cl_counts;
   LABEL key;
   for (auto item : cl_counts) {
     key = item.first;
     rank_sums[key] = 0;
-    z_cl_counts[key] = item.second;
   }
-
-  // comparator.
-  auto first_less = 
-    [](std::pair<IT, LABEL> const & a, std::pair<IT, LABEL> const & b){
-      return a.first < b.first;
-    };
-
-  // ============== populate the sort structure and Sort ONLY NON-ZERO ENTRIES.  if any input is actually 0.0, skip
-  std::vector<std::pair<IT, LABEL>> temp;
-  temp.reserve(nz_count);
-  for (size_t i = 0; i < nz_count; ++i) {
-    // EXCLUDE values with 0, as they would and should tie with the elements not present.
-    if (in[i] != static_cast<IT>(0)) {
-      key = labels[ids[i]];
-      temp.emplace_back(in[i], key);
-      --z_cl_counts[key];   // get the zero counts by subtracting non-zero entries
-    }  
-  }
-  size_t nzc = temp.size();
-  // sort by label...
-  std::sort(temp.begin(), temp.end(), first_less);
-
-  // to handle ties, we need 0.5.  here is an approach:  
-  // walk once from front to add rank, and once from back and add rank.
-  //  when ties, forward walk uses the starting rank, reverse walk uses the end rank
-  //  each sum /2 would give correct rank
-  //    at end of tie, reset to use array index as rank.
-  // alternative is likely not better:  
-  //    any tie detection would need 1x iteration.  
-  //    each tie would need another pass to get median so may break prefetching.  ties common?
-  //    should minimize writes in the big array as well.
-
-
-  // ** NEED TO SEPARATELY HANDLE ZEROS.  
-  //    note that ALL ZEROS are tied for all elements.
-
-  // == local zero crossing in the sorted list (temp), 
-  //   then process 2 halves separately.
 
   double tie;
 
   // ---- below zero, forward walk
   std::pair<IT, LABEL> zero = {0, 0};
-  auto lower = std::lower_bound(temp.begin(), temp.end(), zero, first_less);
+  auto lower = std::lower_bound(temp.begin(), temp.end(), zero,
+    [](std::pair<IT, LABEL> const & a, std::pair<IT, LABEL> const & b){
+      return a.first < b.first;
+    });
   // init loop.
   auto start = temp.begin();
   size_t rank = 0;
@@ -216,6 +172,130 @@ void sparse_wmw_summary(IT const * in, IDX const * ids, size_t const & nz_count,
 
 }
 
+// ids points to start of the column's positive element row ids
+// x  points to the start fo the columns positive element values
+// count is hte number of positive elements in the column.
+template <typename IT, typename IDX, typename LABEL>
+void sparse_wmw_summary(IT const * in, IDX const * ids, size_t const & nz_count, 
+  LABEL const * labels, size_t const & count, 
+  std::map<LABEL, size_t> const & cl_counts,
+  std::unordered_map<LABEL, size_t> & rank_sums, double & tie_sum) {
+  
+  rank_sums.clear();
+  tie_sum = 0.0;
+
+  // tuplize in and labels.
+  if (count == 0) return;
+  assert((count < 20) && "ERROR: count is too small (< 20) for a normal approximation\n");
+  // if (count < 100) {
+  //     printf("WARNING: count is small for a normal approximation: %ld\n", count);
+  // }
+
+  // initialize ranksums, also need per cluster zero counts.
+  std::unordered_map<LABEL, size_t> z_cl_counts;
+  LABEL key;
+  for (auto item : cl_counts) {
+    z_cl_counts[item.first] = item.second;
+  }
+
+  // comparator.
+  // auto first_less = 
+  //   [](std::pair<IT, LABEL> const & a, std::pair<IT, LABEL> const & b){
+  //     return a.first < b.first;
+  //     return (a.first == b.first) ? (a.second < b.second) : (a.first < b.first);
+
+  //   };
+
+  // ============== populate the sort structure and Sort ONLY NON-ZERO ENTRIES.  if any input is actually 0.0, skip
+  std::vector<std::pair<IT, LABEL>> temp;
+  temp.reserve(nz_count);
+  for (size_t i = 0; i < nz_count; ++i) {
+    // EXCLUDE values with 0, as they would and should tie with the elements not present.
+    if (in[i] != static_cast<IT>(0)) {
+      key = labels[ids[i]];
+      temp.emplace_back(in[i], key);
+      --z_cl_counts[key];   // get the zero counts by subtracting non-zero entries
+    }  
+  }
+  // sort by label...
+  std::sort(temp.begin(), temp.end(), 
+    [](std::pair<IT, LABEL> const & a, std::pair<IT, LABEL> const & b){
+      return (a.first == b.first) ? (a.second < b.second) : (a.first < b.first);
+    });
+
+  // to handle ties, we need 0.5.  here is an approach:  
+  // walk once from front to add rank, and once from back and add rank.
+  //  when ties, forward walk uses the starting rank, reverse walk uses the end rank
+  //  each sum /2 would give correct rank
+  //    at end of tie, reset to use array index as rank.
+  // alternative is likely not better:  
+  //    any tie detection would need 1x iteration.  
+  //    each tie would need another pass to get median so may break prefetching.  ties common?
+  //    should minimize writes in the big array as well.
+
+
+  // ** NEED TO SEPARATELY HANDLE ZEROS.  
+  //    note that ALL ZEROS are tied for all elements.
+
+  // == local zero crossing in the sorted list (temp), 
+  //   then process 2 halves separately.
+  sparse_sum_rank(temp, count, cl_counts, z_cl_counts, rank_sums, tie_sum);
+}
+
+
+// rank_sums output:  map cluster to rank_sum.
+template <typename IT, typename LABEL>
+void dense_wmw_summary2(
+  IT const * in, LABEL const * labels, size_t const & count,
+  std::map<LABEL, size_t> const & cl_counts,
+  std::unordered_map<LABEL, size_t> & rank_sums, double & tie_sum) {
+
+  // tuplize in and labels.
+  rank_sums.clear();
+  tie_sum = 0.0;
+
+  if (count == 0) return;
+  assert((count < 20) && "ERROR: count is too small (< 20) for a normal approximation\n");
+
+  std::unordered_map<LABEL, size_t> z_cl_counts;
+  LABEL key;
+  for (auto item : cl_counts) {
+    z_cl_counts[item.first] = item.second;
+  }
+
+
+  // ============== populate the sort structure and Sort
+  std::vector<std::pair<IT, LABEL>> temp;
+  temp.reserve(count);
+  for (size_t i = 0; i < count; ++i) {
+    // EXCLUDE values with 0, as they would and should tie with the elements not present.
+    if (in[i] != static_cast<IT>(0)) {
+      key = labels[i];
+      temp.emplace_back(in[i], key);
+      --z_cl_counts[key];   // get the zero counts by subtracting non-zero entries
+    }  
+  }
+
+  // sort by value...
+  std::sort(temp.begin(), temp.end(), 
+    [](std::pair<IT, LABEL> const & a, std::pair<IT, LABEL> const & b){
+      return (a.first == b.first) ? (a.second < b.second) : (a.first < b.first);
+  });
+
+  // assign rank and accumulate count and rank
+
+  // to handle ties, we need 0.5.  To make comparison easier and not float based, double the rank value here and divide later.
+  // actually, we may need to have median of the tie ranks.
+  // here is an approach:  keep undoubled rank, walk once from front, and once from back.  if ties, do not change rank until value changes.  each sum /2 would give correct rank
+  //    at end of tie, reset to use array index as rank.
+  // any tie detection would need 1x iteration.   each tie would need another pass to get median so may break prefetching, but this may not be common?
+  // should minimize writes in the big array as well.
+
+  sparse_sum_rank(temp, count, cl_counts, z_cl_counts, rank_sums, tie_sum);
+
+}
+
+
 // rank_sums output:  map cluster to rank_sum.
 template <typename IT, typename LABEL>
 void dense_wmw_summary(
@@ -237,7 +317,7 @@ void dense_wmw_summary(
   // sort by value...
   std::sort(temp.begin(), temp.end(), 
     [](std::pair<IT, LABEL> const & a, std::pair<IT, LABEL> const & b){
-      return a.first < b.first;
+      return (a.first == b.first) ? (a.second < b.second) : (a.first < b.first);
   });
 
   // assign rank and accumulate count and rank
@@ -346,10 +426,8 @@ void wmw(
       // use erfc function  This is 2-tailed.
       if (test_type == 2)  // 2 sided
           out[i] = erfc( z * M_SQRT1_2 );   // this is correct.
-      else if (test_type == 1)   // less
+      else if ((test_type == 1) || (test_type == 0))  // greater or less - U is changed, thus z is changed.  still calculating 1-CDF = survival
           out[i] = 1.0 - 0.5 * erfc( -z * M_SQRT1_2 );
-      else if (test_type == 0)   // greater
-          out[i] = 1.0 - 0.5 * erfc( -z * M_SQRT1_2 );  // this is 1-CDF = survival function
       else
           out[i] = std::min(U1, U2);
       ++i;
@@ -545,7 +623,7 @@ extern SEXP wmwfast(
     for(size_t i=offset; i < end; ++i) {
       // directly compute matrix and res pointers.
       // Rprintf("thread %d processing feature %d\n", omp_get_thread_num(), i);
-      dense_wmw_summary(matptr, label_ptr, nsamples, rank_sums, tie_sum);
+      dense_wmw_summary2(matptr, label_ptr, nsamples, cl_counts, rank_sums, tie_sum);
       wmw(cl_counts, rank_sums, tie_sum, nsamples, pvptr, type, continuity);
       matptr += nsamples;
       pvptr += label_count;
