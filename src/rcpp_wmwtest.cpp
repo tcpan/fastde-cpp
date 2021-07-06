@@ -689,7 +689,7 @@ extern SEXP sparsewmwfast(
   size_t nsamples = INTEGER(dim)[0];   // sample count
   size_t nfeatures = INTEGER(dim)[1];   // feature/gene count
   size_t nelem = INTEGER(p)[nfeatures];   // since p is offsets, the ncol+1 entry has the total count.
-  
+  Rprintf("Sparse DIM: samples %lu x features %lu, non-zeros %lu\n", nsamples, nfeatures, nelem); 
 
   // get the number of unique labels.
   int *label_ptr=INTEGER(labels);
