@@ -1153,7 +1153,7 @@ FastPerformSparseFC <- function(data, clusters,
 }
 
 
-# incrementally perform FoldChange
+# incrementally perform FoldChange.  DENSE ONLY
 FastPerformFC <- function(data, clusters, 
   features_as_rows = FALSE,
   calc_percents = FALSE, 
@@ -1203,10 +1203,10 @@ FastPerformFC <- function(data, clusters,
   # need to put features into columns.
   if (features_as_rows == TRUE) {
     # slice and transpose
-    dd <- t(as.matrix(data[1:block_size, ]))
+    dd <- t(data[1:block_size, ])
   } else {
     # slice the data
-    dd <- as.matrix(data[, 1:block_size])
+    dd <- data[, 1:block_size]
   }
   # output has features in columns, and clusters in rows
   fc.results <- ComputeFoldChange(dd, as.integer(clusters),
@@ -1236,10 +1236,10 @@ FastPerformFC <- function(data, clusters,
       # slice the data
       if (features_as_rows == TRUE) {
         # slice and transpose
-        dd <- t(as.matrix(data[start:end, ]))
+        dd <- t(data[start:end, ])
       } else {
         # slice the data
-        dd <- as.matrix(data[, start:end])
+        dd <- data[, start:end]
       }
 
       fcr <- ComputeFoldChange(dd, as.integer(clusters),
@@ -1569,10 +1569,10 @@ FastWilcoxDETest <- function(
   # need to put features into columns.
   if (features.as.rows == TRUE) {
     # slice and transpose
-    dd <- t(as.matrix(data.use[1:block_size, ]))
+    dd <- t(data.use[1:block_size, ])
   } else {
     # slice the data
-    dd <- as.matrix(data.use[, 1:block_size])
+    dd <- data.use[, 1:block_size]
   }
   p_val <- wmwfast(dd, as.integer(cells.clusters), rtype = as.integer(2), 
           continuity_correction = TRUE,
@@ -1595,10 +1595,10 @@ FastWilcoxDETest <- function(
       # slice the data
       if (features.as.rows == TRUE) {
         # slice and transpose
-        dd <- t(as.matrix(data.use[start:end, ]))
+        dd <- t(data.use[start:end, ])
       } else {
         # slice the data
-        dd <- as.matrix(data.use[, start:end])
+        dd <- data.use[, start:end]
       }
 
       pv <- wmwfast(dd, as.integer(cells.clusters), rtype = as.integer(2), 
@@ -1734,13 +1734,26 @@ BioQCDETest <- function(
     nblocks <- (nfeatures + block_size - 1) %/% block_size
 
     # need to put features into columns.
-    if (features.as.rows == TRUE) {
-      # slice and transpose
-      dd <- t(as.matrix(data.use[1:block_size, ]))
+    tic("BioQC sparse to dense")
+    if (is(data.use, 'sparseMatrix'))  {
+
+      if (features.as.rows == TRUE) {
+        # slice and transpose
+        dd <- fastde::sp_to_dense(fastde::sp_transpose(data.use[1:block_size, ]))
+      } else {
+        # slice the data
+        dd <- fastde::sp_to_dense(data.use[, 1:block_size])
+      }
     } else {
-      # slice the data
-      dd <- as.matrix(data.use[, 1:block_size])
+      if (features.as.rows == TRUE) {
+        # slice and transpose
+        dd <- t(data.use[1:block_size, ])
+      } else {
+        # slice the data
+        dd <- data.use[, 1:block_size]
+      }
     }
+    toc()
 
     pv <- BioQC::wmwTest(dd, labels, valType = "p.two.sided")
     # return data the same way we got it
@@ -1754,14 +1767,26 @@ BioQCDETest <- function(
         start <- i * block_size + 1
         end <- pmin(nfeatures, (i + 1) * block_size )
         # slice the data
-        if (features.as.rows == TRUE) {
-          # slice and transpose
-          dd <- t(as.matrix(data.use[start:end, ]))
-        } else {
-          # slice the data
-          dd <- as.matrix(data.use[, start:end])
-        }
+        tic("BioQC sparse to dense")
+        if (is(data.use, 'sparseMatrix'))  {
 
+          if (features.as.rows == TRUE) {
+            # slice and transpose
+            dd <- fastde::sp_to_dense(fastde::sp_transpose(data.use[start:end, ]))
+          } else {
+            # slice the data
+            dd <- fastde::sp_to_dense(data.use[, start:end])
+          }
+        } else { # dense matrix
+          if (features.as.rows == TRUE) {
+            # slice and transpose
+            dd <- t(data.use[start:end, ])
+          } else {
+            # slice the data
+            dd <- data.use[, start:end]
+          }
+        }
+        toc()
         pvi <- BioQC::wmwTest(dd, labels, valType = "p.two.sided")
 
         # return data the same way we got it

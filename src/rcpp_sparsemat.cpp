@@ -153,3 +153,112 @@ extern SEXP sp_transpose(SEXP sp_matrix) {
     UNPROTECT(proc_count);
     return tsp_mat;
 }
+
+
+//' R Sparse To Dense Matrix
+//'
+//' This implementation directly constructs the new dense matrix.  
+//'     There is random memory writes.
+//' 
+//' @rdname sp_to_dense
+//' @param sp_matrix a sparse matrix, of the form dgCMatrix
+//' @return matrix dense matrix.
+//' @name sp_to_dense
+//' @export
+// [[Rcpp::export]]
+extern SEXP sp_to_dense(SEXP sp_matrix) {
+
+    // https://www.r-bloggers.com/2020/03/what-is-a-dgcmatrix-object-made-of-sparse-matrix-format-in-r/
+    // ======= decompose the input matrix in CSC format, S4 object with slots:
+    // i :  int, row numbers, 0-based.
+    // p :  int, p[i] is the position offset in x for row i.  i has range [0-r] inclusive.
+    // x :  numeric, values
+    // Dim:  int, 2D, sizes of full matrix
+    // Dimnames:  2D, names.
+    // factors:  ignore.
+    
+    // extract https://stackoverflow.com/questions/29477621/iterate-over-s4-object-slots-rcpp
+    S4 obj(sp_matrix);
+    SEXP i = obj.slot("i");
+    SEXP p = obj.slot("p");  // ncol + 1
+    SEXP x = obj.slot("x");
+    SEXP dim = obj.slot("Dim");
+    SEXP dimnames = obj.slot("Dimnames");
+    SEXP rownms = VECTOR_ELT(dimnames, 0);
+    SEXP colnms = VECTOR_ELT(dimnames, 1);
+    
+    
+    size_t nrow = INTEGER(dim)[0];
+    size_t ncol = INTEGER(dim)[1];
+    size_t nelem = INTEGER(p)[ncol];   // since p is offsets, the ncol+1 entry has the total count.
+
+    Rprintf("Sparse DIM: samples %lu x features %lu, non-zeros %lu\n", ncol, nrow, nelem); 
+
+    // ======= create new output
+    SEXP dense, rnames, cnames, names;
+    int proc_count = 0;
+
+    // use clust for column names.
+    PROTECT(rnames = Rf_allocVector(STRSXP, nrow));
+    ++proc_count;
+    SEXP * rnm_ptr = STRING_PTR(rownms);
+    for (size_t i = 0; i < nrow; ++i) {
+        SET_STRING_ELT(rnames, i, Rf_duplicate(*rnm_ptr));
+
+        ++rnm_ptr;
+    }
+
+    PROTECT(cnames = Rf_allocVector(STRSXP, ncol));
+    ++proc_count;
+    SEXP * cnm_ptr = STRING_PTR(colnms);
+    for (size_t i = 0; i < ncol; ++i) {
+        SET_STRING_ELT(cnames, i, Rf_duplicate(*cnm_ptr));
+
+        ++cnm_ptr;
+    }
+
+
+    PROTECT(dense = Rf_allocMatrix(REALSXP, nrow, ncol));
+    ++proc_count;
+
+    // set col and row names for pv.
+    // https://stackoverflow.com/questions/5709940/r-extension-in-c-setting-matrix-row-column-names
+    PROTECT(names = Rf_allocVector(VECSXP, 2));
+    ++proc_count;
+    SET_VECTOR_ELT(names, 0, rnames);  // rows = clusters
+    SET_VECTOR_ELT(names, 1, cnames);  // columns  = features (genes)
+    Rf_setAttrib(dense, R_DimNamesSymbol, names);
+
+    double * data = REAL(dense);
+    memset(data, 0, ncol * nrow * sizeof(double));
+
+    int * cp = INTEGER(p);
+    int * ri = INTEGER(i);
+    double * xptr = REAL(x);
+    size_t r, offset, o;
+    size_t mx = cp[ncol];
+    size_t c = 0;
+    size_t c_end = cp[1];
+    for (size_t e = 0; e < mx; ++e ) {
+        if (e == c_end ) {
+            ++c;
+            c_end = cp[c + 1];
+            data = REAL(dense) + c * nrow;
+        }
+        data[ri[e]] = xptr[e];
+    }
+    // size_t o_end = cp[0];
+    // for (size_t c = 0; c < ncol; ++c) {
+    //     o = o_end;
+    //     o_end = cp[c + 1];
+    //     data += nrow;
+    //     for (; o < o_end; ++o) {
+    //         r = ri[o];
+    //         data[r] = xptr[o];
+    //     }
+    // }
+
+    UNPROTECT(proc_count);
+    return dense;
+}
+

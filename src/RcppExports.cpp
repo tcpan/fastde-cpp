@@ -78,6 +78,17 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// sp_to_dense
+extern SEXP sp_to_dense(SEXP sp_matrix);
+RcppExport SEXP _fastde_sp_to_dense(SEXP sp_matrixSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type sp_matrix(sp_matrixSEXP);
+    rcpp_result_gen = Rcpp::wrap(sp_to_dense(sp_matrix));
+    return rcpp_result_gen;
+END_RCPP
+}
 // wmwfast
 extern SEXP wmwfast(SEXP matrix, SEXP labels, SEXP rtype, SEXP continuity_correction, SEXP as_dataframe, SEXP threads);
 RcppExport SEXP _fastde_wmwfast(SEXP matrixSEXP, SEXP labelsSEXP, SEXP rtypeSEXP, SEXP continuity_correctionSEXP, SEXP as_dataframeSEXP, SEXP threadsSEXP) {
@@ -116,6 +127,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fastde_ComputeSparseFoldChange", (DL_FUNC) &_fastde_ComputeSparseFoldChange, 11},
     {"_fastde_FilterFoldChange", (DL_FUNC) &_fastde_FilterFoldChange, 10},
     {"_fastde_sp_transpose", (DL_FUNC) &_fastde_sp_transpose, 1},
+    {"_fastde_sp_to_dense", (DL_FUNC) &_fastde_sp_to_dense, 1},
     {"_fastde_wmwfast", (DL_FUNC) &_fastde_wmwfast, 6},
     {"_fastde_sparsewmwfast", (DL_FUNC) &_fastde_sparsewmwfast, 6},
     {NULL, NULL, 0}

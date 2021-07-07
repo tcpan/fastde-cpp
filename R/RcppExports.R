@@ -83,6 +83,20 @@ sp_transpose <- function(sp_matrix) {
     .Call('_fastde_sp_transpose', PACKAGE = 'fastde', sp_matrix)
 }
 
+#' R Sparse To Dense Matrix
+#'
+#' This implementation directly constructs the new dense matrix.  
+#'     There is random memory writes.
+#' 
+#' @rdname sp_to_dense
+#' @param sp_matrix a sparse matrix, of the form dgCMatrix
+#' @return matrix dense matrix.
+#' @name sp_to_dense
+#' @export
+sp_to_dense <- function(sp_matrix) {
+    .Call('_fastde_sp_to_dense', PACKAGE = 'fastde', sp_matrix)
+}
+
 #' Fast Wilcoxon-Mann-Whitney Test for dense matrix
 #'
 #' This implementation uses normal approximation, which works reasonably well if sample size is large (say N>=20)
