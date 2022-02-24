@@ -1,7 +1,6 @@
 #include <Rcpp.h>
 #include <R.h>
 #include <Rdefines.h>
-using namespace Rcpp;
 
 
 /*
@@ -19,6 +18,7 @@ using namespace Rcpp;
 #include <unordered_set>
 #include <vector>
 #include <algorithm>
+#include <type_traits>
 
 // Enable C++11
 // [[Rcpp::plugins(cpp11)]]
@@ -32,7 +32,8 @@ using namespace Rcpp;
 // #define INV_SQRT2 0.70710678118
 // #endif
 
-#include "common.hpp"
+#include "rcpp_cluster_utils.hpp"
+#include "rcpp_data_utils.hpp"
 
 
 template <typename IT, typename LABEL>
@@ -187,9 +188,6 @@ void sparse_wmw_summary(IT const * in, IDX const * ids, size_t const & nz_count,
   // tuplize in and labels.
   if (count == 0) return;
   assert((count < 20) && "ERROR: count is too small (< 20) for a normal approximation\n");
-  // if (count < 100) {
-  //     printf("WARNING: count is small for a normal approximation: %ld\n", count);
-  // }
 
   // initialize ranksums, also need per cluster zero counts.
   std::unordered_map<LABEL, size_t> z_cl_counts;
@@ -370,7 +368,7 @@ void dense_wmw_summary(
 }
 
 
-// types:  0 = greater, 1 = less, 2 = twosided (default), 3 = U
+// types:  0 = less, 1 = greater, 2 = twosided (default), 3 = U
 template <typename LABEL, typename OT>
 void wmw(
   std::map<LABEL, size_t> const & cl_counts, 
@@ -407,9 +405,9 @@ void wmw(
       prod = static_cast<double>(n1 * (count - n1));
       U1 = R - static_cast<double>((n1 * (n1 + 1)) >> 1);
       U2 = prod - U1; 
-      if (test_type == 0)  // greater
+      if (test_type == PVAL_GREATER)  // greater
           U = U1;
-      else if (test_type == 1)   // less
+      else if (test_type == PVAL_LESS)   // less
           U = U2;
       else   // two sided
           U = std::max(U1, U2);
@@ -424,9 +422,9 @@ void wmw(
       // convert to p-value
       // https://stackoverflow.com/questions/2328258/cumulative-normal-distribution-function-in-c-c
       // use erfc function  This is 2-tailed.
-      if (test_type == 2)  // 2 sided
-          out[i] = erfc( z * M_SQRT1_2 );   // this is correct.
-      else if ((test_type == 1) || (test_type == 0))  // greater or less - U is changed, thus z is changed.  still calculating 1-CDF = survival
+      if (test_type == PVAL_TWO_SIDED)  // 2 sided
+          out[i] = erfc( z * M_SQRT1_2 );   // this is correct.  erf is has stdev of 1/sqrt(2), and return prob(-x < X < x). 
+      else if ((test_type == PVAL_LESS) || (test_type == PVAL_GREATER))  // greater or less - U is changed (either U1 or U2), thus z is changed.  still calculating 1-CDF = survival
           out[i] = 1.0 - 0.5 * erfc( -z * M_SQRT1_2 );
       else
           out[i] = std::min(U1, U2);
@@ -446,8 +444,8 @@ void wmw(
 //' @param labels an integer vector, each element indicating the group to which a sample belongs.
 //' @param rtype 
 //' \itemize{
-//' \item{0} : p(greater)
-//' \item{1} : p(less)
+//' \item{0} : p(less)
+//' \item{1} : p(greater)
 //' \item{2} : p(twoSided)
 //' \item{3} : U
 //' }
@@ -649,8 +647,8 @@ extern SEXP wmwfast(
 //' @param labels an integer vector, each element indicating the group to which a sample belongs.
 //' @param rtype 
 //' \itemize{
-//' \item{0} : p(greater)
-//' \item{1} : p(less)
+//' \item{0} : p(less)
+//' \item{1} : p(greater)
 //' \item{2} : p(twoSided)
 //' \item{3} : U
 //' }

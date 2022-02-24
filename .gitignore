@@ -44,3 +44,5 @@ src/*.so
 man/*.Rd
 **.bak
 src/*.rds
+
+.vscode

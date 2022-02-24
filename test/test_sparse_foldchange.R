@@ -31,8 +31,8 @@ comparemat <- function(name, A, B) {
 
 tic("generate")
 # max is 2B.
-ncols = 10  # features
-nrows = 200000  # samples
+ncols = 100  # features
+nrows = 40000  # samples
 nclusters = 30
 
 clusters = 1:nclusters

@@ -5,6 +5,11 @@
 
 using namespace Rcpp;
 
+#ifdef RCPP_USE_GLOBAL_ROSTREAM
+Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
+Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
+#endif
+
 // ComputeFoldChange
 extern SEXP ComputeFoldChange(SEXP matrix, SEXP labels, SEXP calc_percents, SEXP fc_name, SEXP use_expm1, SEXP min_threshold, SEXP use_log, SEXP log_base, SEXP use_pseudocount, SEXP as_dataframe, SEXP threads);
 RcppExport SEXP _fastde_ComputeFoldChange(SEXP matrixSEXP, SEXP labelsSEXP, SEXP calc_percentsSEXP, SEXP fc_nameSEXP, SEXP use_expm1SEXP, SEXP min_thresholdSEXP, SEXP use_logSEXP, SEXP log_baseSEXP, SEXP use_pseudocountSEXP, SEXP as_dataframeSEXP, SEXP threadsSEXP) {
@@ -89,6 +94,38 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// ttest_fast
+extern SEXP ttest_fast(SEXP matrix, SEXP labels, SEXP alternative, SEXP var_equal, SEXP as_dataframe, SEXP threads);
+RcppExport SEXP _fastde_ttest_fast(SEXP matrixSEXP, SEXP labelsSEXP, SEXP alternativeSEXP, SEXP var_equalSEXP, SEXP as_dataframeSEXP, SEXP threadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type matrix(matrixSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type labels(labelsSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type alternative(alternativeSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type var_equal(var_equalSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type as_dataframe(as_dataframeSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type threads(threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(ttest_fast(matrix, labels, alternative, var_equal, as_dataframe, threads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// sparse_ttest_fast
+extern SEXP sparse_ttest_fast(SEXP matrix, SEXP labels, SEXP alternative, SEXP var_equal, SEXP as_dataframe, SEXP threads);
+RcppExport SEXP _fastde_sparse_ttest_fast(SEXP matrixSEXP, SEXP labelsSEXP, SEXP alternativeSEXP, SEXP var_equalSEXP, SEXP as_dataframeSEXP, SEXP threadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type matrix(matrixSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type labels(labelsSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type alternative(alternativeSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type var_equal(var_equalSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type as_dataframe(as_dataframeSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type threads(threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(sparse_ttest_fast(matrix, labels, alternative, var_equal, as_dataframe, threads));
+    return rcpp_result_gen;
+END_RCPP
+}
 // wmwfast
 extern SEXP wmwfast(SEXP matrix, SEXP labels, SEXP rtype, SEXP continuity_correction, SEXP as_dataframe, SEXP threads);
 RcppExport SEXP _fastde_wmwfast(SEXP matrixSEXP, SEXP labelsSEXP, SEXP rtypeSEXP, SEXP continuity_correctionSEXP, SEXP as_dataframeSEXP, SEXP threadsSEXP) {
@@ -128,6 +165,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fastde_FilterFoldChange", (DL_FUNC) &_fastde_FilterFoldChange, 10},
     {"_fastde_sp_transpose", (DL_FUNC) &_fastde_sp_transpose, 1},
     {"_fastde_sp_to_dense", (DL_FUNC) &_fastde_sp_to_dense, 1},
+    {"_fastde_ttest_fast", (DL_FUNC) &_fastde_ttest_fast, 6},
+    {"_fastde_sparse_ttest_fast", (DL_FUNC) &_fastde_sparse_ttest_fast, 6},
     {"_fastde_wmwfast", (DL_FUNC) &_fastde_wmwfast, 6},
     {"_fastde_sparsewmwfast", (DL_FUNC) &_fastde_sparsewmwfast, 6},
     {NULL, NULL, 0}

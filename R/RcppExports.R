@@ -97,6 +97,52 @@ sp_to_dense <- function(sp_matrix) {
     .Call('_fastde_sp_to_dense', PACKAGE = 'fastde', sp_matrix)
 }
 
+#' Fast t-Test for dense matrix
+#'
+#' This implementation uses normal approximation, which works reasonably well if sample size is large (say N>=20)
+#' 
+#' @rdname ttest_fast
+#' @param matrix an expression matrix, COLUMN-MAJOR, each col is a feature, each row a sample
+#' @param labels an integer vector, each element indicating the group to which a sample belongs.
+#' @param alternative 
+#' \itemize{
+#' \item{0} : p(two.sided)
+#' \item{1} : p(less)
+#' \item{2} : p(greater)
+#' }
+#' @param var_equal TRUE/FALSE to indicate the variance is expected to be equal
+#' @param as_dataframe TRUE/FALSE - TRUE returns a dataframe, FALSE returns a matrix
+#' @param threads  number of concurrent threads.
+#' @return array or dataframe.  for each gene/feature, the rows for the clusters are ordered by id.
+#' @name ttest_fast
+#' @export
+ttest_fast <- function(matrix, labels, alternative, var_equal, as_dataframe, threads) {
+    .Call('_fastde_ttest_fast', PACKAGE = 'fastde', matrix, labels, alternative, var_equal, as_dataframe, threads)
+}
+
+#' Fast T-Test for sparse matrix.  2 sample t-test.
+#'
+#' This implementation uses normal approximation, which works reasonably well if sample size is large (say N>=20)
+#' 
+#' @rdname sparse_ttest_fast
+#' @param matrix an expression matrix, COLUMN-MAJOR, each col is a feature, each row a sample
+#' @param labels an integer vector, each element indicating the group to which a sample belongs.
+#' @param alternative 
+#' \itemize{
+#' \item{0} : p(two.sided)
+#' \item{1} : p(less)
+#' \item{2} : p(greater)
+#' }
+#' @param var_equal TRUE/FALSE to indicate the variance is expected to be equal
+#' @param as_dataframe TRUE/FALSE - TRUE returns a dataframe, FALSE returns a matrix
+#' @param threads  number of concurrent threads.
+#' @return array or dataframe.  for each gene/feature, the rows for the clusters are ordered by id.
+#' @name sparse_ttest_fast
+#' @export
+sparse_ttest_fast <- function(matrix, labels, alternative, var_equal, as_dataframe, threads) {
+    .Call('_fastde_sparse_ttest_fast', PACKAGE = 'fastde', matrix, labels, alternative, var_equal, as_dataframe, threads)
+}
+
 #' Fast Wilcoxon-Mann-Whitney Test for dense matrix
 #'
 #' This implementation uses normal approximation, which works reasonably well if sample size is large (say N>=20)
@@ -106,8 +152,8 @@ sp_to_dense <- function(sp_matrix) {
 #' @param labels an integer vector, each element indicating the group to which a sample belongs.
 #' @param rtype 
 #' \itemize{
-#' \item{0} : p(greater)
-#' \item{1} : p(less)
+#' \item{0} : p(less)
+#' \item{1} : p(greater)
 #' \item{2} : p(twoSided)
 #' \item{3} : U
 #' }
@@ -130,8 +176,8 @@ wmwfast <- function(matrix, labels, rtype, continuity_correction, as_dataframe, 
 #' @param labels an integer vector, each element indicating the group to which a sample belongs.
 #' @param rtype 
 #' \itemize{
-#' \item{0} : p(greater)
-#' \item{1} : p(less)
+#' \item{0} : p(less)
+#' \item{1} : p(greater)
 #' \item{2} : p(twoSided)
 #' \item{3} : U
 #' }

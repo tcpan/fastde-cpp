@@ -32,7 +32,7 @@ using namespace Rcpp;
 
 #include <omp.h>
 
-#include "common.hpp"
+#include "rcpp_cluster_utils.hpp"
 
 struct clust_info {
   double sum;
