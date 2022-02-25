@@ -176,9 +176,12 @@ void sparse_sum_rank(std::vector<std::pair<IT, LABEL>> const & temp,
 // ids points to start of the column's positive element row ids
 // x  points to the start fo the columns positive element values
 // count is hte number of positive elements in the column.
-template <typename IT, typename IDX, typename LABEL>
-void sparse_wmw_summary(IT const * in, IDX const * ids, size_t const & nz_count, 
-  LABEL const * labels, size_t const & count, 
+template <typename IT_ITER, typename IDX_ITER, typename LABEL_ITER,
+  typename IT = typename std::iterator_traits<IT_ITER>::value_type,
+  typename IDX = typename std::iterator_traits<IDX_ITER>::value_type,
+  typename LABEL = typename std::iterator_traits<LABEL_ITER>::value_type>
+void sparse_wmw_summary(IT_ITER in, IDX_ITER ids, size_t const & nz_count, 
+  LABEL_ITER labels, size_t const & count, 
   std::map<LABEL, size_t> const & cl_counts,
   std::unordered_map<LABEL, size_t> & rank_sums, double & tie_sum) {
   
@@ -242,9 +245,11 @@ void sparse_wmw_summary(IT const * in, IDX const * ids, size_t const & nz_count,
 
 
 // rank_sums output:  map cluster to rank_sum.
-template <typename IT, typename LABEL>
+template <typename IT_ITER, typename LABEL_ITER,
+  typename IT = typename std::iterator_traits<IT_ITER>::value_type,
+  typename LABEL = typename std::iterator_traits<LABEL_ITER>::value_type>
 void dense_wmw_summary2(
-  IT const * in, LABEL const * labels, size_t const & count,
+  IT_ITER in, LABEL_ITER labels, size_t const & count,
   std::map<LABEL, size_t> const & cl_counts,
   std::unordered_map<LABEL, size_t> & rank_sums, double & tie_sum) {
 
@@ -295,9 +300,11 @@ void dense_wmw_summary2(
 
 
 // rank_sums output:  map cluster to rank_sum.
-template <typename IT, typename LABEL>
+template <typename IT_ITER, typename LABEL_ITER,
+  typename IT = typename std::iterator_traits<IT_ITER>::value_type,
+  typename LABEL = typename std::iterator_traits<LABEL_ITER>::value_type>
 void dense_wmw_summary(
-  IT const * in, LABEL const * labels, size_t const & count, 
+  IT_ITER in, LABEL_ITER labels, size_t const & count, 
   std::unordered_map<LABEL, size_t> & rank_sums, double & tie_sum) {
 
   // tuplize in and labels.
@@ -369,12 +376,13 @@ void dense_wmw_summary(
 
 
 // types:  0 = less, 1 = greater, 2 = twosided (default), 3 = U
-template <typename LABEL, typename OT>
+template <typename LABEL, typename OT_ITER,
+  typename OT = typename std::iterator_traits<OT_ITER>::value_type>
 void wmw(
   std::map<LABEL, size_t> const & cl_counts, 
   std::unordered_map<LABEL, size_t> const & rank_sums, double const & tie_sum,
   size_t const & count,
-  OT * out,
+  OT_ITER out,
   int const & test_type, bool const & continuity) {
   
   // tuplize in and labels.
@@ -660,7 +668,8 @@ extern SEXP wmwfast(
 //' @export
 // [[Rcpp::export]]
 extern SEXP sparsewmwfast(
-    SEXP matrix, SEXP labels, SEXP rtype, 
+    SEXP matrix, SEXP labels, 
+    SEXP rtype, 
     SEXP continuity_correction, 
     SEXP as_dataframe,
     SEXP threads) {
@@ -675,7 +684,7 @@ extern SEXP sparsewmwfast(
   bool _as_dataframe = Rf_asLogical(as_dataframe);
   // Rprintf("here 2\n");
   
-  S4 obj(matrix);
+  Rcpp::S4 obj(matrix);
   SEXP i = obj.slot("i");
   SEXP p = obj.slot("p");  // ncol + 1
   SEXP x = obj.slot("x");
