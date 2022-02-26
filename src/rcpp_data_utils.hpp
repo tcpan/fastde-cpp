@@ -32,12 +32,12 @@ Rcpp::StringVector populate_feature_names(Rcpp::StringVector const & features,
 
 Rcpp::NumericMatrix export_de_to_r_matrix(
     std::vector<double> const & pv,
-    std::vector<int> const & sorted_labels,
+    std::vector<std::pair<int, size_t>> const & sorted_labels,
     Rcpp::StringVector const & features
 );
 
 Rcpp::DataFrame export_de_to_r_dataframe(
     std::vector<double> const & pv,
-    std::vector<int> const & sorted_labels,
+    std::vector<std::pair<int, size_t>> const & sorted_labels,
     Rcpp::StringVector const & features
 );

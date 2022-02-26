@@ -147,7 +147,7 @@ sparse_ttest_fast <- function(matrix, labels, alternative, var_equal, as_datafra
 #'
 #' This implementation uses normal approximation, which works reasonably well if sample size is large (say N>=20)
 #' 
-#' @rdname wmwfast
+#' @rdname wmw_fast
 #' @param matrix an expression matrix, COLUMN-MAJOR, each col is a feature, each row a sample
 #' @param labels an integer vector, each element indicating the group to which a sample belongs.
 #' @param rtype 
@@ -161,17 +161,17 @@ sparse_ttest_fast <- function(matrix, labels, alternative, var_equal, as_datafra
 #' @param as_dataframe TRUE/FALSE - TRUE returns a dataframe, FALSE returns a matrix
 #' @param threads  number of concurrent threads.
 #' @return array or dataframe.  for each gene/feature, the rows for the clusters are ordered by id.
-#' @name wmwfast
+#' @name wmw_fast
 #' @export
-wmwfast <- function(matrix, labels, rtype, continuity_correction, as_dataframe, threads) {
-    .Call('_fastde_wmwfast', PACKAGE = 'fastde', matrix, labels, rtype, continuity_correction, as_dataframe, threads)
+wmw_fast <- function(matrix, labels, rtype, continuity_correction, as_dataframe, threads) {
+    .Call('_fastde_wmw_fast', PACKAGE = 'fastde', matrix, labels, rtype, continuity_correction, as_dataframe, threads)
 }
 
 #' Fast Wilcoxon-Mann-Whitney Test for dense matrix
 #'
 #' This implementation uses normal approximation, which works reasonably well if sample size is large (say N>=20)
 #' 
-#' @rdname sparsewmwfast
+#' @rdname sparse_wmw_fast
 #' @param matrix an expression matrix, COLUMN-MAJOR, each col is a feature, each row a sample
 #' @param labels an integer vector, each element indicating the group to which a sample belongs.
 #' @param rtype 
@@ -185,9 +185,9 @@ wmwfast <- function(matrix, labels, rtype, continuity_correction, as_dataframe, 
 #' @param as_dataframe TRUE/FALSE - TRUE returns a dataframe, FALSE returns a matrix
 #' @param threads  number of concurrent threads.
 #' @return array or dataframe.  for each gene/feature, the rows for the clusters are ordered by id.
-#' @name sparsewmwfast
+#' @name sparse_wmw_fast
 #' @export
-sparsewmwfast <- function(matrix, labels, rtype, continuity_correction, as_dataframe, threads) {
-    .Call('_fastde_sparsewmwfast', PACKAGE = 'fastde', matrix, labels, rtype, continuity_correction, as_dataframe, threads)
+sparse_wmw_fast <- function(matrix, labels, rtype, continuity_correction, as_dataframe, threads) {
+    .Call('_fastde_sparse_wmw_fast', PACKAGE = 'fastde', matrix, labels, rtype, continuity_correction, as_dataframe, threads)
 }
 

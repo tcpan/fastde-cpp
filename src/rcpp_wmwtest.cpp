@@ -36,10 +36,11 @@
 #include "rcpp_data_utils.hpp"
 
 
+
+
 template <typename IT, typename LABEL>
 void sparse_sum_rank(std::vector<std::pair<IT, LABEL>> const & temp, 
-  size_t const & count,
-  std::map<LABEL, size_t> const & cl_counts,
+  size_t const & count, IT const & zero_val,
   std::unordered_map<LABEL, size_t> const & z_cl_counts,
   std::unordered_map<LABEL, size_t> & rank_sums,
   double & tie_sum
@@ -49,8 +50,9 @@ void sparse_sum_rank(std::vector<std::pair<IT, LABEL>> const & temp,
 
   size_t nzc = temp.size();
 
+  // initialize
   LABEL key;
-  for (auto item : cl_counts) {
+  for (auto item : z_cl_counts) {
     key = item.first;
     rank_sums[key] = 0;
   }
@@ -58,7 +60,7 @@ void sparse_sum_rank(std::vector<std::pair<IT, LABEL>> const & temp,
   double tie;
 
   // ---- below zero, forward walk
-  std::pair<IT, LABEL> zero = {0, 0};
+  std::pair<IT, LABEL> zero = {zero_val, 0};
   auto lower = std::lower_bound(temp.begin(), temp.end(), zero,
     [](std::pair<IT, LABEL> const & a, std::pair<IT, LABEL> const & b){
       return a.first < b.first;
@@ -103,7 +105,7 @@ void sparse_sum_rank(std::vector<std::pair<IT, LABEL>> const & temp,
   // about to re-enter the second half of the loop.
   // set i to new location at (i)
   i += count - nzc;  // count - non-zero == zero count.
-  last_val = 0;
+  last_val = zero_val;
 
   // ----- above zero
   for (; start != temp.end(); ++start, ++i) {
@@ -159,7 +161,7 @@ void sparse_sum_rank(std::vector<std::pair<IT, LABEL>> const & temp,
   // about to re-enter the second half of the loop.
   // set i to new location at (i)
   i -= count - nzc;  // count - non-zero == zero count.
-  last_val = 0;
+  last_val = zero_val;
 
   for (; rstart != temp.rend(); ++rstart, --i) {
     // rank update
@@ -180,9 +182,10 @@ template <typename IT_ITER, typename IDX_ITER, typename LABEL_ITER,
   typename IT = typename std::iterator_traits<IT_ITER>::value_type,
   typename IDX = typename std::iterator_traits<IDX_ITER>::value_type,
   typename LABEL = typename std::iterator_traits<LABEL_ITER>::value_type>
-void sparse_wmw_summary(IT_ITER in, IDX_ITER ids, size_t const & nz_count, 
-  LABEL_ITER labels, size_t const & count, 
-  std::map<LABEL, size_t> const & cl_counts,
+void sparse_wmw_summary(IT_ITER in, IDX_ITER ids,
+  size_t const & nz_count, 
+  LABEL_ITER labels, size_t const & count, IT const & zero_val,
+  std::vector<std::pair<LABEL, size_t>> const & cl_counts,
   std::unordered_map<LABEL, size_t> & rank_sums, double & tie_sum) {
   
   rank_sums.clear();
@@ -212,7 +215,7 @@ void sparse_wmw_summary(IT_ITER in, IDX_ITER ids, size_t const & nz_count,
   temp.reserve(nz_count);
   for (size_t i = 0; i < nz_count; ++i) {
     // EXCLUDE values with 0, as they would and should tie with the elements not present.
-    if (in[i] != static_cast<IT>(0)) {
+    if (in[i] != zero_val) {
       key = labels[ids[i]];
       temp.emplace_back(in[i], key);
       --z_cl_counts[key];   // get the zero counts by subtracting non-zero entries
@@ -240,17 +243,18 @@ void sparse_wmw_summary(IT_ITER in, IDX_ITER ids, size_t const & nz_count,
 
   // == local zero crossing in the sorted list (temp), 
   //   then process 2 halves separately.
-  sparse_sum_rank(temp, count, cl_counts, z_cl_counts, rank_sums, tie_sum);
+  sparse_sum_rank(temp, count, zero_val, z_cl_counts, rank_sums, tie_sum);
 }
 
 
 // rank_sums output:  map cluster to rank_sum.
+// counts zeros and skip sorting of those.  this is faster than sorting all.
 template <typename IT_ITER, typename LABEL_ITER,
   typename IT = typename std::iterator_traits<IT_ITER>::value_type,
   typename LABEL = typename std::iterator_traits<LABEL_ITER>::value_type>
-void dense_wmw_summary2(
-  IT_ITER in, LABEL_ITER labels, size_t const & count,
-  std::map<LABEL, size_t> const & cl_counts,
+void pseudosparse_wmw_summary(
+  IT_ITER in, LABEL_ITER labels, size_t const & count, IT const & zero_val,
+  std::vector<std::pair<LABEL, size_t>> const & cl_counts,
   std::unordered_map<LABEL, size_t> & rank_sums, double & tie_sum) {
 
   // tuplize in and labels.
@@ -272,7 +276,7 @@ void dense_wmw_summary2(
   temp.reserve(count);
   for (size_t i = 0; i < count; ++i) {
     // EXCLUDE values with 0, as they would and should tie with the elements not present.
-    if (in[i] != static_cast<IT>(0)) {
+    if (in[i] != zero_val) {
       key = labels[i];
       temp.emplace_back(in[i], key);
       --z_cl_counts[key];   // get the zero counts by subtracting non-zero entries
@@ -294,17 +298,18 @@ void dense_wmw_summary2(
   // any tie detection would need 1x iteration.   each tie would need another pass to get median so may break prefetching, but this may not be common?
   // should minimize writes in the big array as well.
 
-  sparse_sum_rank(temp, count, cl_counts, z_cl_counts, rank_sums, tie_sum);
+  sparse_sum_rank(temp, count, zero_val, z_cl_counts, rank_sums, tie_sum);
 
 }
 
 
 // rank_sums output:  map cluster to rank_sum.
+// old, do not use.
 template <typename IT_ITER, typename LABEL_ITER,
   typename IT = typename std::iterator_traits<IT_ITER>::value_type,
   typename LABEL = typename std::iterator_traits<LABEL_ITER>::value_type>
 void dense_wmw_summary(
-  IT_ITER in, LABEL_ITER labels, size_t const & count, 
+  IT_ITER in, LABEL_ITER labels, size_t const & count,
   std::unordered_map<LABEL, size_t> & rank_sums, double & tie_sum) {
 
   // tuplize in and labels.
@@ -379,8 +384,9 @@ void dense_wmw_summary(
 template <typename LABEL, typename OT_ITER,
   typename OT = typename std::iterator_traits<OT_ITER>::value_type>
 void wmw(
-  std::map<LABEL, size_t> const & cl_counts, 
-  std::unordered_map<LABEL, size_t> const & rank_sums, double const & tie_sum,
+  std::vector<std::pair<LABEL, size_t>> const & cl_counts, 
+  std::unordered_map<LABEL, size_t> const & rank_sums, 
+  double const & tie_sum,
   size_t const & count,
   OT_ITER out,
   int const & test_type, bool const & continuity) {
@@ -447,7 +453,7 @@ void wmw(
 //'
 //' This implementation uses normal approximation, which works reasonably well if sample size is large (say N>=20)
 //' 
-//' @rdname wmwfast
+//' @rdname wmw_fast
 //' @param matrix an expression matrix, COLUMN-MAJOR, each col is a feature, each row a sample
 //' @param labels an integer vector, each element indicating the group to which a sample belongs.
 //' @param rtype 
@@ -461,157 +467,43 @@ void wmw(
 //' @param as_dataframe TRUE/FALSE - TRUE returns a dataframe, FALSE returns a matrix
 //' @param threads  number of concurrent threads.
 //' @return array or dataframe.  for each gene/feature, the rows for the clusters are ordered by id.
-//' @name wmwfast
+//' @name wmw_fast
 //' @export
 // [[Rcpp::export]]
-extern SEXP wmwfast(
+extern SEXP wmw_fast(
     SEXP matrix, SEXP labels, SEXP rtype, 
     SEXP continuity_correction, 
     SEXP as_dataframe,
     SEXP threads) {
-  // Rprintf("here 1\n");
 
-  const int type=Rf_asInteger(rtype);
-  if (type > 3) Rprintf("ERROR: unsupported type: %d. Supports only greater, less, twosided, and U\n", type);
-  int nthreads=Rf_asInteger(threads);
-  if (nthreads < 1) nthreads = 1;
-  bool continuity = Rf_asLogical(continuity_correction);
-  const size_t nsamples=NROW(matrix);  // n
-  const size_t nfeatures=NCOL(matrix); // m
-  bool _as_dataframe = Rf_asLogical(as_dataframe);
-  // Rprintf("here 2\n");
-  
+  // ----------- copy to local
+  // ---- input matrix
+  std::vector<double> mat;
+  size_t nsamples, nfeatures, nelem;
+  Rcpp::StringVector features = 
+    rmatrix_to_vector(matrix, mat, nsamples, nfeatures, nelem);
+
+  // ---- label vector
+  std::vector<int> lab;
+  rvector_to_vector(labels, lab, nsamples);
+
   // get the number of unique labels.
-  int *label_ptr=INTEGER(labels);
-  std::map<int, size_t> cl_counts;
-  count_clusters(label_ptr, nsamples, cl_counts);
-  size_t label_count = cl_counts.size();
-  label_ptr = INTEGER(labels);
-  // Rprintf("here 3\n");
+  std::vector<std::pair<int, size_t>> sorted_cluster_counts;
+  count_clusters(lab, sorted_cluster_counts);
+  size_t label_count = sorted_cluster_counts.size();
 
-  int intlen = snprintf(NULL, 0, "%lu", std::numeric_limits<size_t>::max());
-  char * str = reinterpret_cast<char *>(malloc(intlen + 1));
-  int proc_count = 0;
+  // ---- output pval matrix
+  std::vector<double> pv(nfeatures * label_count);
 
-  // https://stackoverflow.com/questions/23547625/returning-a-data-frame-from-c-to-r
+  // ------------------------ parameter
+  int type, nthreads;
+  bool _as_dataframe, continuity;
+  import_r_common_params(rtype, continuity_correction, as_dataframe, threads,
+    type, continuity, _as_dataframe, nthreads);
 
-  // GET features.
-  SEXP features = Rf_getAttrib(matrix, R_NamesSymbol);
-  // check if features is null.  if so, make a new one.
-  // https://stackoverflow.com/questions/25172419/how-can-i-get-the-sexptype-of-an-sexp-value
-  if (TYPEOF(features) == NILSXP) {
-    PROTECT(features = Rf_allocVector(STRSXP, nfeatures));
-    ++proc_count;
-
-    for (size_t j = 0; j < nfeatures; ++j) {
-      // create string and set in clust.
-      sprintf(str, "%lu", j);
-      SET_STRING_ELT(features, j, Rf_mkChar(str));
-      memset(str, 0, intlen + 1);
-    }
-
-  }
-  // Rprintf("here 4\n");
-
-  // double *matColPtr; // pointer to the current column of the matrix
-  SEXP res, pv, clust, genenames, names, rownames, cls;
-  int ncols = 1 + (_as_dataframe ? 2 : 0);
-  int col_id = 0;
-
-  if (_as_dataframe) {
-    PROTECT(res = Rf_allocVector(VECSXP, ncols));   // cluster id and gene names are repeated.
-    proc_count += 1;
-
-    PROTECT(clust = Rf_allocVector(INTSXP, label_count * nfeatures));
-    PROTECT(genenames = Rf_allocVector(STRSXP, label_count * nfeatures));
-    PROTECT(pv = Rf_allocVector(REALSXP, label_count * nfeatures));
-    proc_count += 3;
-
-    PROTECT(cls = Rf_allocVector(STRSXP, 1)); // class attribute
-    SET_STRING_ELT(cls, 0, Rf_mkChar("data.frame"));
-    Rf_classgets(res, cls);
-    ++proc_count;
-
-  } else {
-    // use clust for column names.
-    PROTECT(clust = Rf_allocVector(STRSXP, label_count));
-    ++proc_count;
-    size_t j = 0;
-    for (auto item : cl_counts) {
-      sprintf(str, "%d", item.first);
-      SET_STRING_ELT(clust, j, Rf_mkChar(str));
-      memset(str, 0, intlen + 1);
-      ++j;
-    }
-
-    PROTECT(pv = Rf_allocMatrix(REALSXP, label_count, nfeatures));
-    ++proc_count;
-
-  }
-  // Rprintf("here 5\n");
-
-  // alloc output res (list?)
-  if (_as_dataframe) {
-    PROTECT(rownames = Rf_allocVector(STRSXP, label_count * nfeatures));  // dataframe column names.
-    ++proc_count;
-
-    // make the clusters vector.
-    int * clust_ptr = INTEGER(clust);
-    SEXP * features_ptr = STRING_PTR(features);
-    size_t j = 0;
-    for (size_t i = 0; i < nfeatures; ++i) {
-      for (auto item : cl_counts) {
-        // rotate through cluster labels for this feature.        
-        *clust_ptr = item.first;
-        ++clust_ptr;
-
-        // same feature name for the set of cluster
-        SET_STRING_ELT(genenames, j, Rf_duplicate(*features_ptr));
-
-        sprintf(str, "%lu", j);
-        SET_STRING_ELT(rownames, j, Rf_mkChar(str));
-        memset(str, 0, intlen + 1);
-  
-        ++j;
-      }
-      ++features_ptr;
-
-    }
-
-    PROTECT(names = Rf_allocVector(STRSXP, ncols));  // dataframe column names.
-    ++proc_count;
-
-    SET_VECTOR_ELT(res, col_id, clust);  
-    SET_STRING_ELT(names, col_id, Rf_mkChar("cluster"));
-    ++col_id;
-    SET_VECTOR_ELT(res, col_id, genenames);
-    SET_STRING_ELT(names, col_id, Rf_mkChar("gene"));
-    ++col_id;
-    SET_VECTOR_ELT(res, col_id, pv);
-    SET_STRING_ELT(names, col_id, Rf_mkChar("p_val"));   
-    ++col_id;
-    Rf_namesgets(res, names);  // colnames
-
-    // set row names - NEEDED to print the dataframe!!!
-    Rf_setAttrib(res, R_RowNamesSymbol, rownames);
-
-
-  } else {
-    // set col and row names for pv.
-    // https://stackoverflow.com/questions/5709940/r-extension-in-c-setting-matrix-row-column-names
-    PROTECT(names = Rf_allocVector(VECSXP, 2));
-    ++proc_count;
-    SET_VECTOR_ELT(names, 0, clust);  // rows = clusters
-    SET_VECTOR_ELT(names, 1, features);  // columns  = features (genes)
-    Rf_setAttrib(pv, R_DimNamesSymbol, names);
-  }
-  // Rprintf("here 6\n");
-
-  // Rprintf("inputsize  r %lu c %lu , output r %lu c %lu \n", nsamples, nfeatures, NROW(res), NCOL(res));
-
+  // ------------------------ compute
   omp_set_num_threads(nthreads);
   Rprintf("THREADING: using %d threads\n", nthreads);
-
 
 #pragma omp parallel num_threads(nthreads)
   {
@@ -622,25 +514,31 @@ extern SEXP wmwfast(
     int nid = tid + 1;
     size_t end = nid * block + (nid > rem ? rem : nid);
 
-    double *matptr = REAL(matrix) + offset * nsamples;
-    double *pvptr = REAL(pv) + offset * label_count;
     std::unordered_map<int, size_t> rank_sums;
     double tie_sum;
-    for(size_t i=offset; i < end; ++i) {
+
+    for(; offset < end; ++offset) {
       // directly compute matrix and res pointers.
       // Rprintf("thread %d processing feature %d\n", omp_get_thread_num(), i);
-      dense_wmw_summary2(matptr, label_ptr, nsamples, cl_counts, rank_sums, tie_sum);
-      wmw(cl_counts, rank_sums, tie_sum, nsamples, pvptr, type, continuity);
-      matptr += nsamples;
-      pvptr += label_count;
+      pseudosparse_wmw_summary(&(mat[offset * nsamples]), 
+        lab.data(), nsamples, 
+        static_cast<double>(0),
+        sorted_cluster_counts, rank_sums, tie_sum);
+      wmw(sorted_cluster_counts, rank_sums, tie_sum, nsamples, &(pv[offset * label_count]), type, continuity);
     }
   }
-  // Rprintf("here 7\n");
 
-  UNPROTECT(proc_count);
-  free(str);
-  if (_as_dataframe) return(res);
-  else return(pv);
+
+  // ------------------------ generate output
+  // GET features.
+  Rcpp::StringVector new_features = populate_feature_names(features, nfeatures);
+
+  if (_as_dataframe) {
+    return(Rcpp::wrap(export_de_to_r_dataframe(pv, sorted_cluster_counts, new_features)));
+  } else {
+    // use clust for column names.
+    return (Rcpp::wrap(export_de_to_r_matrix(pv, sorted_cluster_counts, new_features)));
+  }
 }
 
 
@@ -650,7 +548,7 @@ extern SEXP wmwfast(
 //'
 //' This implementation uses normal approximation, which works reasonably well if sample size is large (say N>=20)
 //' 
-//' @rdname sparsewmwfast
+//' @rdname sparse_wmw_fast
 //' @param matrix an expression matrix, COLUMN-MAJOR, each col is a feature, each row a sample
 //' @param labels an integer vector, each element indicating the group to which a sample belongs.
 //' @param rtype 
@@ -664,10 +562,10 @@ extern SEXP wmwfast(
 //' @param as_dataframe TRUE/FALSE - TRUE returns a dataframe, FALSE returns a matrix
 //' @param threads  number of concurrent threads.
 //' @return array or dataframe.  for each gene/feature, the rows for the clusters are ordered by id.
-//' @name sparsewmwfast
+//' @name sparse_wmw_fast
 //' @export
 // [[Rcpp::export]]
-extern SEXP sparsewmwfast(
+extern SEXP sparse_wmw_fast(
     SEXP matrix, SEXP labels, 
     SEXP rtype, 
     SEXP continuity_correction, 
@@ -675,155 +573,35 @@ extern SEXP sparsewmwfast(
     SEXP threads) {
   // Rprintf("here 1\n");
 
-  const int type=Rf_asInteger(rtype);
-  if (type > 3) Rprintf("ERROR: unsupported type: %d. Supports only greater, less, twosided, and U\n", type);
-  int nthreads=Rf_asInteger(threads);
-  if (nthreads < 1) nthreads = 1;
+  // ----------- copy to local
+  // ---- input matrix
+  std::vector<double> x;
+  std::vector<int> i, p;
+  size_t nsamples, nfeatures, nelem;
+  Rcpp::StringVector features = 
+    rsparsematrix_to_vectors(matrix, x, i, p, nsamples, nfeatures, nelem);
 
-  bool continuity = Rf_asLogical(continuity_correction);
-  bool _as_dataframe = Rf_asLogical(as_dataframe);
-  // Rprintf("here 2\n");
-  
-  Rcpp::S4 obj(matrix);
-  SEXP i = obj.slot("i");
-  SEXP p = obj.slot("p");  // ncol + 1
-  SEXP x = obj.slot("x");
-  SEXP dim = obj.slot("Dim");
-  SEXP dimnms = obj.slot("Dimnames");
-  // SEXP rownms = VECTOR_ELT(dimnms, 0);    // samples
-  SEXP features = VECTOR_ELT(dimnms, 1);   // features_names = columnames
-
-  size_t nsamples = INTEGER(dim)[0];   // sample count
-  size_t nfeatures = INTEGER(dim)[1];   // feature/gene count
-  size_t nelem = INTEGER(p)[nfeatures];   // since p is offsets, the ncol+1 entry has the total count.
   Rprintf("Sparse DIM: samples %lu x features %lu, non-zeros %lu\n", nsamples, nfeatures, nelem); 
 
+  // ---- label vector
+  std::vector<int> lab;
+  rvector_to_vector(labels, lab, nsamples);
+
   // get the number of unique labels.
-  int *label_ptr=INTEGER(labels);
-  std::map<int, size_t> cl_counts;
-  count_clusters(label_ptr, nsamples, cl_counts);
-  size_t label_count = cl_counts.size();
-  label_ptr = INTEGER(labels);
+  std::vector<std::pair<int, size_t>> sorted_cluster_counts;
+  count_clusters(lab, sorted_cluster_counts);
+  size_t label_count = sorted_cluster_counts.size();
 
-  int intlen = snprintf(NULL, 0, "%lu", std::numeric_limits<size_t>::max());
-  char * str = reinterpret_cast<char *>(malloc(intlen + 1));
-  int proc_count = 0;
+  // ---- output pval matrix
+  std::vector<double> pv(nfeatures * label_count);
 
-  // https://stackoverflow.com/questions/23547625/returning-a-data-frame-from-c-to-r
+  // ------------------------ parameter
+  int type, nthreads;
+  bool _as_dataframe, continuity;
+  import_r_common_params(rtype, continuity_correction, as_dataframe, threads,
+    type, continuity, _as_dataframe, nthreads);
 
-  // GET features.
-  // check if features is null.  if so, make a new one.
-  // https://stackoverflow.com/questions/25172419/how-can-i-get-the-sexptype-of-an-sexp-value
-  if (TYPEOF(features) == NILSXP) {
-    PROTECT(features = Rf_allocVector(STRSXP, nfeatures));
-    ++proc_count;
-
-    for (size_t j = 0; j < nfeatures; ++j) {
-      // create string and set in clust.
-      sprintf(str, "%lu", j);
-      SET_STRING_ELT(features, j, Rf_mkChar(str));
-      memset(str, 0, intlen + 1);
-    }
-
-  }
-  // Rprintf("here 4\n");
-
-  // double *matColPtr; // pointer to the current column of the matrix
-  SEXP res, pv, clust, genenames, names, rownames, cls;
-  int ncols = 1 + (_as_dataframe ? 2 : 0);
-  int col_id = 0;
-
-  if (_as_dataframe) {
-    PROTECT(res = Rf_allocVector(VECSXP, ncols));   // cluster id and gene names are repeated.
-    proc_count += 1;
-
-    PROTECT(clust = Rf_allocVector(INTSXP, label_count * nfeatures));
-    PROTECT(genenames = Rf_allocVector(STRSXP, label_count * nfeatures));
-    PROTECT(pv = Rf_allocVector(REALSXP, label_count * nfeatures));
-    proc_count += 3;
-
-    PROTECT(cls = Rf_allocVector(STRSXP, 1)); // class attribute
-    SET_STRING_ELT(cls, 0, Rf_mkChar("data.frame"));
-    Rf_classgets(res, cls);
-    ++proc_count;
-
-  } else {
-    // use clust for column names.
-    PROTECT(clust = Rf_allocVector(STRSXP, label_count));
-    ++proc_count;
-    size_t j = 0;
-    for (auto item : cl_counts) {
-      sprintf(str, "%d", item.first);
-      SET_STRING_ELT(clust, j, Rf_mkChar(str));
-      memset(str, 0, intlen + 1);
-      ++j;
-    }
-
-    PROTECT(pv = Rf_allocMatrix(REALSXP, label_count, nfeatures));
-    ++proc_count;
-
-  }
-  // Rprintf("here 5\n");
-
-  // alloc output res (list?)
-  if (_as_dataframe) {
-    PROTECT(rownames = Rf_allocVector(STRSXP, label_count * nfeatures));  // dataframe column names.
-    ++proc_count;
-
-    // make the clusters vector.
-    int * clust_ptr = INTEGER(clust);
-    SEXP * features_ptr = STRING_PTR(features);
-    size_t j = 0;
-    for (size_t i = 0; i < nfeatures; ++i) {
-      for (auto item : cl_counts) {
-        // rotate through cluster labels for this feature.        
-        *clust_ptr = item.first;
-        ++clust_ptr;
-
-        // same feature name for the set of cluster
-        SET_STRING_ELT(genenames, j, Rf_duplicate(*features_ptr));
-
-        sprintf(str, "%lu", j);
-        SET_STRING_ELT(rownames, j, Rf_mkChar(str));
-        memset(str, 0, intlen + 1);
-  
-        ++j;
-      }
-      ++features_ptr;
-
-    }
-
-    PROTECT(names = Rf_allocVector(STRSXP, ncols));  // dataframe column names.
-    ++proc_count;
-
-    SET_VECTOR_ELT(res, col_id, clust);  
-    SET_STRING_ELT(names, col_id, Rf_mkChar("cluster"));
-    ++col_id;
-    SET_VECTOR_ELT(res, col_id, genenames);
-    SET_STRING_ELT(names, col_id, Rf_mkChar("gene"));
-    ++col_id;
-    SET_VECTOR_ELT(res, col_id, pv);
-    SET_STRING_ELT(names, col_id, Rf_mkChar("p_val"));   
-    ++col_id;
-    Rf_namesgets(res, names);  // colnames
-
-    // set row names - NEEDED to print the dataframe!!!
-    Rf_setAttrib(res, R_RowNamesSymbol, rownames);
-
-
-  } else {
-    // set col and row names for pv.
-    // https://stackoverflow.com/questions/5709940/r-extension-in-c-setting-matrix-row-column-names
-    PROTECT(names = Rf_allocVector(VECSXP, 2));
-    ++proc_count;
-    SET_VECTOR_ELT(names, 0, clust);  // rows = clusters
-    SET_VECTOR_ELT(names, 1, features);  // columns  = features (genes)
-    Rf_setAttrib(pv, R_DimNamesSymbol, names);
-  }
-  // Rprintf("here 6\n");
-
-  // Rprintf("inputsize  r %lu c %lu , output r %lu c %lu \n", nsamples, nfeatures, NROW(res), NCOL(res));
-
+  // ------------------------- compute
   omp_set_num_threads(nthreads);
   Rprintf("THREADING: using %d threads\n", nthreads);
 
@@ -837,31 +615,30 @@ extern SEXP sparsewmwfast(
     int nid = tid + 1;
     size_t end = nid * block + (nid > rem ? rem : nid);
 
-    double *mat_ptr = REAL(x);
-    int * rowid_ptr = INTEGER(i);
-    int * offset_ptr = INTEGER(p);
     int nz_offset, nz_count;
-
-    double *pvptr = REAL(pv) + offset * label_count;
     std::unordered_map<int, size_t> rank_sums;
     double tie_sum;
 
-    for(size_t i=offset; i < end; ++i) {
-      nz_offset = offset_ptr[i];
-      nz_count = offset_ptr[i+1] - nz_offset;
+    for(; offset < end; ++offset) {
+      nz_offset = p[offset];
+      nz_count = p[offset+1] - nz_offset;
 
       // directly compute matrix and res pointers.
       // Rprintf("thread %d processing feature %d\n", omp_get_thread_num(), i);
-      sparse_wmw_summary(mat_ptr + nz_offset, rowid_ptr + nz_offset, nz_count,
-      label_ptr, nsamples, cl_counts, rank_sums, tie_sum);
-      wmw(cl_counts, rank_sums, tie_sum, nsamples, pvptr, type, continuity);
-      pvptr += label_count;
+      sparse_wmw_summary(&(x[nz_offset]), &(i[nz_offset]), nz_count,
+        lab.data(), nsamples, static_cast<double>(0),
+        sorted_cluster_counts, rank_sums, tie_sum);
+      wmw(sorted_cluster_counts, rank_sums, tie_sum, nsamples, &(pv[offset * label_count]), type, continuity);
     }
   }
-  // Rprintf("here 7\n");
 
-  UNPROTECT(proc_count);
-  free(str);
-  if (_as_dataframe) return(res);
-  else return(pv);
+  // ----------------------- make output
+  Rcpp::StringVector new_features = populate_feature_names(features, nfeatures);
+
+  if (_as_dataframe) {
+    return(Rcpp::wrap(export_de_to_r_dataframe(pv, sorted_cluster_counts, new_features)));
+  } else {
+    // use clust for column names.
+    return (Rcpp::wrap(export_de_to_r_matrix(pv, sorted_cluster_counts, new_features)));
+  }
 }

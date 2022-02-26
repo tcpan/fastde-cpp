@@ -60,7 +60,7 @@ template <typename ITER, typename IDX_ITER, typename LABEL_ITER,
   typename LABEL = typename std::iterator_traits<LABEL_ITER>::value_type>
 void sparse_ttest_summary(ITER in, IDX_ITER ids, size_t const & nz_count, 
   LABEL_ITER labels, size_t const & count, IT const & zero_val,
-  std::unordered_map<LABEL, size_t> const & clust_counts,
+  std::vector<std::pair<LABEL, size_t>> const & clust_counts,
   std::unordered_map<LABEL, gaussian_stats<double>> & gaussian_sums) {
 
 
@@ -109,7 +109,7 @@ template <typename ITER, typename LABEL_ITER,
   typename LABEL = typename std::iterator_traits<LABEL_ITER>::value_type>
 void dense_ttest_summary(
   ITER in, LABEL_ITER labels, size_t const & count, IT const & zero_val,
-  std::unordered_map<LABEL, size_t> const & clust_counts,
+  std::vector<std::pair<LABEL, size_t>> const & clust_counts,
   std::unordered_map<LABEL, gaussian_stats<double>> & gaussian_sums) {
 
   if (count == 0) return;
@@ -356,7 +356,7 @@ template <typename LABEL, typename OT_ITER,
   typename OT = typename std::iterator_traits<OT_ITER>::value_type>
 void two_sample_ttest(
   std::unordered_map<LABEL, gaussian_stats<double>> const & gaussian_sums,
-  std::vector<LABEL> const & ordered_labels,
+  std::vector<std::pair<LABEL, size_t>> const & clust_counts,
   OT_ITER out, 
   int const & test_type = PVAL_TWO_SIDED, 
   bool const equal_variance = false) {
@@ -389,7 +389,9 @@ void two_sample_ttest(
 
   t_distribution_cdf<double, true> eqvar_t_cdf(count - 2);
 
-  for (LABEL l : ordered_labels) {
+
+  for (auto item : clust_counts) {
+    LABEL l = item.first;
     auto stat = gaussian_sums.at(l);
     n1 = stat.count + stat.zeros;
     inv_n1 = 1.0 / static_cast<double>(n1);
@@ -501,16 +503,9 @@ extern SEXP ttest_fast(
   rvector_to_vector(labels, lab, nsamples);
 
   // get the number of unique labels.
-  std::unordered_map<int, size_t> cluster_counts;
-  count_clusters(lab, cluster_counts);
-  size_t label_count = cluster_counts.size();
-
-  std::vector<int> sorted_labels;
-  for (auto item : cluster_counts) {
-    sorted_labels.emplace_back(item.first);
-  }
-  std::sort(sorted_labels.begin(), sorted_labels.end());
-
+  std::vector<std::pair<int, size_t>> sorted_cluster_counts;
+  count_clusters(lab, sorted_cluster_counts);
+  size_t label_count = sorted_cluster_counts.size();
 
   // ---- output pval matrix
   std::vector<double> pv(nfeatures * label_count);
@@ -536,11 +531,11 @@ extern SEXP ttest_fast(
 
     std::unordered_map<int, gaussian_stats<double>> gaussian_sums;
     // printf("thread %d summarizing feature %ld\n", omp_get_thread_num(), offset);
-    for(offset; offset < end; ++offset) {
+    for(; offset < end; ++offset) {
       // directly compute matrix and res pointers.
       dense_ttest_summary(&(mat[offset * nsamples]), 
-        lab.data(), nsamples, 0.0, cluster_counts, gaussian_sums);
-      two_sample_ttest(gaussian_sums, sorted_labels, 
+        lab.data(), nsamples, 0.0, sorted_cluster_counts, gaussian_sums);
+      two_sample_ttest(gaussian_sums, sorted_cluster_counts, 
         &(pv[offset * label_count]), type, var_eq);
     }
   }
@@ -551,10 +546,10 @@ extern SEXP ttest_fast(
   Rcpp::StringVector new_features = populate_feature_names(features, nfeatures);
 
   if (_as_dataframe) {
-    return(Rcpp::wrap(export_de_to_r_dataframe(pv, sorted_labels, new_features)));
+    return(Rcpp::wrap(export_de_to_r_dataframe(pv, sorted_cluster_counts, new_features)));
   } else {
     // use clust for column names.
-    return (Rcpp::wrap(export_de_to_r_matrix(pv, sorted_labels, new_features)));
+    return (Rcpp::wrap(export_de_to_r_matrix(pv, sorted_cluster_counts, new_features)));
   }
 }
 
@@ -606,15 +601,9 @@ extern SEXP sparse_ttest_fast(
   rvector_to_vector(labels, lab, nsamples);
 
   // get the number of unique labels.
-  std::unordered_map<int, size_t> cluster_counts;
-  count_clusters(lab, cluster_counts);
-  size_t label_count = cluster_counts.size();
-
-  std::vector<int> sorted_labels;
-  for (auto item : cluster_counts) {
-    sorted_labels.emplace_back(item.first);
-  }
-  std::sort(sorted_labels.begin(), sorted_labels.end());
+  std::vector<std::pair<int, size_t>> sorted_cluster_counts;
+  count_clusters(lab, sorted_cluster_counts);
+  size_t label_count = sorted_cluster_counts.size();
 
   // ---- output pval matrix
   std::vector<double> pv(nfeatures * label_count);
@@ -641,15 +630,15 @@ extern SEXP sparse_ttest_fast(
     int nz_offset, nz_count;
     std::unordered_map<int, gaussian_stats<double>> gaussian_sums;
 
-    for(offset; offset < end; ++offset) {
+    for(; offset < end; ++offset) {
       nz_offset = p[offset];
       nz_count = p[offset+1] - nz_offset;
       
       // directly compute matrix and res pointers.
       // Rprintf("thread %d processing feature %d\n", omp_get_thread_num(), i);
       sparse_ttest_summary(&(x[nz_offset]), &(i[nz_offset]), nz_count,
-        lab.data(), nsamples, 0.0, cluster_counts, gaussian_sums);
-      two_sample_ttest(gaussian_sums, sorted_labels,
+        lab.data(), nsamples, 0.0, sorted_cluster_counts, gaussian_sums);
+      two_sample_ttest(gaussian_sums, sorted_cluster_counts,
         &(pv[offset * label_count]), type, var_eq);
     }
   }
@@ -659,10 +648,10 @@ extern SEXP sparse_ttest_fast(
   Rcpp::StringVector new_features = populate_feature_names(features, nfeatures);
   
   if (_as_dataframe) {
-    return(Rcpp::wrap(export_de_to_r_dataframe(pv, sorted_labels, new_features)));
+    return(Rcpp::wrap(export_de_to_r_dataframe(pv, sorted_cluster_counts, new_features)));
   } else {
     // use clust for column names.
-    return (Rcpp::wrap(export_de_to_r_matrix(pv, sorted_labels, new_features)));
+    return (Rcpp::wrap(export_de_to_r_matrix(pv, sorted_cluster_counts, new_features)));
   }
 }
 

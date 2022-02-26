@@ -1442,7 +1442,7 @@ FastSparseWilcoxDETest <- function(
     # slice the data
     dd <- data.use
   }
-  p_val <- sparsewmwfast(dd, as.integer(cells.clusters), rtype = as.integer(2), 
+  p_val <- sparse_wmw_fast(dd, as.integer(cells.clusters), rtype = as.integer(2), 
           continuity_correction = TRUE,
           as_dataframe = return.dataframe, threads = get_num_threads())
 
@@ -1583,7 +1583,7 @@ FastWilcoxDETest <- function(
     # slice the data
     dd <- data.use[, 1:block_size]
   }
-  p_val <- wmwfast(dd, as.integer(cells.clusters), rtype = as.integer(2), 
+  p_val <- wmw_fast(dd, as.integer(cells.clusters), rtype = as.integer(2), 
           continuity_correction = TRUE,
           as_dataframe = return.dataframe, threads = get_num_threads())
 
@@ -1610,7 +1610,7 @@ FastWilcoxDETest <- function(
         dd <- data.use[, start:end]
       }
 
-      pv <- wmwfast(dd, as.integer(cells.clusters), rtype = as.integer(2), 
+      pv <- wmw_fast(dd, as.integer(cells.clusters), rtype = as.integer(2), 
           continuity_correction = TRUE,
           as_dataframe = return.dataframe, threads = get_num_threads())
 

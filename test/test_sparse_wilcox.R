@@ -115,22 +115,22 @@ toc()
 
 
 
-
-
-tic("fastde")
+tic("fastde 2")
 # time and run BioQC
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
-fastdewilcox <- fastde::wmwfast(as.matrix(input), labels, rtype=as.integer(2), 
+fastdewilcox <- fastde::wmw_fast(as.matrix(input), labels, rtype=as.integer(2), 
     continuity_correction=TRUE, as_dataframe = FALSE, threads = as.integer(4))
 toc()
 
 
-tic("fastde_df")
+tic("fastde_df 2")
 # time and run BioQC
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
-fastdewilcox_df <- fastde::wmwfast(as.matrix(input), labels, rtype=as.integer(2), 
+fastdewilcox_df <- fastde::wmw_fast(as.matrix(input), labels, rtype=as.integer(2), 
     continuity_correction=TRUE, as_dataframe = TRUE, threads = as.integer(4))
 toc()
+
+
 
 # print(fastdewilcox_df)
 # fastdewilcox_df$p_val
@@ -236,45 +236,31 @@ comparemat("limma vs fastde", Limmawilcox, fastdewilcox)
 
 
 
+
 #==================
 
 
-tic("fastde")
+
+tic("fastde sparse")
 # time and run BioQC
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
-fastdewilcox <- fastde::sparsewmwfast(input, labels, rtype=as.integer(2), 
+fastdewilcox <- fastde::sparse_wmw_fast(input, labels, rtype=as.integer(2), 
     continuity_correction=TRUE, as_dataframe = FALSE, threads = as.integer(4))
 toc()
 
 
-tic("fastde_df")
+tic("fastde_df sparse")
 # time and run BioQC
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
-fastdewilcox_df <- fastde::sparsewmwfast(input, labels, rtype=as.integer(2), 
+fastdewilcox_df <- fastde::sparse_wmw_fast(input, labels, rtype=as.integer(2), 
     continuity_correction=TRUE, as_dataframe = TRUE, threads = as.integer(4))
 toc()
-
-# print(fastdewilcox_df)
-# fastdewilcox_df$p_val
-# fastdewilcox_df$cluster
-# fastdewilcox_df$genes
-
-# fastdewilcox[, 1]
-# BioQCwilcox2[, 1]
-# Limmawilcox[, 1]
-# Rwilcox[, 1]
-
-# fastdewilcox[1, ]
-# BioQCwilcox2[1, ]
-# Limmawilcox[1, ]
-# Rwilcox[1, ]
 
 
 ## compare by calculating the residuals.
 comparemat("R vs sparse fastde", Rwilcox, fastdewilcox)
 # comparemat("bioqc vs sparse fastde", BioQCwilcox2, fastdewilcox)
 comparemat("limma vs sparse fastde", Limmawilcox, fastdewilcox)
-
 
 
 

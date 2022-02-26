@@ -87,6 +87,24 @@ void count_clusters(LABEL_ITER labels, size_t const & count,
       return left.first < right.first;
   });
 }
+template <typename LABEL >
+void count_clusters(std::vector<LABEL> const & labels,
+  std::vector<std::pair<LABEL, size_t>> & clust_counts) {
+
+  clust_counts.clear();
+
+  // temporary, to speed up updates and avoid the O(log(n)) time for [] operator
+  std::unordered_map<LABEL, size_t> temp;
+  count_clusters(labels, temp);
+
+  // now copy temp to final
+  clust_counts.assign(temp.begin(), temp.end());
+  // sort
+  std::sort(clust_counts.begin(), clust_counts.end(), 
+  [](std::pair<LABEL, size_t> const & left, std::pair<LABEL, size_t> const & right){
+      return left.first < right.first;
+  });
+}
 
 template <typename LABEL>
 void get_unique_clusters(std::vector<LABEL> const & lab, 

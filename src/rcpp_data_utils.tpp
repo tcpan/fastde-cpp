@@ -112,7 +112,7 @@ Rcpp::StringVector populate_feature_names(Rcpp::StringVector const & features,
 
 Rcpp::NumericMatrix export_de_to_r_matrix(
     std::vector<double> const & pv,
-    std::vector<int> const & sorted_labels,
+    std::vector<std::pair<int, size_t>> const & sorted_labels,
     Rcpp::StringVector const & features
 ) {
     size_t label_count = sorted_labels.size();
@@ -122,7 +122,7 @@ Rcpp::NumericMatrix export_de_to_r_matrix(
     Rcpp::StringVector clustr(label_count);
     size_t j = 0;
     for (auto item : sorted_labels) {
-      clustr[j] = std::to_string(item);
+      clustr[j] = std::to_string(item.first);
       ++j;
     }
 
@@ -135,7 +135,7 @@ Rcpp::NumericMatrix export_de_to_r_matrix(
 
 Rcpp::DataFrame export_de_to_r_dataframe(
     std::vector<double> const & pv,
-    std::vector<int> const & sorted_labels,
+    std::vector<std::pair<int, size_t>> const & sorted_labels,
     Rcpp::StringVector const & features
 ) {
     // https://stackoverflow.com/questions/23547625/returning-a-data-frame-from-c-to-r
@@ -155,7 +155,7 @@ Rcpp::DataFrame export_de_to_r_dataframe(
       auto feature = features[f];
       for (auto item : sorted_labels) {
         // rotate through cluster labels for this feature.        
-        clust[j] = item;
+        clust[j] = item.first;
         // same feature name for the set of cluster
         genenames[j] = std::string(feature);
   

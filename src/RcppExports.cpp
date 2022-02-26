@@ -126,9 +126,9 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// wmwfast
-extern SEXP wmwfast(SEXP matrix, SEXP labels, SEXP rtype, SEXP continuity_correction, SEXP as_dataframe, SEXP threads);
-RcppExport SEXP _fastde_wmwfast(SEXP matrixSEXP, SEXP labelsSEXP, SEXP rtypeSEXP, SEXP continuity_correctionSEXP, SEXP as_dataframeSEXP, SEXP threadsSEXP) {
+// wmw_fast
+extern SEXP wmw_fast(SEXP matrix, SEXP labels, SEXP rtype, SEXP continuity_correction, SEXP as_dataframe, SEXP threads);
+RcppExport SEXP _fastde_wmw_fast(SEXP matrixSEXP, SEXP labelsSEXP, SEXP rtypeSEXP, SEXP continuity_correctionSEXP, SEXP as_dataframeSEXP, SEXP threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -138,13 +138,13 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< SEXP >::type continuity_correction(continuity_correctionSEXP);
     Rcpp::traits::input_parameter< SEXP >::type as_dataframe(as_dataframeSEXP);
     Rcpp::traits::input_parameter< SEXP >::type threads(threadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(wmwfast(matrix, labels, rtype, continuity_correction, as_dataframe, threads));
+    rcpp_result_gen = Rcpp::wrap(wmw_fast(matrix, labels, rtype, continuity_correction, as_dataframe, threads));
     return rcpp_result_gen;
 END_RCPP
 }
-// sparsewmwfast
-extern SEXP sparsewmwfast(SEXP matrix, SEXP labels, SEXP rtype, SEXP continuity_correction, SEXP as_dataframe, SEXP threads);
-RcppExport SEXP _fastde_sparsewmwfast(SEXP matrixSEXP, SEXP labelsSEXP, SEXP rtypeSEXP, SEXP continuity_correctionSEXP, SEXP as_dataframeSEXP, SEXP threadsSEXP) {
+// sparse_wmw_fast
+extern SEXP sparse_wmw_fast(SEXP matrix, SEXP labels, SEXP rtype, SEXP continuity_correction, SEXP as_dataframe, SEXP threads);
+RcppExport SEXP _fastde_sparse_wmw_fast(SEXP matrixSEXP, SEXP labelsSEXP, SEXP rtypeSEXP, SEXP continuity_correctionSEXP, SEXP as_dataframeSEXP, SEXP threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -154,7 +154,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< SEXP >::type continuity_correction(continuity_correctionSEXP);
     Rcpp::traits::input_parameter< SEXP >::type as_dataframe(as_dataframeSEXP);
     Rcpp::traits::input_parameter< SEXP >::type threads(threadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(sparsewmwfast(matrix, labels, rtype, continuity_correction, as_dataframe, threads));
+    rcpp_result_gen = Rcpp::wrap(sparse_wmw_fast(matrix, labels, rtype, continuity_correction, as_dataframe, threads));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -167,8 +167,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fastde_sp_to_dense", (DL_FUNC) &_fastde_sp_to_dense, 1},
     {"_fastde_ttest_fast", (DL_FUNC) &_fastde_ttest_fast, 6},
     {"_fastde_sparse_ttest_fast", (DL_FUNC) &_fastde_sparse_ttest_fast, 6},
-    {"_fastde_wmwfast", (DL_FUNC) &_fastde_wmwfast, 6},
-    {"_fastde_sparsewmwfast", (DL_FUNC) &_fastde_sparsewmwfast, 6},
+    {"_fastde_wmw_fast", (DL_FUNC) &_fastde_wmw_fast, 6},
+    {"_fastde_sparse_wmw_fast", (DL_FUNC) &_fastde_sparse_wmw_fast, 6},
     {NULL, NULL, 0}
 };
 
