@@ -513,8 +513,10 @@ extern SEXP ttest_fast(
   // ------------------------ parameter
   int type, nthreads;
   bool _as_dataframe, var_eq;
-  import_r_common_params(alternative, var_equal, as_dataframe, threads,
-    type, var_eq, _as_dataframe, nthreads);
+  import_de_common_params(alternative, var_equal,
+    type, var_eq);
+  import_r_common_params(as_dataframe, threads,
+    _as_dataframe, nthreads);
 
   // ------------------------ compute
   omp_set_num_threads(nthreads);
@@ -546,7 +548,7 @@ extern SEXP ttest_fast(
   Rcpp::StringVector new_features = populate_feature_names(features, nfeatures);
 
   if (_as_dataframe) {
-    return(Rcpp::wrap(export_de_to_r_dataframe(pv, sorted_cluster_counts, new_features)));
+    return(Rcpp::wrap(export_de_to_r_dataframe(pv, "p_val", sorted_cluster_counts, new_features)));
   } else {
     // use clust for column names.
     return (Rcpp::wrap(export_de_to_r_matrix(pv, sorted_cluster_counts, new_features)));
@@ -611,8 +613,10 @@ extern SEXP sparse_ttest_fast(
   // ------------------------ parameter
   int type, nthreads;
   bool _as_dataframe, var_eq;
-  import_r_common_params(alternative, var_equal, as_dataframe, threads,
-    type, var_eq, _as_dataframe, nthreads);
+  import_de_common_params(alternative, var_equal,
+    type, var_eq);
+  import_r_common_params(as_dataframe, threads,
+    _as_dataframe, nthreads);
 
   // ------------------------- compute
   omp_set_num_threads(nthreads);
@@ -648,7 +652,7 @@ extern SEXP sparse_ttest_fast(
   Rcpp::StringVector new_features = populate_feature_names(features, nfeatures);
   
   if (_as_dataframe) {
-    return(Rcpp::wrap(export_de_to_r_dataframe(pv, sorted_cluster_counts, new_features)));
+    return(Rcpp::wrap(export_de_to_r_dataframe(pv, "p_val", sorted_cluster_counts, new_features)));
   } else {
     // use clust for column names.
     return (Rcpp::wrap(export_de_to_r_matrix(pv, sorted_cluster_counts, new_features)));

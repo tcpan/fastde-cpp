@@ -29,10 +29,13 @@ comparemat <- function(name, A, B) {
 # rownames(input) <- samplenames
 # toc()
 
+cat(sprintf("NOTE: rounding of negative number are different in R and C++:\n\tR: round(%f) = %f.  C would return %f\n\tMATRIX COMPARISON RESULTS ARE EXPECTED TO BE DIFFERENT BUT WITH ZERO MEAN.\n\tFASTDE FoldChange results are also not rounded.\n", -0.5, round(-0.5), round(-0.6)))
+
+
 tic("generate")
 # max is 2B.
-ncols = 100  # features
-nrows = 40000  # samples
+ncols = 2000  # features
+nrows = 2000  # samples
 nclusters = 30
 
 clusters = 1:nclusters
@@ -90,22 +93,18 @@ for ( c in L ) {
     # cat(sprintf(" output %d %f, %f\n", length(as.vector(v$fc)), as.vector(v$fc)[11], v[c,11]))
 
     # cat(sprintf("R wilcox %f\n", v))
-    seuratfc[c, ] <- as.vector(v$fc)
-    seuratperc1[c, ] <- as.vector(v$pct.1)
-    seuratperc2[c, ] <- as.vector(v$pct.2)
+    pos = which(L == c)
+    seuratfc[pos, ] <- as.vector(v$fc)
+    seuratperc1[pos, ] <- as.vector(v$pct.1)
+    seuratperc2[pos, ] <- as.vector(v$pct.2)
 
     # seuratfc
-
 }
 toc()
 
-# seuratfc
+# seuratfc[, 1]
 # seuratperc1[, 1]
 # seuratperc2[, 1]
-
-
-
-
 
 
 tic("fastde df")
@@ -123,12 +122,13 @@ fastdefc <- fastde::ComputeFoldChange(as.matrix(input), labels, calc_percents = 
     use_expm1 = FALSE, min_threshold = 0.0, use_log = FALSE, log_base = 2.0, 
     use_pseudocount = FALSE, as_dataframe = FALSE, threads = as.integer(4))
 toc()
+cat(sprintf("output %d X %d\n", nrow(fastdefc$fc), ncol(fastdefc$fc)))
 
 tic("Ordering by cluster num")
 x <- as.integer(row.names(fastdefc$fc))
 ord <- order(x)
-x
-ord
+# x
+# ord
 
 fastdefcsorted = fastdefc$fc[ord, ]
 fastdefc_pct1_sorted = fastdefc$pct.1[ord, ]
@@ -136,9 +136,9 @@ fastdefc_pct2_sorted = fastdefc$pct.2[ord, ]
 #fastdefc
 toc()
 
-# fastdefcsorted
-# fastdefc$pct.1[, 1]
-# fastdefc$pct.2[, 1]
+# fastdefcsorted[, 1]
+# fastdefc_pct1_sorted[, 1]
+# fastdefc_pct2_sorted[, 1]
 
 
 # print(fastdefc_df)
@@ -150,41 +150,47 @@ comparemat("R vs fastde fc", seuratfc, fastdefcsorted)
 comparemat("R vs fastde pct1", seuratperc1, fastdefc_pct1_sorted)
 comparemat("R vs fastde pct2", seuratperc2, fastdefc_pct2_sorted)
 
-
-
+diff = which(abs(seuratperc1 - fastdefc_pct1_sorted) >= 0.0005)
+cat(sprintf("different 1: seurat %f, fastde %f \n", seuratperc1[diff[1]], fastdefc_pct1_sorted[diff[1]]))
+cat(sprintf("different 2: seurat %f, fastde %f \n", seuratperc1[diff[2]], fastdefc_pct1_sorted[diff[2]]))
+cat(sprintf("different 3: seurat %f, fastde %f \n", seuratperc1[diff[3]], fastdefc_pct1_sorted[diff[3]]))
 
 
 tic("sparse fastde df")
 # time and run BioQC
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
-fastdefc_df <- fastde::ComputeSparseFoldChange(input, labels, calc_percents = TRUE, fc_name = "fc", 
+fastdesfc_df <- fastde::ComputeSparseFoldChange(input, labels, calc_percents = TRUE, fc_name = "fc", 
     use_expm1 = FALSE, min_threshold = 0.0, use_log = FALSE, log_base = 2.0, 
     use_pseudocount = FALSE, as_dataframe = TRUE, threads = as.integer(4))
 toc()
 
+
 tic("sparse fastde")
 # time and run BioQC
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
-fastdefc <- fastde::ComputeSparseFoldChange(input, labels, calc_percents = TRUE, fc_name = "fc", 
+fastdesfc <- fastde::ComputeSparseFoldChange(input, labels, calc_percents = TRUE, fc_name = "fc", 
     use_expm1 = FALSE, min_threshold = 0.0, use_log = FALSE, log_base = 2.0, 
     use_pseudocount = FALSE, as_dataframe = FALSE, threads = as.integer(4))
 toc()
+cat(sprintf("output %d X %d\n", nrow(fastdefc$fc), ncol(fastdefc$fc)))
+
+
 
 tic("Ordering by cluster num")
-x <- as.integer(row.names(fastdefc$fc))
+x <- as.integer(row.names(fastdesfc$fc))
 ord <- order(x)
-x
-ord
+# x
+# ord
 
-fastdefcsorted = fastdefc$fc[ord, ]
-fastdefc_pct1_sorted = fastdefc$pct.1[ord, ]
-fastdefc_pct2_sorted = fastdefc$pct.2[ord, ]
+fastdesfcsorted = fastdesfc$fc[ord, ]
+fastdesfc_pct1_sorted = fastdesfc$pct.1[ord, ]
+fastdesfc_pct2_sorted = fastdesfc$pct.2[ord, ]
 #fastdefc
 toc()
 
-# fastdefcsorted
-# fastdefc$pct.1[, 1]
-# fastdefc$pct.2[, 1]
+# fastdefcsorted[, 1]
+# fastdefc_pct1_sorted[, 1]
+# fastdefc_pct2_sorted[, 1]
 
 
 
@@ -194,7 +200,7 @@ toc()
 
 ## compare by calculating the residuals.
 
-comparemat("R vs sparse fastde fc", seuratfc, fastdefcsorted)
-comparemat("R vs sparse fastde pct1", seuratperc1, fastdefc_pct1_sorted)
-comparemat("R vs sparse fastde pct2", seuratperc2, fastdefc_pct2_sorted)
+comparemat("R vs sparse fastde fc", seuratfc, fastdesfcsorted)
+comparemat("R vs sparse fastde pct1", seuratperc1, fastdesfc_pct1_sorted)
+comparemat("R vs sparse fastde pct2", seuratperc2, fastdesfc_pct2_sorted)
 
