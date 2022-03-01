@@ -29,7 +29,7 @@ comparemat <- function(name, A, B) {
 # rownames(input) <- samplenames
 # toc()
 
-cat(sprintf("NOTE: rounding of negative number are different in R and C++:\n\tR: round(%f) = %f.  C would return %f\n\tMATRIX COMPARISON RESULTS ARE EXPECTED TO BE DIFFERENT BUT WITH ZERO MEAN.\n\tFASTDE FoldChange results are also not rounded.\n", -0.5, round(-0.5), round(-0.6)))
+cat(sprintf("NOTE: rounding is done differently in R and C++ (and python):\nR and Python: round half to even. c++: round half away from zero.\n\te.g. R: round(%f) = %f.  C would return %f\n\tMATRIX COMPARISON RESULTS ARE EXPECTED TO BE DIFFERENT BUT WITH ZERO MEAN.\n\tFASTDE FoldChange results are not rounded.\n", -0.5, round(-0.5), -1.0))
 
 
 tic("generate")
