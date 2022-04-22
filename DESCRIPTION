@@ -1,12 +1,11 @@
 Package: fastde
 Type: Package
 Title: performs differential expression fast
-Version: 1.0
-Date: 2021-05-24
+Version: 0.1
+Date: 2022-04-22
 Author: Tony Pan
 Maintainer: Tony Pan <tpan7@gatech.edu>
-Description: One paragraph description of what the package does as one
-        or more full sentences.
+Description: Fast parallel differential gene expression analysis tool, replacement for Seurat's FindAllMarkers function.
 License: GPL-3 | file LICENSE
 Imports: 
         Rcpp (>= 1.0.6),
