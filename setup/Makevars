@@ -1,0 +1,37 @@
+CC = gcc
+CFLAGS = -g -O2 -mtune=native -std=gnu11 -fpic -march=native -fopenmp 
+# -fsanitize=address 
+
+CXX = g++
+CXXSTD = -std=gnu++11
+CXXFLAGS = -g -O2 -fno-omit-frame-pointer -mtune=native -march=native -fopenmp
+# -fsanitize=address 
+CXXPICFLAGS = -fpic
+
+CXX98 = g++
+CXX98STD = -std=gnu++98
+CXX98FLAGS = -g -O2 -fno-omit-frame-pointer -mtune=native -march=native -fopenmp 
+# -fsanitize=address 
+CXX98PICFLAGS = -fpic
+
+
+CXX11 = g++
+CXX11STD = -std=gnu++11
+CXX11FLAGS = -g -O2 -fno-omit-frame-pointer -mtune=native -march=native -fopenmp 
+# -fsanitize=address 
+CXX11PICFLAGS = -fpic
+
+
+CXX14 = g++
+CXX14STD = -std=gnu++14
+CXX14FLAGS = -g -O2 -fno-omit-frame-pointer -mtune=native -march=native -fopenmp 
+# -fsanitize=address 
+CXX14PICFLAGS = -fpic
+
+#PKG_LIBS = -fsanitize=address 
+# -static-libasan
+
+
+MAKE = make -j16
+
+
