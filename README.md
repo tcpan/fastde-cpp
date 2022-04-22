@@ -12,3 +12,8 @@ Currently, Seurat supports 9 algorithms.   FastDE supports student's t-test and 
 ### From source.
 TO BE COMPLETED.
 
+	BiocManager::install(c("argparser", "SCnorm", "sva", "limma", "SingleCellExperiment", "edgeR"), lib=.libPaths()[1])
+	
+	BiocManager::install(c("future", "future.apply", "stringi", "reshape2", "magrittr", "tidyr", "fastcluster", "diceR"), lib=.libPaths()[1])
+	
+	BiocManager::install(c("proftools", "profvis", "tictoc"), lib=.libPaths()[1])
