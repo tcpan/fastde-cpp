@@ -70,7 +70,7 @@ void count_clusters(LABEL_ITER labels, size_t const & count,
 template <typename LABEL_ITER,
   typename LABEL = typename std::iterator_traits<LABEL_ITER>::value_type >
 void count_clusters(LABEL_ITER labels, size_t const & count,
-  std::vector<std::pair<LABEL, size_t>> & clust_counts) {
+  std::vector<std::pair<LABEL, size_t> > & clust_counts) {
 
   clust_counts.clear();
   if (count == 0) return;
@@ -89,7 +89,7 @@ void count_clusters(LABEL_ITER labels, size_t const & count,
 }
 template <typename LABEL >
 void count_clusters(std::vector<LABEL> const & labels,
-  std::vector<std::pair<LABEL, size_t>> & clust_counts) {
+  std::vector<std::pair<LABEL, size_t> > & clust_counts) {
 
   clust_counts.clear();
 

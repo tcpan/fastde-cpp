@@ -2,7 +2,7 @@
 #include <R.h>
 #include <Rdefines.h>
 
-// TRY WITH Rcpp classes (NumericMatrix, NumericVector), or use Rcpp::as<std::vector<double>>
+// TRY WITH Rcpp classes (NumericMatrix, NumericVector), or use Rcpp::as<std::vector<double> >
 
 
 // NOTE: column major R data structure.  getting a whole column is faster?
@@ -60,8 +60,8 @@ template <typename ITER, typename IDX_ITER, typename LABEL_ITER,
   typename LABEL = typename std::iterator_traits<LABEL_ITER>::value_type>
 void sparse_ttest_summary(ITER in, IDX_ITER ids, size_t const & nz_count, 
   LABEL_ITER labels, size_t const & count, IT const & zero_val,
-  std::vector<std::pair<LABEL, size_t>> const & clust_counts,
-  std::unordered_map<LABEL, gaussian_stats<double>> & gaussian_sums) {
+  std::vector<std::pair<LABEL, size_t> > const & clust_counts,
+  std::unordered_map<LABEL, gaussian_stats<double> > & gaussian_sums) {
 
 
   if (count == 0) return;
@@ -109,8 +109,8 @@ template <typename ITER, typename LABEL_ITER,
   typename LABEL = typename std::iterator_traits<LABEL_ITER>::value_type>
 void dense_ttest_summary(
   ITER in, LABEL_ITER labels, size_t const & count, IT const & zero_val,
-  std::vector<std::pair<LABEL, size_t>> const & clust_counts,
-  std::unordered_map<LABEL, gaussian_stats<double>> & gaussian_sums) {
+  std::vector<std::pair<LABEL, size_t> > const & clust_counts,
+  std::unordered_map<LABEL, gaussian_stats<double> > & gaussian_sums) {
 
   if (count == 0) return;
 
@@ -355,8 +355,8 @@ class t_distribution_cdf<T, true> {
 template <typename LABEL, typename OT_ITER,
   typename OT = typename std::iterator_traits<OT_ITER>::value_type>
 void two_sample_ttest(
-  std::unordered_map<LABEL, gaussian_stats<double>> const & gaussian_sums,
-  std::vector<std::pair<LABEL, size_t>> const & clust_counts,
+  std::unordered_map<LABEL, gaussian_stats<double> > const & gaussian_sums,
+  std::vector<std::pair<LABEL, size_t> > const & clust_counts,
   OT_ITER out, 
   int const & test_type = PVAL_TWO_SIDED, 
   bool const equal_variance = false) {
@@ -503,7 +503,7 @@ extern SEXP ttest_fast(
   rvector_to_vector(labels, lab, nsamples);
 
   // get the number of unique labels.
-  std::vector<std::pair<int, size_t>> sorted_cluster_counts;
+  std::vector<std::pair<int, size_t> > sorted_cluster_counts;
   count_clusters(lab, sorted_cluster_counts);
   size_t label_count = sorted_cluster_counts.size();
 
@@ -531,7 +531,7 @@ extern SEXP ttest_fast(
     int nid = tid + 1;
     size_t end = nid * block + (nid > rem ? rem : nid);
 
-    std::unordered_map<int, gaussian_stats<double>> gaussian_sums;
+    std::unordered_map<int, gaussian_stats<double> > gaussian_sums;
     // printf("thread %d summarizing feature %ld\n", omp_get_thread_num(), offset);
     for(; offset < end; ++offset) {
       // directly compute matrix and res pointers.
@@ -603,7 +603,7 @@ extern SEXP sparse_ttest_fast(
   rvector_to_vector(labels, lab, nsamples);
 
   // get the number of unique labels.
-  std::vector<std::pair<int, size_t>> sorted_cluster_counts;
+  std::vector<std::pair<int, size_t> > sorted_cluster_counts;
   count_clusters(lab, sorted_cluster_counts);
   size_t label_count = sorted_cluster_counts.size();
 
@@ -632,7 +632,7 @@ extern SEXP sparse_ttest_fast(
     size_t end = nid * block + (nid > rem ? rem : nid);
   
     int nz_offset, nz_count;
-    std::unordered_map<int, gaussian_stats<double>> gaussian_sums;
+    std::unordered_map<int, gaussian_stats<double> > gaussian_sums;
 
     for(; offset < end; ++offset) {
       nz_offset = p[offset];

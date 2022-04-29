@@ -39,7 +39,7 @@
 
 
 template <typename IT, typename LABEL>
-void sparse_sum_rank(std::vector<std::pair<IT, LABEL>> const & temp, 
+void sparse_sum_rank(std::vector<std::pair<IT, LABEL> > const & temp, 
   size_t const & count, IT const & zero_val,
   std::unordered_map<LABEL, size_t> const & z_cl_counts,
   std::unordered_map<LABEL, size_t> & rank_sums,
@@ -185,7 +185,7 @@ template <typename IT_ITER, typename IDX_ITER, typename LABEL_ITER,
 void sparse_wmw_summary(IT_ITER in, IDX_ITER ids,
   size_t const & nz_count, 
   LABEL_ITER labels, size_t const & count, IT const & zero_val,
-  std::vector<std::pair<LABEL, size_t>> const & cl_counts,
+  std::vector<std::pair<LABEL, size_t> > const & cl_counts,
   std::unordered_map<LABEL, size_t> & rank_sums, double & tie_sum) {
   
   rank_sums.clear();
@@ -211,7 +211,7 @@ void sparse_wmw_summary(IT_ITER in, IDX_ITER ids,
   //   };
 
   // ============== populate the sort structure and Sort ONLY NON-ZERO ENTRIES.  if any input is actually 0.0, skip
-  std::vector<std::pair<IT, LABEL>> temp;
+  std::vector<std::pair<IT, LABEL> > temp;
   temp.reserve(nz_count);
   for (size_t i = 0; i < nz_count; ++i) {
     // EXCLUDE values with 0, as they would and should tie with the elements not present.
@@ -254,7 +254,7 @@ template <typename IT_ITER, typename LABEL_ITER,
   typename LABEL = typename std::iterator_traits<LABEL_ITER>::value_type>
 void pseudosparse_wmw_summary(
   IT_ITER in, LABEL_ITER labels, size_t const & count, IT const & zero_val,
-  std::vector<std::pair<LABEL, size_t>> const & cl_counts,
+  std::vector<std::pair<LABEL, size_t> > const & cl_counts,
   std::unordered_map<LABEL, size_t> & rank_sums, double & tie_sum) {
 
   // tuplize in and labels.
@@ -272,7 +272,7 @@ void pseudosparse_wmw_summary(
 
 
   // ============== populate the sort structure and Sort
-  std::vector<std::pair<IT, LABEL>> temp;
+  std::vector<std::pair<IT, LABEL> > temp;
   temp.reserve(count);
   for (size_t i = 0; i < count; ++i) {
     // EXCLUDE values with 0, as they would and should tie with the elements not present.
@@ -319,7 +319,7 @@ void dense_wmw_summary(
   assert((count < 20) && "ERROR: count is too small (< 20) for a normal approximation\n");
 
   // ============== populate the sort structure and Sort
-  std::vector<std::pair<IT, LABEL>> temp;
+  std::vector<std::pair<IT, LABEL> > temp;
   temp.reserve(count);
   for (size_t i = 0; i < count; ++i) {
       temp.emplace_back(in[i], labels[i]);
@@ -384,7 +384,7 @@ void dense_wmw_summary(
 template <typename LABEL, typename OT_ITER,
   typename OT = typename std::iterator_traits<OT_ITER>::value_type>
 void wmw(
-  std::vector<std::pair<LABEL, size_t>> const & cl_counts, 
+  std::vector<std::pair<LABEL, size_t> > const & cl_counts, 
   std::unordered_map<LABEL, size_t> const & rank_sums, 
   double const & tie_sum,
   size_t const & count,
@@ -488,7 +488,7 @@ extern SEXP wmw_fast(
   rvector_to_vector(labels, lab, nsamples);
 
   // get the number of unique labels.
-  std::vector<std::pair<int, size_t>> sorted_cluster_counts;
+  std::vector<std::pair<int, size_t> > sorted_cluster_counts;
   count_clusters(lab, sorted_cluster_counts);
   size_t label_count = sorted_cluster_counts.size();
 
@@ -589,7 +589,7 @@ extern SEXP sparse_wmw_fast(
   rvector_to_vector(labels, lab, nsamples);
 
   // get the number of unique labels.
-  std::vector<std::pair<int, size_t>> sorted_cluster_counts;
+  std::vector<std::pair<int, size_t> > sorted_cluster_counts;
   count_clusters(lab, sorted_cluster_counts);
   size_t label_count = sorted_cluster_counts.size();
 

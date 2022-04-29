@@ -50,7 +50,7 @@ template <typename IT_ITER, typename IDX_ITER, typename LABEL_ITER,
 void sparse_foldchange_summary(
   IT_ITER in, IDX_ITER row_ids, size_t const & nz_count,
   LABEL_ITER labels, size_t const & count, IT const & zero_val,
-  std::vector<std::pair<LABEL, size_t>> const & cl_counts,
+  std::vector<std::pair<LABEL, size_t> > const & cl_counts,
   std::unordered_map<LABEL, clust_info> & sums,
   IT const & min_thresh = static_cast<IT>(0), 
   bool const & exponential = false) {
@@ -118,7 +118,7 @@ template <typename IT_ITER, typename LABEL_ITER,
   typename LABEL = typename std::iterator_traits<LABEL_ITER>::value_type>
 void pseudosparse_foldchange_summary(
   IT_ITER in, LABEL_ITER labels, size_t const & count, IT const & zero_val,
-  std::vector<std::pair<LABEL, size_t>> const & cl_counts,
+  std::vector<std::pair<LABEL, size_t> > const & cl_counts,
   std::unordered_map<LABEL, clust_info> & sums,
   IT const & min_thresh = static_cast<IT>(0), 
   bool const & exponential = false) {
@@ -176,7 +176,7 @@ void pseudosparse_foldchange_summary(
 template <typename LABEL, typename PT_ITER, typename PT =
   typename std::iterator_traits<PT_ITER>::value_type >
 void foldchange_percents(
-  std::vector<std::pair<LABEL, size_t>> const & cl_counts, 
+  std::vector<std::pair<LABEL, size_t> > const & cl_counts, 
   std::unordered_map<LABEL, clust_info> const & sums, 
   size_t const & count,
   PT_ITER percent1, PT_ITER percent2) {
@@ -211,7 +211,7 @@ void foldchange_percents(
 template <typename LABEL, typename OT_ITER, typename OT =
   typename std::iterator_traits<OT_ITER>::value_type>
 void foldchange_mean(
-  std::vector<std::pair<LABEL, size_t>> const & cl_counts, 
+  std::vector<std::pair<LABEL, size_t> > const & cl_counts, 
   std::unordered_map<LABEL, clust_info> const & sums, 
   size_t const & count,
   OT_ITER out) {
@@ -246,7 +246,7 @@ void foldchange_mean(
 template <typename LABEL, typename OT_ITER, typename OT = 
   typename std::iterator_traits<OT_ITER>::value_type>
 void foldchange_logmean(
-  std::vector<std::pair<LABEL, size_t>> const & cl_counts, 
+  std::vector<std::pair<LABEL, size_t> > const & cl_counts, 
   std::unordered_map<LABEL, clust_info> const & sums, 
   size_t const & count,
   OT_ITER out, 
@@ -331,7 +331,7 @@ extern SEXP ComputeFoldChange(
   rvector_to_vector(labels, lab, nsamples);
 
   // get the number of unique labels.
-  std::vector<std::pair<int, size_t>> sorted_cluster_counts;
+  std::vector<std::pair<int, size_t> > sorted_cluster_counts;
   count_clusters(lab, sorted_cluster_counts);
   size_t label_count = sorted_cluster_counts.size();
 
@@ -461,7 +461,7 @@ extern SEXP ComputeSparseFoldChange(
   rvector_to_vector(labels, lab, nsamples);
 
   // get the number of unique labels.
-  std::vector<std::pair<int, size_t>> sorted_cluster_counts;
+  std::vector<std::pair<int, size_t> > sorted_cluster_counts;
   count_clusters(lab, sorted_cluster_counts);
   size_t label_count = sorted_cluster_counts.size();
 

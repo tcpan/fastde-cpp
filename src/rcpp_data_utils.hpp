@@ -50,13 +50,13 @@ Rcpp::StringVector populate_feature_names(Rcpp::StringVector const & features,
 
 Rcpp::NumericMatrix export_de_to_r_matrix(
     std::vector<double> const & pv,
-    std::vector<std::pair<int, size_t>> const & sorted_labels,
+    std::vector<std::pair<int, size_t> > const & sorted_labels,
     Rcpp::StringVector const & features
 );
 
 Rcpp::DataFrame export_de_to_r_dataframe(
     std::vector<double> const & pv, std::string const & name,
-    std::vector<std::pair<int, size_t>> const & sorted_labels,
+    std::vector<std::pair<int, size_t> > const & sorted_labels,
     Rcpp::StringVector const & features
 );
 
@@ -64,18 +64,18 @@ Rcpp::DataFrame export_fc_to_r_dataframe(
     std::vector<double> const & fc, std::string const & fcname,
     std::vector<double> const & p1, std::string const & p1name,
     std::vector<double> const & p2, std::string const & p2name,
-    std::vector<std::pair<int, size_t>> const & sorted_labels,
+    std::vector<std::pair<int, size_t> > const & sorted_labels,
     Rcpp::StringVector const & features
 );
 Rcpp::List export_fc_to_r_matrix(
     std::vector<double> const & fc, std::string const & fcname,
     std::vector<double> const & p1, std::string const & p1name,
     std::vector<double> const & p2, std::string const & p2name,
-    std::vector<std::pair<int, size_t>> const & sorted_labels,
+    std::vector<std::pair<int, size_t> > const & sorted_labels,
     Rcpp::StringVector const & features
 );
 Rcpp::List export_fc_to_r_matrix(
     std::vector<double> const & fc, std::string const & fcname,
-    std::vector<std::pair<int, size_t>> const & sorted_labels,
+    std::vector<std::pair<int, size_t> > const & sorted_labels,
     Rcpp::StringVector const & features
 );
