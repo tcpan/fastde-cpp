@@ -9,7 +9,7 @@
 // count the number of clusters.  does not assume the labels to be in consecutive range
 // produce map UNORDERED by key, so further sort is needed to get ordered key
 template <typename LABEL_ITER,
-  typename LABEL = typename std::iterator_traits<LABEL_ITER>::value_type >
+  typename LABEL >
 void count_clusters(LABEL_ITER labels, size_t const & count,
   std::unordered_map<LABEL, size_t> & clust_counts) {
 
@@ -48,7 +48,7 @@ void count_clusters(std::vector<LABEL> const & labels,
 // count the number of clusters.  does not assume the labels to be in consecutive range
 // produce map ORDERED by key, so no further sort is needed to get ordered key
 template <typename LABEL_ITER,
-  typename LABEL = typename std::iterator_traits<LABEL_ITER>::value_type >
+  typename LABEL>
 void count_clusters(LABEL_ITER labels, size_t const & count,
   std::map<LABEL, size_t> & clust_counts) {
 
@@ -68,7 +68,7 @@ void count_clusters(LABEL_ITER labels, size_t const & count,
 // count the number of clusters.  does not assume the labels to be in consecutive range
 // produce map ORDERED by key, so no further sort is needed to get ordered key
 template <typename LABEL_ITER,
-  typename LABEL = typename std::iterator_traits<LABEL_ITER>::value_type >
+  typename LABEL >
 void count_clusters(LABEL_ITER labels, size_t const & count,
   std::vector<std::pair<LABEL, size_t> > & clust_counts) {
 
@@ -82,10 +82,11 @@ void count_clusters(LABEL_ITER labels, size_t const & count,
   // now copy temp to final
   clust_counts.assign(temp.begin(), temp.end());
   // sort
-  std::sort(clust_counts.begin(), clust_counts.end(), 
-  [](std::pair<LABEL, size_t> const & left, std::pair<LABEL, size_t> const & right){
+  auto sorter = [](std::pair<LABEL, size_t> const & left, std::pair<LABEL, size_t> const & right){
       return left.first < right.first;
-  });
+  };
+  std::sort(clust_counts.begin(), clust_counts.end(), 
+  sorter);
 }
 template <typename LABEL >
 void count_clusters(std::vector<LABEL> const & labels,
@@ -100,10 +101,11 @@ void count_clusters(std::vector<LABEL> const & labels,
   // now copy temp to final
   clust_counts.assign(temp.begin(), temp.end());
   // sort
-  std::sort(clust_counts.begin(), clust_counts.end(), 
-  [](std::pair<LABEL, size_t> const & left, std::pair<LABEL, size_t> const & right){
+  auto sorter =   [](std::pair<LABEL, size_t> const & left, std::pair<LABEL, size_t> const & right){
       return left.first < right.first;
-  });
+  };
+  std::sort(clust_counts.begin(), clust_counts.end(), 
+  sorter);
 }
 
 template <typename LABEL>
