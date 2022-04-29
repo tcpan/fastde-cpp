@@ -1,0 +1,8 @@
+
+CFLAGS = -g -O2 -mtune=native -std=gnu11 -fpic -march=native -fopenmp
+	
+CXX_STD = -std=gnu++11
+CXXFLAGS = -O2 -g -fno-omit-frame-pointer -mtune=native -march=native -fopenmp
+CXXPICFLAGS = -fpic
+	
+LDFLAGS += -lomp
