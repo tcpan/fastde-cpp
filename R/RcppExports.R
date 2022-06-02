@@ -6,7 +6,7 @@
 #' https://stackoverflow.com/questions/38338270/how-to-return-a-named-vecsxp-when-writing-r-extensions
 #' 
 #' @rdname ComputeFoldChange
-#' @param matrix an expression matrix, COLUMN-MAJOR, each row is a sample, each column a sample
+#' @param matrix an expression matrix, COLUMN-MAJOR, each row is a sample, each column a gene
 #' @param labels an integer vector, each element indicating the group to which a sample belongs.
 #' @param calc_percents  a boolean to indicate whether to compute percents or not.
 #' @param fc_name column name to use for the fold change results 
@@ -29,7 +29,7 @@ ComputeFoldChange <- function(matrix, labels, calc_percents, fc_name, use_expm1,
 #' https://stackoverflow.com/questions/38338270/how-to-return-a-named-vecsxp-when-writing-r-extensions
 #' 
 #' @rdname ComputeSparseFoldChange
-#' @param matrix an expression matrix, COLUMN-MAJOR, each row is a sample, each column a sample
+#' @param matrix an expression matrix, COLUMN-MAJOR, each row is a sample, each column a gene
 #' @param labels an integer vector, each element indicating the group to which a sample belongs.
 #' @param calc_percents  a boolean to indicate whether to compute percents or not.
 #' @param fc_name column name to use for the fold change results 

@@ -33,6 +33,7 @@
 
 #include "rcpp_cluster_utils.hpp"
 #include "rcpp_data_utils.hpp"
+#include "rcpp_benchmark_utils.hpp"
 
 struct clust_info {
   double sum;
@@ -355,6 +356,9 @@ extern SEXP ComputeFoldChange(
   omp_set_num_threads(nthreads);
   Rprintf("THREADING: using %d threads\n", nthreads);
 
+
+  std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start = std::chrono::steady_clock::now();
+
   // ======= compute.
 #pragma omp parallel num_threads(nthreads)
   {
@@ -388,6 +392,7 @@ extern SEXP ComputeFoldChange(
       }
     }
   }
+  Rprintf("[TIME] FC Elapsed(ms)= %f\n", since(start).count());
 
   // ------------------------ generate output
   // GET features.
@@ -486,6 +491,8 @@ extern SEXP ComputeSparseFoldChange(
   
   omp_set_num_threads(nthreads);
   Rprintf("THREADING: using %d threads\n", nthreads);
+  
+  std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start = std::chrono::steady_clock::now();
 
 #pragma omp parallel num_threads(nthreads)
   {
@@ -521,6 +528,7 @@ extern SEXP ComputeSparseFoldChange(
       }
     }
   }
+  Rprintf("[TIME] FC Elapsed(ms)= %f\n", since(start).count());
 
   // ------------------------ generate output
   // GET features.
@@ -623,6 +631,8 @@ extern SEXP FilterFoldChange(SEXP fc, SEXP pct1, SEXP pct2,
     omp_set_num_threads(nthreads);
     Rprintf("THREADING: using %d threads\n", nthreads);
 
+  std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start = std::chrono::steady_clock::now();
+
     // ======= compute.
 #pragma omp parallel num_threads(nthreads)
     {
@@ -673,6 +683,8 @@ extern SEXP FilterFoldChange(SEXP fc, SEXP pct1, SEXP pct2,
           mask[offset] = out;
       }
     }
+    Rprintf("[TIME] FC Elapsed(ms)= %f\n", since(start).count());
+
 
   if (is_matrix) {
     Rcpp::LogicalMatrix rmask(nclusters, nfeatures, mask.begin());

@@ -41,6 +41,7 @@
 
 #include "rcpp_cluster_utils.hpp"
 #include "rcpp_data_utils.hpp"
+#include "rcpp_benchmark_utils.hpp"
 
 // sum, sum of square, and 
 template <typename IT>
@@ -522,6 +523,8 @@ extern SEXP ttest_fast(
   omp_set_num_threads(nthreads);
   Rprintf("THREADING: using %d threads\n", nthreads);
 
+  std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start = std::chrono::steady_clock::now();
+
 #pragma omp parallel num_threads(nthreads)
   {
     int tid = omp_get_thread_num();
@@ -541,6 +544,7 @@ extern SEXP ttest_fast(
         &(pv[offset * label_count]), type, var_eq);
     }
   }
+  Rprintf("[TIME] T-test Elapsed(ms)= %f\n", since(start).count());
 
 
   // ------------------------ generate output
@@ -622,6 +626,8 @@ extern SEXP sparse_ttest_fast(
   omp_set_num_threads(nthreads);
   Rprintf("THREADING: using %d threads\n", nthreads);
 
+  std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start = std::chrono::steady_clock::now();
+  
 #pragma omp parallel num_threads(nthreads)
   {
     int tid = omp_get_thread_num();
@@ -646,6 +652,7 @@ extern SEXP sparse_ttest_fast(
         &(pv[offset * label_count]), type, var_eq);
     }
   }
+  Rprintf("[TIME] T-test Elapsed(ms)= %f\n", since(start).count());
 
 
   // ----------------------- make output

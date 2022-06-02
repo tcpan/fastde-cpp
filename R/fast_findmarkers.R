@@ -1353,7 +1353,7 @@ FastPerformDE <- function(
       FastDiffTTest
     },
     'bioqc' = BioQCDETest,
-    stop("Unknown test: ", test.use)
+    stop("fastDE Unknown test: ", test.use)
   )
 
   de.results <- DEFunc(
@@ -1736,7 +1736,7 @@ FastSparseDiffTTest <- function(
     # slice the data
     dd <- data.use
   }
-  pval <- sparse_ttest_fast(dd, as.integer(cells.clusters),
+  p_val <- sparse_ttest_fast(dd, as.integer(cells.clusters),
           as_dataframe = return.dataframe, threads = get_num_threads(),
           alternative = as.integer(0), var_equal = FALSE)
   if (return.dataframe == FALSE) {
@@ -1877,7 +1877,7 @@ FastDiffTTest <- function(
     # slice the data
     dd <- data.use[, 1:block_size]
   }
-  pval <- ttest_fast(dd, as.integer(cells.clusters),
+  p_val <- ttest_fast(dd, as.integer(cells.clusters),
           as_dataframe = return.dataframe, threads = get_num_threads(),
           alternative =  as.integer(0), var_equal = FALSE)
 

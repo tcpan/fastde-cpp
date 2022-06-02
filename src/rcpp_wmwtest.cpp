@@ -34,6 +34,7 @@
 
 #include "rcpp_cluster_utils.hpp"
 #include "rcpp_data_utils.hpp"
+#include "rcpp_benchmark_utils.hpp"
 
 
 
@@ -506,6 +507,8 @@ extern SEXP wmw_fast(
   omp_set_num_threads(nthreads);
   Rprintf("THREADING: using %d threads\n", nthreads);
 
+  std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start = std::chrono::steady_clock::now();
+
 #pragma omp parallel num_threads(nthreads)
   {
     int tid = omp_get_thread_num();
@@ -528,6 +531,7 @@ extern SEXP wmw_fast(
       wmw(sorted_cluster_counts, rank_sums, tie_sum, nsamples, &(pv[offset * label_count]), type, continuity);
     }
   }
+  Rprintf("[TIME] WMW Elapsed(ms)= %f\n", since(start).count());
 
 
   // ------------------------ generate output
@@ -608,6 +612,7 @@ extern SEXP sparse_wmw_fast(
   omp_set_num_threads(nthreads);
   Rprintf("THREADING: using %d threads\n", nthreads);
 
+  std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start = std::chrono::steady_clock::now();
 
 #pragma omp parallel num_threads(nthreads)
   {
@@ -635,6 +640,7 @@ extern SEXP sparse_wmw_fast(
       wmw(sorted_cluster_counts, rank_sums, tie_sum, nsamples, &(pv[offset * label_count]), type, continuity);
     }
   }
+  Rprintf("[TIME] WMW Elapsed(ms)= %f\n", since(start).count());
 
   // ----------------------- make output
   Rcpp::StringVector new_features = populate_feature_names(features, nfeatures);
