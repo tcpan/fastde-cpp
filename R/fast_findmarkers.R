@@ -8,6 +8,7 @@ library(BioQC)
 
 
 get_num_threads <- function() {
+  message("setting max ", availableCores(), " requested ", nbrOfWorkers())
   nthreads = pmin(nbrOfWorkers(), availableCores())
   return(nthreads)
 }
@@ -110,6 +111,9 @@ FastFindAllMarkers <- function(
       return.dataframe = TRUE,
       ...
     )
+    if ((test.use == "fastroc") && (return.thresh == 1e-2)) {
+      return.thresh <- 0.7
+    }
     # output should be less than p_val thresh, and has columns cluster and gene.
     gde.all <- subset(x = gde.all, subset = gde.all$p_val < return.thresh)
     # also already filtered by p val > 0 if only.pos.
