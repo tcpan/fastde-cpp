@@ -54,8 +54,8 @@ if (argv$workers > 1) {
     print(paste("available cores orig", future::availableCores(), sep=' '))
     options(mc.cores = argv$workers)
     print(paste("set cores to", argv$workers, sep=' '))
-    print(paste("available cores new", future::availableCores(), sep=' '))
     future::plan("multicore", workers = argv$workers, .cleanup=TRUE)
+    print(paste("available cores new", future::nbrOfWorkers(), sep=' '))
 } else {
     future::plan("sequential")
 }
