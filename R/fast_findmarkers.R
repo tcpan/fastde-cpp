@@ -111,6 +111,7 @@ FastFindAllMarkers <- function(
       return.dataframe = TRUE,
       ...
     )
+    message("number of rows for gde.all ", nrow(x = gde.all))
     if ((test.use == "fastroc") && (return.thresh == 1e-2)) {
       return.thresh <- 0.7
     }
