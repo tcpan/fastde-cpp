@@ -100,6 +100,8 @@ void sparse_ttest_summary(ITER in, IDX_ITER ids, size_t const & nz_count,
       it->second.sum += it->second.zeros * zero_val;
       it->second.sum_of_square += it->second.zeros * zero_val * zero_val;
     }
+
+    // Rprintf("label %d, count %d zeros %d, sums %f, sums squared %f\n", it->first, it->second.count, it->second.zeros, it->second.sum, it->second.sum_of_square);
   }
 }
 
@@ -145,13 +147,21 @@ void dense_ttest_summary(
       it->second.sum += it->second.zeros * zero_val;
       it->second.sum_of_square += it->second.zeros * zero_val * zero_val;
     }
+
+    // Rprintf("label %d, count %d zeros %d, sums %f, sums squared %f\n", it->first, it->second.count, it->second.zeros, it->second.sum, it->second.sum_of_square);
   }
 }
+
 
 // TODO:
 // [x]  test that t val is same as R's.  yes.
 // [ ]  output not identical from tstat to pval.  could it be because of the (v/2, 1/2) vs (v/2, v/2) used in the codeplea method?
 // [ ]  erfc-like function for t-distribution.
+
+
+// alternative implementation from https://stats.stackexchange.com/questions/394978/how-to-approximate-the-student-t-cdf-at-a-point-without-the-hypergeometric-funct
+// goal is to have double precision, but that imple seems to have some fortran constants and may be iterating more??
+
 
 //F(t) = 1 - I_x(t) (dof/2, 1/2), x(t) = dof/ (t^2+dof), t > 0, dof is degree of freedom 
 // I_x(t) (a, b) is the regularized incomplete beta function, 
@@ -161,100 +171,117 @@ void dense_ttest_summary(
 //  https://codeplea.com/incomplete-beta-function-c  for computing the regularized incomplete beta function and the cdf.
 // the class below leverages the ideas and code from https://codeplea.com/incomplete-beta-function-c
 // to produce the regularized incomplete beta function output given a degree of freedom (v), and an x value derived from t and v.
-template <typename T, bool precompute>
-class t_distribution_cdf;
+template <typename T, typename DEGREE, bool precompute>
+class incomplete_beta;
 
+template <typename T, typename DEGREE>
+class incomplete_beta<T, DEGREE, false> {
 
-template <typename T>
-class t_distribution_cdf<T, false> {
   protected:
-    static constexpr double STOP = 1.0e-8;
-    static constexpr double TINY = 1.0e-30;
-    static constexpr size_t ITERS = 200;
+    static constexpr size_t ITERS = 200;   /// seems to be okay with the starting a, b.
 
-    double incbeta(double const & _a, double const & _b, double const & x) {
-      if (x < 0.0 || x > 1.0) return INFINITY;
-
-      /*The continued fraction converges nicely for x < (a+1)/(a+b+2)*/
-      double _x_thresh = (_a + 1.0) / (_a + _b + 2.0);
-      if (x >= _x_thresh) {
-        return 1.0 - incbeta_ondemand(_b, _a, 1.0 - x);
-      } else {
-        return incbeta_ondemand(_a, _b, x); 
-      }
-    }
+  public:
 
     // regularized incomplete beta function.  from https://codeplea.com/incomplete-beta-function-c
-    double incbeta_ondemand(double const & _a, double const & _b, 
-      double const & x) {
+    // call with a, b, and x as originally supplied by the user.  use "flip" to reverse them.
+    double incbeta(DEGREE const & a, DEGREE const & b, 
+      T const & x, bool const & flip) {
 
       /*Find the first part before the continued fraction.*/
-      const double _lbeta_ab = lgamma(_a)+lgamma(_b)-lgamma(_a + _b);
-      const double front = exp(log(x)*_a+log(1.0-x)*_b-_lbeta_ab) / _a;
+      const double _lbeta_ab = lgamma(a)+lgamma(b)-lgamma(a + b);  // symmetric
+      double front = exp(log(static_cast<double>(x))*a+log(1.0 - static_cast<double>(x))*b-_lbeta_ab);  // symmetric
+
+      double _a = flip ? static_cast<double>(b) : static_cast<double>(a);
+      double _b = flip ? static_cast<double>(a) : static_cast<double>(b);
+      // if flip, then we need 1-x, but this can be delayed to computing numerator.
+
+      front /= _a;   // divide by a, or b, depending on "flip"
 
       /*Use Lentz's algorithm to evaluate the continued fraction.*/
+      //  a couple of changes vs wikipedia:  1.  check 1-cd instead of f_n - f_{n-1}.  2.  b_i = 1.0 always, so f_0 and c_0 are both 1.0
       double f = 1.0, c = 1.0, d = 0.0;
 
-      int i, m;
-      for (i = 0; i <= ITERS; ++i) {
-          m = i/2;
+      size_t m;
+      double dm, dm2, coeff, numerator, cd;
+      for (size_t i = 0; i <= ITERS; ++i) {
+          m = i >> 1;
+          dm = static_cast<double>(m);
+          dm2 = static_cast<double>(m << 1);
 
-          double numerator;
           if (i == 0) {
               numerator = 1.0; /*First numerator is 1.0.*/
-          } else if (i % 2 == 0) {
-              numerator = (m*(_b-m)*x)/((_a+2*m-1)*(_a+2*m)); /*Even term.*/
+          } else if ((i & 0x1) == 0) {
+              coeff = (dm*(_b-dm))/((_a+dm2-1)*(_a+dm2)); // Even term.  need to multily by _x.
+              numerator = flip ? (coeff - coeff * x) : (coeff * x);  // if flip, _x = (1-x).
           } else {
-              numerator = -((_a+m)*(_a+_b+m)*x)/((_a+2*m)*(_a+2*m+1)); /*Odd term.*/
+              coeff = -((_a+dm)*(_a+_b+dm))/((_a+dm2)*(_a+dm2+1)); /*Odd term.*/
+              numerator = flip ? (coeff - coeff * x) : (coeff * x);
           }
 
           /*Do an iteration of Lentz's algorithm.*/
           d = 1.0 + numerator * d;
-          if (fabs(d) < TINY) d = TINY;
+          if (fabs(d) == 0) d = std::numeric_limits<double>::min();   // to avoid division by 0.
           d = 1.0 / d;
 
           c = 1.0 + numerator / c;
-          if (fabs(c) < TINY) c = TINY;
+          if (fabs(c) == 0) c = std::numeric_limits<double>::min();
 
-          const double cd = c*d;
+          cd = c*d;
           f *= cd;
 
           /*Check for stop.*/
-          if (fabs(1.0-cd) < STOP) {
-              return front * (f-1.0);
+          if (fabs(1.0-cd) < std::numeric_limits<double>::epsilon()) {  // CD is within 1 epsilon of 1.0
+              // Rprintf("stopping:  cd %.17g, front %.17g, f %.17g, numerator %.17g, iter %d\n", cd, front, f, numerator, i);
+              // return front * (f-1.0);    worried about epsilon not precise enough
+              return (front*f - front);
           }
       }
 
-      return INFINITY; /*Needed more loops, did not converge.*/
+      return std::numeric_limits<double>::infinity(); /*Needed more loops, did not converge.*/
     }
 
 
-  public:
     // note that dof/2.0 for a AND b is not what wikipedia has.
-    t_distribution_cdf() {};
+    incomplete_beta() {};
 
-    T operator()(T const & t, double const & _v) {
-      
-      double x = _v / (t * t + _v);
 
-      if (x < 0.0 || x > 1.0) return INFINITY;
+    int get_convergence_type(DEGREE const & _a, DEGREE const & _b, T const & x) {
+      if (x < 0.0 || x > 1.0) return 0;
 
-      return 1.0 - 0.5 * incbeta(_v/2.0, 0.5, x);
+      /*The continued fraction converges nicely for x < (a+1)/(a+b+2)*/
+      double _x_thresh = (static_cast<double>(_a) + 1.0) / (static_cast<double>(_a) + static_cast<double>(_b) + 2.0);
+      if (static_cast<double>(x) >= _x_thresh) return -1;
+      else return 1;
+    }
+
+    T unchecked_incbeta(DEGREE const & _a, DEGREE const & _b, T const & x) {
+      return incbeta(_a, _b, x, false);   // do as is.  no flip.
+    }
+
+
+    T operator()(DEGREE const & _a, DEGREE const & _b, T const & x) {
+      int type = get_convergence_type(_a, _b, x);
+
+      if (type == 0) return std::numeric_limits<T>::infinity();
+      else if (type > 0) return incbeta(_a, _b, x, false);   // forward.  no flip
+      else return (1.0 - incbeta(_a, _b, x, true));  // inverse.  swap a and b, and complement x inside the function.
     }
 
 };
-template <typename T>
-class t_distribution_cdf<T, true> {
+
+
+template <typename T, typename DEGREE>
+class incomplete_beta<T, DEGREE, true> {
+
   protected:
-    const double v;
     const double a;
     const double b;
     const double x_thresh;
-    const double lbeta_ab;
+    const double lbeta;  // symmetric
     std::vector<double> numerator_ab;
     std::vector<double> numerator_ba;
-    static constexpr double STOP = 1.0e-8;
-    static constexpr double TINY = 1.0e-30;
+    // static constexpr double STOP = 1.0e-8;
+    // static constexpr double TINY = 1.0e-30;
     static constexpr size_t ITERS = 200;
 
     void precompute() {
@@ -263,94 +290,313 @@ class t_distribution_cdf<T, true> {
       numerator_ba.resize(ITERS + 1);
       numerator_ba[0] = 1.0;
       size_t m;
+      double dm, dm2;
       for (size_t i = 1; i <= ITERS; ++i) {
         m = i >> 1;
+        dm = static_cast<double>(m);
+        dm2 = static_cast<double>(m << 1);
+
         numerator_ab[i] = 
           (i & 0x1) ? 
-            -((a+m)*(a+b+m))/((a+2*m)*(a+2*m+1))  // odd term
-            : (m*(b-m))/((a+2*m-1)*(a+2*m));  // even term
+            -((a+dm)*(a+b+dm))/((a+dm2)*(a+dm2+1))  // odd term
+            : (dm*(b-dm))/((a+dm2-1)*(a+dm2));  // even term
         numerator_ba[i] = 
           (i & 0x1) ? 
-            -((b+m)*(b+a+m))/((b+2*m)*(b+2*m+1))  // odd term
-            : (m*(a-m))/((b+2*m-1)*(b+2*m));  // even term
+            -((b+dm)*(b+a+dm))/((b+dm2)*(b+dm2+1))  // odd term
+            : (dm*(a-dm))/((b+dm2-1)*(b+dm2));  // even term
       }
     }
 
-    // regularized incomplete beta function.  from https://codeplea.com/incomplete-beta-function-c
-    double incbeta(double const & x) {
-      if (x < 0.0 || x > 1.0) return INFINITY;
+  public:
+    double incbeta(T const & x, bool const & flip ) {
 
-      /*The continued fraction converges nicely for x < (a+1)/(a+b+2)*/
-      if (x > x_thresh) {
-        return 1.0 - incbeta_precomputed(b, a, 1.0 - x, numerator_ba);
-      } else {
-        return incbeta_precomputed(a, b, x, numerator_ab); 
-      }
-    }
+      double front = exp(log(static_cast<double>(x))*a+log(1.0-static_cast<double>(x))*b - lbeta);
 
-    double incbeta_precomputed(double const & _a, double const & _b,
-      double const & x,
-      std::vector<double> const & numerator_front ) {
+      double _a = flip ? static_cast<double>(b) : static_cast<double>(a);
+      double _b = flip ? static_cast<double>(a) : static_cast<double>(b);
+      std::vector<double> & numerators = flip ? numerator_ba : numerator_ab;
 
       /*Find the first part before the continued fraction.*/
-      const double front = exp(log(x)*_a+log(1.0-x)*_b - lbeta_ab) / _a;
+      front /= _a;
 
       /*Use Lentz's algorithm to evaluate the continued fraction.*/
       double f = 1.0, c = 1.0, d = 0.0;
 
       size_t i;
+      double numerator, cd;
       for ( i = 0; i <= ITERS; ++i) {
 
-          double numerator;
           if (i == 0) {
               numerator = 1.0; /*First numerator is 1.0.*/
           } else {
-              numerator = numerator_front[i] * x;
+              numerator = flip ? (numerators[i] - numerators[i] * x) : (numerators[i] * x);
           }
 
           /*Do an iteration of Lentz's algorithm.*/
           d = 1.0 + numerator * d;
-          if (fabs(d) < TINY) d = TINY;
+          if (fabs(d) == 0) d = std::numeric_limits<double>::min();   // to avoid division by 0.
           d = 1.0 / d;
 
           c = 1.0 + numerator / c;
-          if (fabs(c) < TINY) c = TINY;
+          if (fabs(c) == 0) c = std::numeric_limits<double>::min();
 
-          const double cd = c*d;
+          cd = c*d;
           f *= cd;
 
           /*Check for stop.*/
-          if (fabs(1.0-cd) < STOP) {
-              return front * (f-1.0);
+          if (fabs(1.0-cd) < std::numeric_limits<double>::epsilon()) {
+              return (front * f - front);
           }
       }
 
-      return INFINITY; /*Needed more loops, did not converge.*/
+      return std::numeric_limits<double>::infinity(); /*Needed more loops, did not converge.*/
     }
 
-  public:
     // note that dof/2.0 for a AND b is not what wikipedia has.
-    t_distribution_cdf(double const & dof) : v(dof),
-      a(dof / 2.0),
-      b(0.5), 
+    incomplete_beta(DEGREE const & _a, DEGREE const & _b) :
+      a(_a),
+      b(_b), 
       x_thresh((a + 1.0) / (a + b + 2.0)),
-      lbeta_ab(lgamma(a)+lgamma(b)-lgamma(a+b)) {
+      lbeta(lgamma(a)+lgamma(b)-lgamma(a+b)) {
 
       precompute();
     }
 
-    T operator()(T const & t) {
-      assert(precomputed && "class instance is not set up with precomputing");
 
-      double x = v / (t * t + v);
-
-      // double x = (t + sqrt(t * t + v)) / (2.0 * sqrt(t * t + v));
-      if (x < 0.0 || x > 1.0) return INFINITY;
-
-      return 1.0 - 0.5 * incbeta(x); // tdist = 1 - 0.5 incbeta(a, b, x)
+    int get_convergence_type(T const & x) {
+      if (x < 0.0 || x > 1.0) return 0;
+      /*The continued fraction converges nicely for x < (a+1)/(a+b+2)*/
+      if (static_cast<double>(x) >= x_thresh) return -1;
+      else return 1;
     }
+
+    T unchecked_incbeta(T const & x, bool const & flip) {
+      return incbeta(x, flip);   // flip is convergence_type == -1
+    }
+
+
+    T operator()(T const & x) {
+      int type = get_convergence_type(x);
+
+      if (type == 0) return std::numeric_limits<T>::infinity();
+      else if (type > 0) return incbeta(x, false);
+      else return (1.0 - incbeta(x, true));  // note (1.0 - X) is subject epsilon limits for X close to 0 and close to 1.
+    }
+
 };
 
+
+
+template <typename T, typename DEGREE, bool precompute>
+class t_distribution;
+
+
+// based on nist's description of continued fractions.  http://dlmf.nist.gov/8.17#SS5.p1
+// following Lentz' Algorihtm
+// specialized for double for now.
+template <typename T, typename DEGREE>
+class t_distribution<T, DEGREE, false> {
+  protected:
+    incomplete_beta<T, DEGREE, false> incbeta;
+
+  public:
+    // note that dof/2.0 for a AND b is not what wikipedia has.
+    t_distribution() {};
+
+    // directly compute pval (extreme value, or error probability)
+    T pval(T const & t, DEGREE const & _v, int const & test_type = PVAL_GREATER) {
+      
+      // first calcualte the cdf.
+      double _cdf, o;
+      if (_v == std::numeric_limits<T>::infinity()) {
+        _cdf = 0.5 * erfc(-t * M_SQRT1_2);
+
+        // Rprintf("equal variance dof: %f \n", df);
+        if (test_type == PVAL_TWO_SIDED)  // 2 sided
+          // o = 2.0L * (1.0L - cdf( fabs(tstat)));   // this is correct.
+          o = erfc(fabs(t) * M_SQRT1_2);   // the erfc part has range 1 to 2.
+        else if (test_type == PVAL_LESS)  // less.
+          o = 0.5 * erfc(-t * M_SQRT1_2); 
+        else if (test_type == PVAL_GREATER)  // greater.  same as LESS for -t 
+          // o = 1.0L - eqvar_t_cdf( tstat );
+          o = 0.5 * erfc(t * M_SQRT1_2);
+        else
+          o = 1.0L;
+      } else {
+        double x1 = _v / (t * t + _v);
+        int converge_flag = incbeta.get_convergence_type(_v * 0.5, 0.5, x1);
+
+        if (converge_flag == 0) return std::numeric_limits<T>::infinity();
+
+        if (converge_flag > 0) {
+          // out1 =  1.0 - 0.5 * incbeta.incbeta(_v * 0.5, 0.5, x1, false);
+          // Rprintf("equal variance dof: %f \n", df);
+          double y = incbeta.incbeta(_v * 0.5, 0.5, x1, false);
+          if (test_type == PVAL_TWO_SIDED)  // 2 sided
+            // o = 2.0L * (1.0L - eqvar_t_cdf( fabs(tstat)));   // this is correct.
+            o = y;
+          else if (test_type == PVAL_LESS)  // less.
+            // o = eqvar_t_cdf( tstat ); 
+            o = 1.0 - 0.5 * y;
+          else if (test_type == PVAL_GREATER)  // greater.  same as LESS for -t 
+            // o = 1.0L - eqvar_t_cdf( tstat);
+            o = 0.5 * y;
+          else
+            o = 1.0L;
+        } else {
+          // out1 =  0.5 + 0.5 * incbeta.incbeta(_v * 0.5, 0.5, x1, true);
+          // Rprintf("equal variance dof: %f \n", df);
+          double y = incbeta.incbeta(_v * 0.5, 0.5, x1, true);
+          if (test_type == PVAL_TWO_SIDED)  // 2 sided
+            // o = 2.0L * (1.0L - eqvar_t_cdf( fabs(tstat)));   // this is correct.
+            o = 1.0 - y;
+          else if (test_type == PVAL_LESS)  // less.
+            // o = eqvar_t_cdf( tstat ); 
+            o = 0.5 + 0.5 * y;
+          else if (test_type == PVAL_GREATER)  // greater.  same as LESS for -t 
+            // o = 1.0L - eqvar_t_cdf( tstat);
+            o = 0.5 - 0.5 * y;
+          else
+            o = 1.0L;
+        }
+      }
+
+      return o;
+    }
+
+
+    T cdf(T const & t, DEGREE const & _v) {
+      //  if _v is infinity, then use normal CDF, so erfc()?
+              
+      if (_v == std::numeric_limits<T>::infinity()) return 0.5 * erfc(-t * M_SQRT1_2);
+      
+      // this takes fewer iterations to converge (for large _v?), and seems to be numerically more stable (fewer inf)
+      T out1; //, ib;
+      double x1 = _v / (t * t + _v);
+
+      int converge_flag = incbeta.get_convergence_type(_v * 0.5, 0.5, x1);
+
+      if (converge_flag == 0) out1 = std::numeric_limits<T>::infinity();
+      else if (converge_flag > 0) out1 =  1.0 - 0.5 * incbeta.incbeta(_v * 0.5, 0.5, x1, false);
+      else out1 =  0.5 + 0.5 * incbeta.incbeta(_v * 0.5, 0.5, x1, true);
+
+      // Rprintf("out %.17g. is this a double?\n", out1); 
+
+      // this method here takes a lot more iterations to converge than the parameters above.
+      // double out;
+      // double sqttv = sqrt(t * t + _v);
+      // double x = (t + sqttv) / (2.0 * sqttv);
+      // out = incbeta(_v * 0.5, _v * 0.5, x);
+
+      // Rprintf("cdf with :  t %.17g, dof  %.17g,  x1 %.17g,  x %.17g,  test %.17g, output %.17g \n", t, _v, x1, x, out1, out);
+    
+      return out1;
+    }
+
+};
+
+
+template <typename T, typename DEGREE>
+class t_distribution<T, DEGREE, true> {
+  protected:
+    DEGREE _v;
+    incomplete_beta<T, DEGREE, true> incbeta;
+
+  public:
+    // note that dof/2.0 for a AND b is not what wikipedia has.
+    t_distribution(DEGREE const & dof) : _v(dof), incbeta(dof * 0.5, 0.5) {};
+
+    // directly compute pval to avoid repeated 1-x that causes epsilon loss of precision.
+    T pval(T const & t, int const & test_type = PVAL_GREATER) {
+      
+      // first calcualte the cdf.
+      double _cdf, o;
+      if (_v == std::numeric_limits<T>::infinity()) {
+        _cdf = 0.5 * erfc(-t * M_SQRT1_2);
+
+        // Rprintf("equal variance dof: %f \n", df);
+        if (test_type == PVAL_TWO_SIDED)  // 2 sided
+          // o = 2.0L * (1.0L - cdf( fabs(tstat)));   // this is correct.
+          o = erfc(fabs(t) * M_SQRT1_2);   // the erfc part has range 1 to 2.
+        else if (test_type == PVAL_LESS)  // less.
+          o = 0.5 * erfc(-t * M_SQRT1_2); 
+        else if (test_type == PVAL_GREATER)  // greater.  same as LESS for -t 
+          // o = 1.0L - eqvar_t_cdf( tstat );
+          o = 0.5 * erfc(t * M_SQRT1_2);
+        else
+          o = 1.0L;
+      } else {
+        double x1 = _v / (t * t + _v);
+        int converge_flag = incbeta.get_convergence_type(x1);
+
+        if (converge_flag == 0) return std::numeric_limits<T>::infinity();
+
+        if (converge_flag > 0) {
+          // out1 =  1.0 - 0.5 * incbeta.incbeta(x1, false);
+          // Rprintf("equal variance dof: %f \n", df);
+          double y = incbeta.incbeta(x1, false);
+          if (test_type == PVAL_TWO_SIDED)  // 2 sided
+            // o = 2.0L * (1.0L - eqvar_t_cdf( fabs(tstat)));   // this is correct.
+            o = y;
+          else if (test_type == PVAL_LESS)  // less.
+            // o = eqvar_t_cdf( tstat ); 
+            o = 1.0 - 0.5 * y;
+          else if (test_type == PVAL_GREATER)  // greater.  same as LESS for -t 
+            // o = 1.0L - eqvar_t_cdf( tstat);
+            o = 0.5 * y;
+          else
+            o = 1.0L;
+        } else {
+          // out1 =  0.5 + 0.5 * incbeta.incbeta(x1, true);
+          // Rprintf("equal variance dof: %f \n", df);
+          double y = incbeta.incbeta(x1, true);
+          if (test_type == PVAL_TWO_SIDED)  // 2 sided
+            // o = 2.0L * (1.0L - eqvar_t_cdf( fabs(tstat)));   // this is correct.
+            o = 1.0 - y;
+          else if (test_type == PVAL_LESS)  // less.
+            // o = eqvar_t_cdf( tstat ); 
+            o = 0.5 + 0.5 * y;
+          else if (test_type == PVAL_GREATER)  // greater.  same as LESS for -t 
+            // o = 1.0L - eqvar_t_cdf( tstat);
+            o = 0.5 - 0.5 * y;
+          else
+            o = 1.0L;
+        }
+      }
+      
+      return o;
+    }
+
+    // compute CDF directly
+    T cdf(T const & t) {
+      //  if _v is infinity, then use normal CDF, so erfc()?
+              
+      if (_v == std::numeric_limits<T>::infinity()) return 0.5 * erfc(-t * M_SQRT1_2);
+      
+      // this takes fewer iterations to converge (for large _v?), and seems to be numerically more stable (fewer inf)
+      T out1; //, ib;
+      double x1 = _v / (t * t + _v);
+
+      int converge_flag = incbeta.get_convergence_type(x1);
+
+      if (converge_flag == 0) out1 = std::numeric_limits<T>::infinity();
+      else if (converge_flag > 0) out1 =  1.0 - 0.5 * incbeta.incbeta(x1, false);
+      else out1 =  0.5 + 0.5 * incbeta.incbeta(x1, true);
+
+      // Rprintf(" out %.17g. is this a double?\n", out1); 
+
+      // params below converges to same results but take more iterations.
+      // double out;
+      // double sqttv = sqrt(t * t + _v);
+      // double x = (t + sqttv) / (2.0 * sqttv);
+      // out = incbeta(_v * 0.5, _v * 0.5, x);
+
+      // Rprintf("cdf with :  t %.17g, dof  %.17g,  x1 %.17g,  x %.17g,  test %.17g, output %.17g \n", t, _v, x1, x, out1, out);
+    
+      return out1;
+    }
+
+};
 
 // types:  
 template <typename LABEL, typename OT_ITER,
@@ -388,7 +634,7 @@ void two_sample_ttest(
 
   typename std::iterator_traits<OT_ITER>::value_type o;
 
-  t_distribution_cdf<double, true> eqvar_t_cdf(count - 2);
+  t_distribution<double, double, true> eqvar_t_cdf(count - 2);
 
 
   for (auto item : clust_counts) {
@@ -429,32 +675,23 @@ void two_sample_ttest(
     }
     if (test_type == TEST_VAL) {
       o = tstat;
+    } else if (test_type == TEST_PARAM) {
+      o = df;
     } else {
       // convert t statistics to pvalue.  approximation with Normal distribution for DOF >= 30 is not precise enough.  t-distribution table shows DOF=120 and empirical test with DOF = 1000 are not precise enough.  use exact compute instead.
+
+      // doing this directly with incomplete beta instead of via t-distribution cdf to avoid repeated (1-x) reducing precision.
+
+      // do it in the CDF class' pval funtion
 
       // if equal variance assumption, then we can reuse the cdf function.
       // else we'd need to set up new cdf for each dof.  Since dof in that case is dependent on variance of the 2 populations, unlikely to be able to reuse.
       if (equal_variance) {
-        // Rprintf("equal variance dof: %f \n", df);
-        if (test_type == PVAL_TWO_SIDED)  // 2 sided
-          o = 2.0L * (1.0L - eqvar_t_cdf( fabs(tstat)));   // this is correct.
-        else if (test_type == PVAL_LESS)  // less.
-          o = eqvar_t_cdf( tstat ); 
-        else if (test_type == PVAL_GREATER)  // greater.  same as LESS for -t 
-          o = 1.0L - eqvar_t_cdf( tstat );
-        else
-          o = 1.0L;
+        o = eqvar_t_cdf.pval(tstat, test_type);
       } else {
-        // Rprintf("unequal variance dof: %f \n", df);
-        t_distribution_cdf<double, false> cdf;
-        if (test_type == PVAL_TWO_SIDED)  // 2 sided
-          o = 2.0L * (1.0L - cdf( fabs(tstat), df));   // this is correct.
-        else if (test_type == PVAL_LESS)  // less.
-          o = cdf(tstat, df); 
-        else if (test_type == PVAL_GREATER)  // greater.  same as LESS for -t 
-          o = 1.0L - cdf( tstat, df );
-        else
-          o = 1.0L;
+        // Rprintf("unequal variance label %d, count %d, dof: %f, tstat %f \n", l, item.second, df, tstat);
+        t_distribution<double, double, false> cdf;
+        o = cdf.pval(tstat, df, test_type);
       }
     }
     *out_iter = o;
@@ -595,7 +832,7 @@ extern SEXP sparse_ttest_fast(
   // ----------- copy to local
   // ---- input matrix
   std::vector<double> x;
-  std::vector<int> i, p;
+  std::vector<int> i, p;   // TODO: this needs to be changed to size_t
   size_t nsamples, nfeatures, nelem;
   Rcpp::StringVector features = 
     rsparsematrix_to_vectors(matrix, x, i, p, nsamples, nfeatures, nelem);
@@ -645,7 +882,7 @@ extern SEXP sparse_ttest_fast(
       nz_count = p[offset+1] - nz_offset;
       
       // directly compute matrix and res pointers.
-      // Rprintf("thread %d processing feature %d\n", omp_get_thread_num(), i);
+      // Rprintf("thread %d processing feature %d, nonzeros %d\n", omp_get_thread_num(), offset, nz_count);
       sparse_ttest_summary(&(x[nz_offset]), &(i[nz_offset]), nz_count,
         lab.data(), nsamples, 0.0, sorted_cluster_counts, gaussian_sums);
       two_sample_ttest(gaussian_sums, sorted_cluster_counts,

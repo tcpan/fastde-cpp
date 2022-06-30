@@ -3,6 +3,12 @@ library(fastde)
 library(tictoc)
 library(Matrix)
 
+print_mat <- function(mat, count) {
+    print(head(mat, n = count)[, 1:count])
+    print("...")
+    print(tail(mat, n = count)[, 1:count])
+}
+
 comparemat <- function(name, A, B) {
     diff <- A - B
     maxdiff <- max(diff)
@@ -27,11 +33,13 @@ comparemat <- function(name, A, B) {
 # rownames(input) <- samplenames
 # toc()
 
+nthreads <- as.integer(1)
+
 tic("generate")
 # max is 2B.
-ncols = 2000  # features  - test with a small number. this is totally parallel
-nrows = 2000  # samples
-nclusters = 30
+ncols = 200  # features  - test with a small number. this is totally parallel
+nrows = 200000  # samples
+nclusters = 15
 
 clusters = 1:nclusters
 labels <- sample(clusters, nrows, replace = TRUE)
@@ -93,6 +101,7 @@ toc()
 
 print(typeof(Rmean))
 print(dim(Rmean))
+print_mat(Rmean, 5)
 
 
 # print(Rttest)
@@ -107,19 +116,80 @@ print(dim(Rmean))
 tic("fastde t stat")
 # time and run BioQC
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
-fastdetval <- fastde::ttest_fast(as.matrix(input), labels, as_dataframe = FALSE, threads = as.integer(4), alternative =  as.integer(3), var_equal = FALSE)
+fastdetval <- fastde::ttest_fast(as.matrix(input), labels, as_dataframe = FALSE, threads = nthreads, alternative =  as.integer(3), var_equal = FALSE)
 toc()
 
-comparemat("R vs sparse tstat", Rmean, fastdetval)
-
+comparemat("R vs dense tstat", Rmean, fastdetval)
+print_mat(fastdetval, 5)
 
 tic("sparse fastde t stat")
 # time and run BioQC
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
-fastdesparsetval <- fastde::sparse_ttest_fast(input, labels, as_dataframe = FALSE, threads = as.integer(4), alternative = as.integer(3), var_equal = FALSE)
+fastdesparsetval <- fastde::sparse_ttest_fast(input, labels, as_dataframe = FALSE, threads = nthreads, alternative = as.integer(3), var_equal = FALSE)
 toc()
 
 comparemat("R vs sparse tstat", Rmean, fastdesparsetval)
+print_mat(fastdesparsetval, 5)
+
+
+
+
+tic("R builtin, dof")
+Rmean <- matrix(, ncol = ncols, nrow = length(L) )
+dense_input = as.matrix(input);
+print(typeof(input))
+print(typeof(dense_input))
+print(dim(input))
+print(dim(dense_input))
+for ( gene in 1:ncol(input) ) {
+    dat <- matrix(as.vector(dense_input[, gene]), ncol = 1)
+    # cat(sprintf("gene %d \n", gene))
+    # cat(sprintf("x size:  r %d X c %d.\n", nrow(x), ncol(x)))
+    i <- 1
+    for ( c in L ) {
+        lab <- labels %in% c
+
+        # v <- t.test(x = dat[lab], y = dat[!lab])$p.value
+        v <- t.test(x = dat[lab], y = dat[!lab])
+        # print(v$estimate[['mean of x']])
+        # cat(sprintf("R ttest %f\n", v))
+        Rmean[i, gene] <- v$parameter
+        i <- i + 1
+    }
+}
+toc()
+
+print(typeof(Rmean))
+print(dim(Rmean))
+print_mat(Rmean, 5)
+
+# print(Rttest)
+# fastdettest_df$p_val
+# fastdettest_df$cluster
+# fastdettest_df$genes
+
+# Rmean[, 1]
+
+# Rmean[1, ]
+
+tic("fastde t dof")
+# time and run BioQC
+cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
+fastdetval <- fastde::ttest_fast(as.matrix(input), labels, as_dataframe = FALSE, threads = nthreads, alternative =  as.integer(4), var_equal = FALSE)
+toc()
+
+comparemat("R vs dense dof", Rmean, fastdetval)
+print_mat(fastdetval, 5)
+
+
+tic("sparse fastde t dof")
+# time and run BioQC
+cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
+fastdesparsetval <- fastde::sparse_ttest_fast(input, labels, as_dataframe = FALSE, threads = nthreads, alternative = as.integer(4), var_equal = FALSE)
+toc()
+
+comparemat("R vs sparse dof", Rmean, fastdesparsetval)
+print_mat(fastdesparsetval, 5)
 
 
 
@@ -153,6 +223,8 @@ toc()
 
 print(typeof(Rttest))
 print(dim(Rttest))
+print_mat(Rttest, 5)
+
 
 
 # print(Rttest)
@@ -186,6 +258,7 @@ toc()
 
 # Rttest2[1, ]
 comparemat("R vs R sparse", Rttest, Rttest2)
+print_mat(Rttest2, 5)
 
 
 
@@ -193,14 +266,14 @@ comparemat("R vs R sparse", Rttest, Rttest2)
 tic("fastde ttest")
 # time and run ttest two sided (2)
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
-fastdettest <- fastde::ttest_fast(as.matrix(input), labels, as_dataframe = FALSE, threads = as.integer(4), alternative =  as.integer(2), var_equal = FALSE)
+fastdettest <- fastde::ttest_fast(as.matrix(input), labels, as_dataframe = FALSE, threads = nthreads, alternative =  as.integer(2), var_equal = FALSE)
 toc()
 
 
 tic("fastde_df ttest")
 # time and run BioQC
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
-fastdettest_df <- fastde::ttest_fast(as.matrix(input), labels,  as_dataframe = TRUE, threads = as.integer(4), alternative =  as.integer(2), var_equal = FALSE)
+fastdettest_df <- fastde::ttest_fast(as.matrix(input), labels,  as_dataframe = TRUE, threads = nthreads, alternative =  as.integer(2), var_equal = FALSE)
 toc()
 
 
@@ -222,21 +295,22 @@ toc()
 
 
 ## compare by calculating the residuals.
-comparemat("R vs fastde", Rttest, fastdettest)
+comparemat("R vs dense ttest", Rttest, fastdettest)
+print_mat(fastdettest, 5)
 
 
 
 tic("sparse fastde")
 # time and run BioQC
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
-fastdesparsettest <- fastde::sparse_ttest_fast(input, labels, as_dataframe = FALSE, threads = as.integer(4), alternative =  as.integer(2), var_equal = FALSE)
+fastdesparsettest <- fastde::sparse_ttest_fast(input, labels, as_dataframe = FALSE, threads = nthreads, alternative =  as.integer(2), var_equal = FALSE)
 toc()
 
 
 tic("sparse fastde_df")
 # time and run BioQC
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
-fastdesparsettest_df <- fastde::sparse_ttest_fast(input, labels,  as_dataframe = TRUE, threads = as.integer(4), alternative =  as.integer(2), var_equal = FALSE)
+fastdesparsettest_df <- fastde::sparse_ttest_fast(input, labels,  as_dataframe = TRUE, threads = nthreads, alternative =  as.integer(2), var_equal = FALSE)
 toc()
 
 
@@ -257,5 +331,5 @@ toc()
 
 
 ## compare by calculating the residuals.
-comparemat("R vs fastde", Rttest, fastdesparsettest)
-
+comparemat("R vs sparse ttest", Rttest, fastdesparsettest)
+print_mat(fastdesparsettest, 5)
