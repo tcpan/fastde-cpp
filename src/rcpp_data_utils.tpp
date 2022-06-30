@@ -114,7 +114,7 @@ void import_de_common_params(SEXP rtype,
     SEXP bool_param, int & type, bool & bool_val) {
 
     type = Rcpp::as<int>(rtype);
-    if (type > 3) Rprintf("ERROR: unsupported type: %d. Supports only less, greater, two.sided, tstat\n", type);
+    if (type > 4) Rprintf("ERROR: unsupported type: %d. Supports only less, greater, two.sided, stat, params\n", type);
   
     bool_val = Rcpp::as<bool>(bool_param);
 }
@@ -136,7 +136,8 @@ void import_fc_common_params(SEXP calc_percents,
 void import_filterfc_common_params(SEXP min_pct, 
     SEXP min_diff_pct, SEXP logfc_threshold,
     SEXP only_pos, 
-    double _min_pct, double _min_diff_pct, double _logfc_thresh, bool _only_pos) {
+    double & _min_pct, double & _min_diff_pct, 
+    double & _logfc_thresh, bool & _only_pos) {
 
     _min_pct = Rcpp::as<double>(min_pct);
     _min_diff_pct = Rcpp::as<double>(min_diff_pct);

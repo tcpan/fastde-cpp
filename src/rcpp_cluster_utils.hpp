@@ -19,6 +19,7 @@
 #define PVAL_GREATER 1
 #define PVAL_LESS 0
 #define TEST_VAL 3
+#define TEST_PARAM 4
 
 
 // count the number of clusters.  does not assume the labels to be in consecutive range

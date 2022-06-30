@@ -41,8 +41,8 @@ void import_fc_common_params(SEXP calc_percents,
     bool & _use_log, double & _log_base, bool & _use_pseudocount);
 
 void import_filterfc_common_params(SEXP min_pct, 
-    SEXP min_diff_pct, SEXP logfc_threshold,
-    SEXP only_pos, double _min_pct, double _min_diff_pct, double _logfc_thresh, bool _only_pos);
+    SEXP min_diff_pct, SEXP logfc_threshold, SEXP only_pos, 
+    double & _min_pct, double & _min_diff_pct, double & _logfc_thresh, bool & _only_pos);
 
 
 Rcpp::StringVector populate_feature_names(Rcpp::StringVector const & features,

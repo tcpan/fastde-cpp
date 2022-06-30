@@ -440,7 +440,7 @@ extern SEXP ComputeFoldChange(
 //' @param use_pseudocount for "data" and default log type, add pseudocount after log.
 //' @param as_dataframe TRUE/FALSE.  TRUE = return a linearized dataframe.  FALSE = return matrices.
 //' @param threads number of threads to use
-//' @return array or dataframe
+//' @return dense array or dataframe of size features*clusters
 //' @name ComputeSparseFoldChange
 //' @export
 // [[Rcpp::export]]
@@ -576,7 +576,7 @@ extern SEXP ComputeSparseFoldChange(
 //' @param only_pos keep only positive fc value, and not use abs when thresholding.
 //' @param not_count  not scaled.data
 //' @param threads number of threads to use
-//' @return array of same shape as fc
+//' @return array of same shape as fc (dense)
 //' @name FilterFoldChange
 //' @export
 // [[Rcpp::export]]
@@ -601,11 +601,14 @@ extern SEXP FilterFoldChange(SEXP fc, SEXP pct1, SEXP pct2,
       features = rmatrix_to_vector(fc, _fc, nclusters, nfeatures, nelem);
       rmatrix_to_vector(pct1, _pct1, dummyr, dummyc, dummyel);
       rmatrix_to_vector(pct2, _pct2, dummyr, dummyc, dummyel);
+      // Rprintf("FilterFoldChange matrix: nclust %ld  nfeatures %ld  nelem %ld\n", nclusters, nfeatures, nelem);
     } else {
+      // Rprintf("FilterFoldChange is NOT matrix\n");
       rvector_to_vector(fc, _fc);
       rvector_to_vector(pct1, _pct1);
       rvector_to_vector(pct2, _pct2);
       nelem = _fc.size();
+      // Rprintf("FilterFoldChange vector nelem %ld\n", nelem);
     }
 
     // ---- output matrix
@@ -627,6 +630,9 @@ extern SEXP FilterFoldChange(SEXP fc, SEXP pct1, SEXP pct2,
     import_r_common_params(not_count, threads,
       _not_count, nthreads);
 
+      // Rprintf("C++ pct %f, diff pct %f, logfc_thresh %f, pos %d\n", _min_pct, _min_diff_pct, _logfc_thresh, (_only_pos ? 1 : 0));
+      // Rprintf("C++ not count %d, nthreads %d\n", _not_count, nthreads);
+
     // ----- compute
     omp_set_num_threads(nthreads);
     Rprintf("THREADING: using %d threads\n", nthreads);
@@ -634,7 +640,9 @@ extern SEXP FilterFoldChange(SEXP fc, SEXP pct1, SEXP pct2,
   std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start = std::chrono::steady_clock::now();
 
     // ======= compute.
-#pragma omp parallel num_threads(nthreads)
+    // size_t init_count = 0, fc_count = 0, scale_count = 0, pos_count = 0, final_count = 0;
+#pragma omp parallel num_threads(nthreads) 
+// reduction( + : init_count, scale_count, fc_count, pos_count, final_count)
     {
       int tid = omp_get_thread_num();
       size_t block = nelem / nthreads;
@@ -649,6 +657,8 @@ extern SEXP FilterFoldChange(SEXP fc, SEXP pct1, SEXP pct2,
       for(; offset < end; ++offset) {
           out = mask[offset];
           if (!out) continue;
+
+          // ++init_count;
           // alpha.min <- pmax(fc.results$pct.1, fc.results$pct.2)
           // features <- names(x = which(x = alpha.min >= min.pct))
           mx = std::max(_pct1[offset], _pct2[offset]);
@@ -657,6 +667,8 @@ extern SEXP FilterFoldChange(SEXP fc, SEXP pct1, SEXP pct2,
           // x = which(x = alpha.min >= min.pct & alpha.diff >= min.diff.pct)
           mn = std::min(_pct1[offset], _pct2[offset]);
           out &= ((mx - mn) >= _min_diff_pct);
+
+          // fc_count += (out == true);
 
           // if (slot != "scale.data") {
           //   total.diff <- fc.results[, 1] #first column is logFC
@@ -671,6 +683,7 @@ extern SEXP FilterFoldChange(SEXP fc, SEXP pct1, SEXP pct2,
           if (_not_count) {
             mn = _only_pos ? mx : fabs(mx);
             out &= (mn >= _logfc_thresh);
+            // scale_count += (out == true);
           }
 
           // if (only.pos)
@@ -678,13 +691,17 @@ extern SEXP FilterFoldChange(SEXP fc, SEXP pct1, SEXP pct2,
           //              | _only_pos   | !_only_pos 
           //  fc_ptr > 0  | y           |   y
           //  fc_ptr <= 0 | n           |   y
-          if (_only_pos) out &= (mx > 0);
-
+          if (_only_pos) {
+            out &= (mx > 0);
+            // pos_count += (out == true);
+          }
           mask[offset] = out;
+          // final_count += (out == true);
       }
     }
-    Rprintf("[TIME] FC Elapsed(ms)= %f\n", since(start).count());
-
+    Rprintf("[TIME] FC Filter Elapsed(ms)= %f\n", since(start).count());
+    // Rprintf("FC filter counts:  init  %ld, fc %ld, non_scale %ld, pos %ld, final %ld\n", init_count, fc_count, scale_count, pos_count, final_count);
+    
 
   if (is_matrix) {
     Rcpp::LogicalMatrix rmask(nclusters, nfeatures, mask.begin());
