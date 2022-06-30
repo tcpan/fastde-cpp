@@ -40,7 +40,7 @@ ComputeFoldChange <- function(matrix, labels, calc_percents, fc_name, use_expm1,
 #' @param use_pseudocount for "data" and default log type, add pseudocount after log.
 #' @param as_dataframe TRUE/FALSE.  TRUE = return a linearized dataframe.  FALSE = return matrices.
 #' @param threads number of threads to use
-#' @return array or dataframe
+#' @return dense array or dataframe of size features*clusters
 #' @name ComputeSparseFoldChange
 #' @export
 ComputeSparseFoldChange <- function(matrix, labels, calc_percents, fc_name, use_expm1, min_threshold, use_log, log_base, use_pseudocount, as_dataframe, threads) {
@@ -62,7 +62,7 @@ ComputeSparseFoldChange <- function(matrix, labels, calc_percents, fc_name, use_
 #' @param only_pos keep only positive fc value, and not use abs when thresholding.
 #' @param not_count  not scaled.data
 #' @param threads number of threads to use
-#' @return array of same shape as fc
+#' @return array of same shape as fc (dense)
 #' @name FilterFoldChange
 #' @export
 FilterFoldChange <- function(fc, pct1, pct2, init_mask, min_pct, min_diff_pct, logfc_threshold, only_pos, not_count, threads) {

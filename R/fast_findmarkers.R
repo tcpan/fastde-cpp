@@ -91,7 +91,7 @@ FastFindAllMarkers <- function(
     messages <- list()
     if (verbose) {
       idents.all <- sort(x = unique(x = idents.clusters))
-      message("Calculating all clusters ", idents.all)
+      # message("Calculating all clusters ", idents.all)
     }
     # genes.de dim = cluster as rows, genes as columns
     gde.all <- FastFindMarkers(
@@ -111,13 +111,18 @@ FastFindAllMarkers <- function(
       return.dataframe = TRUE,
       ...
     )
-    message("number of rows for gde.all ", nrow(x = gde.all))
+
     if ((test.use == "fastroc") && (return.thresh == 1e-2)) {
       return.thresh <- 0.7
     }
+    # message("FASTDE number of rows for gde.all ", nrow(x = gde.all))
     # output should be less than p_val thresh, and has columns cluster and gene.
     gde.all <- subset(x = gde.all, subset = gde.all$p_val < return.thresh)
     # also already filtered by p val > 0 if only.pos.
+    # message("FASTDE number of rows for gde.all thresholded ", nrow(x = gde.all))
+    print.data.frame(head(gde.all))
+    print.data.frame(tail(gde.all))
+    # write.csv(gde.all, "~/fastde_t.csv", row.names=FALSE)
 
     # this hsould not happen
     # rownames(x = gde.all) <- make.unique(names = as.character(x = gde.all$gene))
@@ -250,10 +255,8 @@ FastFindMarkers.default <- function(
     verbose = verbose,
     ...
   )
-
   colidx <- which(! colnames(fc.results) %in% c("cluster", "gene", "pct.1", "pct.2"))[1]
   fc.name <- colnames(fc.results)[colidx]
-
 
   if (verbose) { toc() }
   if (verbose) { print(fc.results[[fc.name]][1:20]) }
@@ -273,6 +276,8 @@ FastFindMarkers.default <- function(
   } else {
     imask <- fc.results$gene %in% features
   }
+
+  # message("FASTFindMarkers.default min_pct ", min.pct, " diff pct ", min.diff.pct, " log tr ", logfc.threshold, " pos ", only.pos)
   tic("FastFindMarkers.default FilterFoldChange")
   fc_mask <- FilterFoldChange(
     fc.results[[colidx]], fc.results$pct.1, fc.results$pct.2,   
@@ -352,16 +357,21 @@ FastFindMarkers.default <- function(
   de.results <- de.results[fc_mask, , drop = FALSE]
 
   # sort.  first order by cluster, then by p_val, and finally by avg_diff.
-  de.results <- de.results[order(de.results$cluster, de.results$p_val, -de.results[, fc.name]), ]
-  # Bonferroni correction in R is just multiplication by n then clampped to 1.  p.adjust require n >= length(p)
-  # note that the total number of results may be more than n since we collect all features and clusters.  Do this ourselve.
-  n <- nrow(x=object)
-  de.results$p_val_adj <- pmin(1, n * de.results$p_val)
-  # de.results$p_val_adj = p.adjust(
-  #   p = de.results$p_val,
-  #   method = "bonferroni",
-  #   n = nrow(x = object)
-  # )
+  #TODO:  eed to handle DEmethods_nocorrect() - this is just roc.
+  if (test.use == "fastroc") {
+    de.results <- de.results[order(de.results$cluster, de.results$power, -de.results[, fc.name]), ]
+  } else {
+    de.results <- de.results[order(de.results$cluster, de.results$p_val, -de.results[, fc.name]), ]
+    # Bonferroni correction in R is just multiplication by n then clampped to 1.  p.adjust require n >= length(p)
+    # note that the total number of results may be more than n since we collect all features and clusters.  Do this ourselve.
+    n <- nrow(x=object)
+    de.results$p_val_adj <- pmin(1, n * de.results$p_val)
+    # de.results$p_val_adj = p.adjust(
+    #   p = de.results$p_val,
+    #   method = "bonferroni",
+    #   n = nrow(x = object)
+    # )
+  }
 
   if (verbose) { toc() }
   if (verbose) { print("TCP FASTDE: FastFindMarkers.default DONE") }
@@ -846,6 +856,7 @@ FastFoldChange.default <- function(
     as_dataframe = return.dataframe,
     threads = get_num_threads())
   toc()
+
   if (verbose) { print("TCP FASTDE: FastFoldChange.default DONE") }
   return(fc.results)
 }
@@ -1415,7 +1426,7 @@ FastSparseWilcoxDETest <- function(
   # input has each row being a gene, and each column a cell (sample).  -
   #    based on reading of the naive wilcox.test imple in Seurat.
   # fastde input is expected to : each row is a gene, each column is a sample
-  message("USING FastWilcoxDE")
+  message("USING FastSparseWilcoxDE")
   if (verbose) {
     print(rownames(data.use[1:20, ]))
     print(cells.clusters[1:20]) 
@@ -1709,7 +1720,7 @@ FastSparseDiffTTest <- function(
   # input has each row being a gene, and each column a cell (sample).  -
   #    based on reading of the naive wilcox.test imple in Seurat.
   # fastde input is expected to : each row is a gene, each column is a sample
-  message("USING FastTTest DE")
+  message("USING FastSparseTTestDE")
   if (verbose) {
     print(rownames(data.use[1:20, ]))
     print(cells.clusters[1:20]) 
@@ -1741,9 +1752,10 @@ FastSparseDiffTTest <- function(
     # slice the data
     dd <- data.use
   }
+  # default type is 2 (2 sided)
   p_val <- sparse_ttest_fast(dd, as.integer(cells.clusters),
           as_dataframe = return.dataframe, threads = get_num_threads(),
-          alternative = as.integer(0), var_equal = FALSE)
+          alternative = as.integer(2), var_equal = FALSE)
   if (return.dataframe == FALSE) {
     # return data the same way we got it
     if (features.as.rows == TRUE) {
@@ -1882,9 +1894,10 @@ FastDiffTTest <- function(
     # slice the data
     dd <- data.use[, 1:block_size]
   }
+  # default type is 2 (2 sided)
   p_val <- ttest_fast(dd, as.integer(cells.clusters),
           as_dataframe = return.dataframe, threads = get_num_threads(),
-          alternative =  as.integer(0), var_equal = FALSE)
+          alternative =  as.integer(2), var_equal = FALSE)
 
   if (return.dataframe == FALSE) {
     # return data the same way we got it
@@ -1909,9 +1922,10 @@ FastDiffTTest <- function(
         dd <- data.use[, start:end]
       }
 
+      # default type is 2 (2 sided)
       pv <- ttest_fast(dd, as.integer(cells.clusters),
           as_dataframe = return.dataframe, threads = get_num_threads(),
-          alternative =  as.integer(0), var_equal = FALSE)
+          alternative =  as.integer(2), var_equal = FALSE)
       if (return.dataframe == TRUE)  {
         p_val <- rbind(p_val, pv)
       } else {
