@@ -4,10 +4,84 @@
 
 #include "rcpp_data_utils.hpp"
 
+// ------- class def
+namespace Rcpp {
+    dgCMatrix::dgCMatrix(Rcpp::S4 mat) {
+        i = mat.slot("i");  // row id
+        p = mat.slot("p");  // offsets for starts of columns
+        x = mat.slot("x");
+        Dim = mat.slot("Dim");
+        Dimnames = mat.slot("Dimnames");
+    };
 
-Rcpp::StringVector rmatrix_to_vector(SEXP matrix, std::vector<double> & mat,
+    // specialization of Rcpp::as
+    template <> dgCMatrix as(SEXP mat) { return dgCMatrix(mat); };
+
+    // specialization of Rcpp::wrap
+    template <> SEXP wrap(const dgCMatrix& sm) {
+        S4 s(std::string("dgCMatrix"));
+        s.slot("i") = sm.i;
+        s.slot("p") = sm.p;
+        s.slot("x") = sm.x;
+        s.slot("Dim") = sm.Dim;
+        s.slot("Dimnames") = sm.Dimnames;
+        return s;
+    };
+
+    spam32::spam32(Rcpp::S4 mat) {
+        i = mat.slot("colindices");
+        p = mat.slot("rowpointers");
+        x = mat.slot("entries");
+        Dim = mat.slot("dimension");
+    };
+    spam64::spam64(Rcpp::S4 mat) {
+        i = mat.slot("colindices");
+        p = mat.slot("rowpointers");
+        x = mat.slot("entries");
+        Dim = mat.slot("dimension");
+    };
+
+    // specialization of Rcpp::as 
+    template <> spam32 as(SEXP mat) { return spam32(mat); };
+    template <> spam64 as(SEXP mat) { return spam64(mat); };
+
+    // specialization of Rcpp::wrap
+    template <> SEXP wrap(const spam32& sm) {
+        S4 s(std::string("spam"));
+        s.slot("colindices") = sm.i;
+        s.slot("rowpointers") = sm.p;
+        s.slot("entries") = sm.x;
+        s.slot("dimension") = sm.Dim;
+        return s;
+    };
+    template <> SEXP wrap(const spam64& sm) {
+        S4 s(std::string("spam"));
+        s.slot("colindices") = sm.i;
+        s.slot("rowpointers") = sm.p;
+        s.slot("entries") = sm.x;
+        s.slot("dimension") = sm.Dim;
+        return s;
+    };
+
+
+}
+
+Rcpp::dgCMatrix rttest_dgCMatrix(Rcpp::dgCMatrix& mat){
+    return mat;
+}
+Rcpp::spam32 rttest_spam32(Rcpp::spam32 & mat){
+    return mat;
+}
+Rcpp::spam64 rttest_spam64(Rcpp::spam64 & mat){
+    return mat;
+}
+
+
+// ------- function def
+
+
+Rcpp::StringVector copy_rmatrix_to_cppvector(Rcpp::NumericMatrix _matrix, std::vector<double> & mat,
     size_t & nrow, size_t & ncol, size_t & nelem) {
-    Rcpp::NumericMatrix _matrix(matrix);
     nrow=_matrix.nrow(); // n
     ncol=_matrix.ncol(); // m
     nelem = nrow * ncol;
@@ -17,9 +91,8 @@ Rcpp::StringVector rmatrix_to_vector(SEXP matrix, std::vector<double> & mat,
 
     return Rcpp::colnames(_matrix);
 }
-Rcpp::StringVector rmatrix_to_vector(SEXP matrix, std::vector<bool> & mat,
+Rcpp::StringVector copy_rmatrix_to_cppvector(Rcpp::LogicalMatrix _matrix, std::vector<bool> & mat,
     size_t & nrow, size_t & ncol, size_t & nelem) {
-    Rcpp::LogicalMatrix _matrix(matrix);
     nrow=_matrix.nrow(); // n
     ncol=_matrix.ncol(); // m
     nelem = nrow * ncol;
@@ -30,79 +103,141 @@ Rcpp::StringVector rmatrix_to_vector(SEXP matrix, std::vector<bool> & mat,
     return Rcpp::colnames(_matrix);
 }
 
-void rvector_to_vector(SEXP vect, std::vector<bool> & vec) {
-    Rcpp::LogicalVector _vector(vect);
-    
+
+size_t copy_rvector_to_cppvector(Rcpp::LogicalVector _vector, std::vector<bool> & vec, size_t const & length, size_t const & offset) {
+    size_t veclen = static_cast<size_t>(_vector.size());
+    if (offset >= veclen) return 0;  // offset is greater than vector length
+    size_t len = std::min(length, veclen - offset);   // length to return
     vec.clear();
-    vec.insert(vec.end(), _vector.cbegin(), _vector.cend());
+    vec.insert(vec.end(), _vector.cbegin() + offset, _vector.cbegin() + offset + len);
+
+    return len;
 }
 
-void rvector_to_vector(SEXP vect, std::vector<double> & vec) {
-    Rcpp::NumericVector _vector(vect);
-    
+size_t copy_rvector_to_cppvector(Rcpp::NumericVector _vector, std::vector<double> & vec, size_t const & length, size_t const & offset) {
+    size_t veclen = static_cast<size_t>(_vector.size());
+    if (offset >= veclen) return 0;  // offset is greater than vector length
+    size_t len = std::min(length, veclen - offset);   // length to return
     vec.clear();
-    vec.insert(vec.end(), _vector.cbegin(), _vector.cend());
+    vec.insert(vec.end(), _vector.cbegin() + offset, _vector.cbegin() + offset + len);
+
+    return len;
 }
 
-void rvector_to_vector(SEXP vect, std::vector<int> & vec) {
-    Rcpp::IntegerVector _vector(vect);
-    
+size_t copy_rvector_to_cppvector(Rcpp::IntegerVector _vector, std::vector<int> & vec, size_t const & length, size_t const & offset) {
+    size_t veclen = static_cast<size_t>(_vector.size());
+    if (offset >= veclen) return 0;  // offset is greater than vector length
+    size_t len = std::min(length, veclen - offset);   // length to return
     vec.clear();
-    vec.insert(vec.end(), _vector.cbegin(), _vector.cend());
+    vec.insert(vec.end(), _vector.cbegin() + offset, _vector.cbegin() + offset + len);
+
+    return len;
 }
-
-size_t rvector_to_vector(SEXP vect, std::vector<bool> & vec, size_t const & length, size_t const & offset) {
-    Rcpp::LogicalVector _vector(vect);
-    size_t end_offset = std::min(offset + length, static_cast<size_t>(_vector.size()));
+size_t copy_rvector_to_cppvector(Rcpp::NumericVector _vector, std::vector<long> & vec, size_t const & length, size_t const & offset) {
+    size_t veclen = static_cast<size_t>(_vector.size());
+    if (offset >= veclen) return 0;  // offset is greater than vector length
+    size_t len = std::min(length, veclen - offset);   // length to return
     vec.clear();
-    vec.insert(vec.end(), _vector.cbegin() + offset, _vector.cbegin() + end_offset);
+    vec.insert(vec.end(), _vector.cbegin() + offset, _vector.cbegin() + offset + len);
 
-    return end_offset - offset;
-}
-
-size_t rvector_to_vector(SEXP vect, std::vector<double> & vec, size_t const & length, size_t const & offset) {
-    Rcpp::NumericVector _vector(vect);
-    size_t end_offset = std::min(offset + length, static_cast<size_t>(_vector.size()));
-    vec.clear();
-    vec.insert(vec.end(), _vector.cbegin() + offset, _vector.cbegin() + end_offset);
-
-    return end_offset - offset;
-}
-
-size_t rvector_to_vector(SEXP vect, std::vector<int> & vec, size_t const & length, size_t const & offset) {
-    Rcpp::IntegerVector _vector(vect);
-    size_t end_offset = std::min(offset + length, static_cast<size_t>(_vector.size()));
-    vec.clear();
-    vec.insert(vec.end(), _vector.cbegin() + offset, _vector.cbegin() + end_offset);
-
-    return end_offset - offset;
+    return len;
 }
 
 
-Rcpp::StringVector rsparsematrix_to_vectors(SEXP matrix, 
+Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::dgCMatrix obj, 
     std::vector<double> & x,
     std::vector<int> & i,
     std::vector<int> & p,
     size_t & nrow, size_t & ncol, size_t & nelem) {
 
-    Rcpp::S4 obj(matrix);
+    copy_rvector_to_cppvector(obj.i, i);
+    copy_rvector_to_cppvector(obj.p, p);
+    copy_rvector_to_cppvector(obj.x, x);
     
-    rvector_to_vector(obj.slot("i"), i);
-    rvector_to_vector(obj.slot("p"), p);
-    rvector_to_vector(obj.slot("x"), x);
-    
-    Rcpp::IntegerVector dim = obj.slot("Dim");
+    Rcpp::IntegerVector dim = obj.Dim;
     nrow = dim[0];   // sample count,  nrow
     ncol = dim[1];   // feature/gene count,  ncol
     nelem = p[ncol];   // since p is offsets, the ncol+1 entry has the total count
 
     // get the column names == features.
-    Rcpp::List dimnms = obj.slot("Dimnames");
+    Rcpp::List dimnms = obj.Dimnames;
     // SEXP rownms = VECTOR_ELT(dimnms, 0);    // samples
     // Rcpp::StringVector features = dimnms[1];   // features_names = columnames
     // GET features.
     return dimnms[1];  // 
 }
+
+void copy_rsparsematrix_to_cppvectors(
+    Rcpp::NumericVector _x, Rcpp::NumericVector _i, Rcpp::NumericVector _p, 
+    std::vector<double> & x,
+    std::vector<long> & i,
+    std::vector<long> & p) {
+
+    copy_rvector_to_cppvector(_i, i);
+    copy_rvector_to_cppvector(_p, p);
+    copy_rvector_to_cppvector(_x, x);
+}
+
+void copy_rsparsematrix_to_cppvectors(
+    Rcpp::NumericVector _x, Rcpp::IntegerVector _i, Rcpp::IntegerVector _p, 
+    std::vector<double> & x,
+    std::vector<int> & i,
+    std::vector<int> & p) {
+
+    copy_rvector_to_cppvector(_i, i);
+    copy_rvector_to_cppvector(_p, p);
+    copy_rvector_to_cppvector(_x, x);
+}
+
+
+Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spam64 obj, 
+    std::vector<double> & x,
+    std::vector<long> & i,
+    std::vector<long> & p,
+    size_t & nrow, size_t & ncol, size_t & nelem) {
+
+    copy_rsparsematrix_to_cppvectors(
+        obj.x, obj.i, obj.p, 
+        x, i, p
+    );
+
+    Rcpp::NumericVector dim = obj.Dim;
+    nrow = dim[0];   // sample count,  nrow
+    ncol = dim[1];   // feature/gene count,  ncol
+    nelem = p[ncol];   // since p is offsets, the ncol+1 entry has the total count
+
+    // get the column names == features.
+    // SEXP rownms = VECTOR_ELT(dimnms, 0);    // samples
+    // Rcpp::StringVector features = dimnms[1];   // features_names = columnames
+    // GET features.
+    return "NoName";  // 
+
+}
+
+Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spam32 obj, 
+    std::vector<double> & x,
+    std::vector<int> & i,
+    std::vector<int> & p,
+    size_t & nrow, size_t & ncol, size_t & nelem) {
+
+    copy_rsparsematrix_to_cppvectors(
+        obj.x, obj.i, obj.p, 
+        x, i, p
+    );
+
+    Rcpp::IntegerVector dim = obj.Dim;
+    nrow = dim[0];   // sample count,  nrow
+    ncol = dim[1];   // feature/gene count,  ncol
+    nelem = p[ncol];   // since p is offsets, the ncol+1 entry has the total count
+
+    // get the column names == features.
+    // SEXP rownms = VECTOR_ELT(dimnms, 0);    // samples
+    // Rcpp::StringVector features = dimnms[1];   // features_names = columnames
+    // GET features.
+    return "NoName";  // 
+
+}
+
 
 void import_r_common_params(SEXP as_dataframe, SEXP threads,
     bool & _as_dataframe, int & nthreads) {

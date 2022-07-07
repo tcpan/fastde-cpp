@@ -292,7 +292,6 @@ void foldchange_logmean(
 
 
 
-
 //' Fold Change
 //' 
 //' https://stackoverflow.com/questions/38338270/how-to-return-a-named-vecsxp-when-writing-r-extensions
@@ -314,7 +313,7 @@ void foldchange_logmean(
 //' @export
 // [[Rcpp::export]]
 extern SEXP ComputeFoldChange(
-  SEXP matrix, SEXP labels, SEXP calc_percents, SEXP fc_name, 
+  Rcpp::NumericMatrix matrix, Rcpp::IntegerVector labels, SEXP calc_percents, SEXP fc_name, 
   SEXP use_expm1, SEXP min_threshold, 
   SEXP use_log, SEXP log_base, SEXP use_pseudocount, 
   SEXP as_dataframe,
@@ -325,11 +324,11 @@ extern SEXP ComputeFoldChange(
   std::vector<double> mat;
   size_t nsamples, nfeatures, nelem;
   Rcpp::StringVector features = 
-    rmatrix_to_vector(matrix, mat, nsamples, nfeatures, nelem);
+    copy_rmatrix_to_cppvector(matrix, mat, nsamples, nfeatures, nelem);
 
   // ---- label vector
   std::vector<int> lab;
-  rvector_to_vector(labels, lab, nsamples);
+  copy_rvector_to_cppvector(labels, lab, nsamples);
 
   // get the number of unique labels.
   std::vector<std::pair<int, size_t> > sorted_cluster_counts;
@@ -358,7 +357,6 @@ extern SEXP ComputeFoldChange(
 
 
   std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start = std::chrono::steady_clock::now();
-
   // ======= compute.
 #pragma omp parallel num_threads(nthreads)
   {
@@ -392,6 +390,7 @@ extern SEXP ComputeFoldChange(
       }
     }
   }
+
   Rprintf("[TIME] FC Elapsed(ms)= %f\n", since(start).count());
 
   // ------------------------ generate output
@@ -445,7 +444,7 @@ extern SEXP ComputeFoldChange(
 //' @export
 // [[Rcpp::export]]
 extern SEXP ComputeSparseFoldChange(
-  SEXP matrix, SEXP labels, SEXP calc_percents, SEXP fc_name, 
+  Rcpp::dgCMatrix matrix, Rcpp::IntegerVector labels, SEXP calc_percents, SEXP fc_name, 
   SEXP use_expm1, SEXP min_threshold, 
   SEXP use_log, SEXP log_base, SEXP use_pseudocount, 
   SEXP as_dataframe,
@@ -457,13 +456,13 @@ extern SEXP ComputeSparseFoldChange(
   std::vector<int> i, p;
   size_t nsamples, nfeatures, nelem;
   Rcpp::StringVector features = 
-    rsparsematrix_to_vectors(matrix, x, i, p, nsamples, nfeatures, nelem);
+    copy_rsparsematrix_to_cppvectors(matrix, x, i, p, nsamples, nfeatures, nelem);
 
   Rprintf("Sparse DIM: samples %lu x features %lu, non-zeros %lu\n", nsamples, nfeatures, nelem); 
 
   // ---- label vector
   std::vector<int> lab;
-  rvector_to_vector(labels, lab, nsamples);
+  copy_rvector_to_cppvector(labels, lab, nsamples);
 
   // get the number of unique labels.
   std::vector<std::pair<int, size_t> > sorted_cluster_counts;
@@ -598,15 +597,15 @@ extern SEXP FilterFoldChange(SEXP fc, SEXP pct1, SEXP pct2,
     if (is_matrix) {
       size_t dummyr, dummyc, dummyel;
     
-      features = rmatrix_to_vector(fc, _fc, nclusters, nfeatures, nelem);
-      rmatrix_to_vector(pct1, _pct1, dummyr, dummyc, dummyel);
-      rmatrix_to_vector(pct2, _pct2, dummyr, dummyc, dummyel);
+      features = copy_rmatrix_to_cppvector(Rcpp::NumericMatrix(fc), _fc, nclusters, nfeatures, nelem);
+      copy_rmatrix_to_cppvector(pct1, _pct1, dummyr, dummyc, dummyel);
+      copy_rmatrix_to_cppvector(pct2, _pct2, dummyr, dummyc, dummyel);
       // Rprintf("FilterFoldChange matrix: nclust %ld  nfeatures %ld  nelem %ld\n", nclusters, nfeatures, nelem);
     } else {
       // Rprintf("FilterFoldChange is NOT matrix\n");
-      rvector_to_vector(fc, _fc);
-      rvector_to_vector(pct1, _pct1);
-      rvector_to_vector(pct2, _pct2);
+      copy_rvector_to_cppvector(Rcpp::NumericVector(fc), _fc);
+      copy_rvector_to_cppvector(pct1, _pct1);
+      copy_rvector_to_cppvector(pct2, _pct2);
       nelem = _fc.size();
       // Rprintf("FilterFoldChange vector nelem %ld\n", nelem);
     }
@@ -615,8 +614,8 @@ extern SEXP FilterFoldChange(SEXP fc, SEXP pct1, SEXP pct2,
     std::vector<bool> mask;
     if (has_init) {
       size_t dummyr, dummyc, dummyel;
-      if (is_matrix) rmatrix_to_vector(init_mask, mask, dummyr, dummyc, dummyel);
-      else rvector_to_vector(init_mask, mask);
+      if (is_matrix) copy_rmatrix_to_cppvector(Rcpp::LogicalMatrix(init_mask), mask, dummyr, dummyc, dummyel);
+      else copy_rvector_to_cppvector(Rcpp::LogicalVector(init_mask), mask);
     } 
     else mask.assign(nelem, true);
 
@@ -715,6 +714,5 @@ extern SEXP FilterFoldChange(SEXP fc, SEXP pct1, SEXP pct2,
   }
 
 }
-
 
 

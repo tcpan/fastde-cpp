@@ -734,11 +734,11 @@ extern SEXP ttest_fast(
   std::vector<double> mat;
   size_t nsamples, nfeatures, nelem;
   Rcpp::StringVector features = 
-    rmatrix_to_vector(matrix, mat, nsamples, nfeatures, nelem);
+    copy_rmatrix_to_cppvector(Rcpp::NumericMatrix(matrix), mat, nsamples, nfeatures, nelem);
 
   // ---- label vector
   std::vector<int> lab;
-  rvector_to_vector(labels, lab, nsamples);
+  copy_rvector_to_cppvector(Rcpp::IntegerVector(labels), lab, nsamples);
 
   // get the number of unique labels.
   std::vector<std::pair<int, size_t> > sorted_cluster_counts;
@@ -832,16 +832,16 @@ extern SEXP sparse_ttest_fast(
   // ----------- copy to local
   // ---- input matrix
   std::vector<double> x;
-  std::vector<int> i, p;   // TODO: this needs to be changed to size_t
+  std::vector<int> i, p;
   size_t nsamples, nfeatures, nelem;
   Rcpp::StringVector features = 
-    rsparsematrix_to_vectors(matrix, x, i, p, nsamples, nfeatures, nelem);
+    copy_rsparsematrix_to_cppvectors(Rcpp::dgCMatrix(matrix), x, i, p, nsamples, nfeatures, nelem);
 
   Rprintf("Sparse DIM: samples %lu x features %lu, non-zeros %lu\n", nsamples, nfeatures, nelem); 
 
   // ---- label vector
   std::vector<int> lab;
-  rvector_to_vector(labels, lab, nsamples);
+  copy_rvector_to_cppvector(Rcpp::IntegerVector(labels), lab, nsamples);
 
   // get the number of unique labels.
   std::vector<std::pair<int, size_t> > sorted_cluster_counts;
