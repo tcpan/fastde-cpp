@@ -108,50 +108,50 @@ rm(test_y)
 
 
 
-# print("test large spamx32")
-# # test create a spam object
-# y <- spam(1, 2^30, 1)
-# test_y <- rttest_spam32(y)
-# all.equal(y, test_y)
-# rm(test_y)
+print("test large spamx32")
+# test create a spam object
+y <- spam(1, 2^30, 1)
+test_y <- rttest_spam32(y)
+all.equal(y, test_y)
+rm(test_y)
 
-# z <- as.spamx(y)
-# test_z <- rttest_spamx32(z)
-# all.equal(z, test_z)
-# rm(z)
-# rm(test_z)
-# rm(y)
-# 
-
-# print("test large spamx64")
-# # test create a spamx64 object
-# y <- spam(1, 2^31, 1)
-# test_y <- rttest_spam64(y)
-# all.equal(y, test_y)
-# rm(test_y)
-
-# z <- as.spamx(y)
-# test_z <- rttest_spamx64(z)
-# all.equal(z, test_z)
-# rm(z)
-# rm(test_z)
-# rm(y)
+z <- as.spamx(y)
+test_z <- rttest_spamx32(z)
+all.equal(z, test_z)
+rm(z)
+rm(test_z)
+rm(y)
 
 
+print("test large spamx64")
+# test create a spamx64 object
+y <- spam(1, 2^31, 1)
+test_y <- rttest_spam64(y)
+all.equal(y, test_y)
+rm(test_y)
 
-# print("test large spamx64 2")
-# # test create a spamx64 object
-# y <- spamx(1, 2^30, 2)
-# test_y <- rttest_spam64(y)
-# all.equal(y, test_y)
-# rm(test_y)
+z <- as.spamx(y)
+test_z <- rttest_spamx64(z)
+all.equal(z, test_z)
+rm(z)
+rm(test_z)
+rm(y)
 
-# z <- as.spamx(y)
-# test_z <- rttest_spamx64(z)
-# all.equal(z, test_z)
-# rm(z)
-# rm(test_z)
-# rm(y)
+
+
+print("test large spamx64 2")
+# test create a spamx64 object
+y <- spamx(1, 2^30, 2)
+test_y <- rttest_spam64(y)
+all.equal(y, test_y)
+rm(test_y)
+
+z <- as.spamx(y)
+test_z <- rttest_spamx64(z)
+all.equal(z, test_z)
+rm(z)
+rm(test_z)
+rm(y)
 
 
 
