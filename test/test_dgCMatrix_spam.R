@@ -107,6 +107,7 @@ rm(y)
 rm(test_y)
 
 
+options("spam.force64" = TRUE)
 
 print("test large spamx32")
 # test create a spam object

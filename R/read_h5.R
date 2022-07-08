@@ -2,7 +2,6 @@
 library(rhdf5)
 
 
-
 #' Read 10X hdf5 file
 #'
 #' Read count matrix from 10X CellRanger hdf5 file.
@@ -64,10 +63,10 @@ Read10X_h5_big <- function(filename, use.names = TRUE, unique.features = TRUE) {
       features <- make.unique(names = features)
     }
     # TCP: spam has no support for col and row name (dimanmes for non arrays.)
-    # rownames(x = sparse.mat) <- features
-    # colnames(x = sparse.mat) <- barcodes[]
-    # below is now needed.
-    # sparse.mat <- as(object = sparse.mat, Class = 'dgCMatrix')
+    rownames(x = sparse.mat) <- features
+    colnames(x = sparse.mat) <- barcodes[]
+    # below is not needed?
+    sparse.mat <- as(object = sparse.mat, Class = 'spamx')
 
     # TCP:  this is not yet tested, but should be okay...
     # Split v3 multimodal
