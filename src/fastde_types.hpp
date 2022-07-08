@@ -21,6 +21,25 @@ namespace Rcpp {
 
     // NOTE : spam is row major. here we are column major, so it's a transpose of original.
 
+    class spamx32 {
+        public:
+            Rcpp::IntegerVector i, p, Dim;
+            Rcpp::NumericVector x;
+
+            // constructor
+            spamx32(Rcpp::S4 mat);
+    };
+
+    class spamx64 {
+        public:
+            Rcpp::NumericVector i, p, Dim;
+            Rcpp::NumericVector x;
+
+            // constructor
+            spamx64(Rcpp::S4 mat);
+    };
+
+
     class spam32 {
         public:
             Rcpp::IntegerVector i, p, Dim;
@@ -40,7 +59,6 @@ namespace Rcpp {
     };
 
 
-
     // specialization of Rcpp::as
     template <> dgCMatrix as(SEXP mat);
 
@@ -51,6 +69,17 @@ namespace Rcpp {
     // NOTE : spam is row major. here we are column major, so it's a transpose of original.
 
     // no specialization of Rcpp::as - no way to 
+    template <> spamx32 as(SEXP mat);
+    template <> spamx64 as(SEXP mat);
+
+    // // specialization of Rcpp::wrap
+    // template <> SEXP wrap(const spam64& sm);
+    // specialization of Rcpp::wrap
+    template <> SEXP wrap(const spamx64& sm);
+    template <> SEXP wrap(const spamx32& sm);
+
+
+    // no specialization of Rcpp::as - no way to 
     template <> spam32 as(SEXP mat);
     template <> spam64 as(SEXP mat);
 
@@ -59,6 +88,5 @@ namespace Rcpp {
     // specialization of Rcpp::wrap
     template <> SEXP wrap(const spam64& sm);
     template <> SEXP wrap(const spam32& sm);
-
 
 }

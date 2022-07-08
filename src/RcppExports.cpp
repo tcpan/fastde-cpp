@@ -22,6 +22,28 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// rttest_spamx32
+Rcpp::spamx32 rttest_spamx32(Rcpp::spamx32& mat);
+RcppExport SEXP _fastde_rttest_spamx32(SEXP matSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::spamx32& >::type mat(matSEXP);
+    rcpp_result_gen = Rcpp::wrap(rttest_spamx32(mat));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rttest_spamx64
+Rcpp::spamx64 rttest_spamx64(Rcpp::spamx64& mat);
+RcppExport SEXP _fastde_rttest_spamx64(SEXP matSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::spamx64& >::type mat(matSEXP);
+    rcpp_result_gen = Rcpp::wrap(rttest_spamx64(mat));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rttest_spam32
 Rcpp::spam32 rttest_spam32(Rcpp::spam32& mat);
 RcppExport SEXP _fastde_rttest_spam32(SEXP matSEXP) {
@@ -195,6 +217,8 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_fastde_rttest_dgCMatrix", (DL_FUNC) &_fastde_rttest_dgCMatrix, 1},
+    {"_fastde_rttest_spamx32", (DL_FUNC) &_fastde_rttest_spamx32, 1},
+    {"_fastde_rttest_spamx64", (DL_FUNC) &_fastde_rttest_spamx64, 1},
     {"_fastde_rttest_spam32", (DL_FUNC) &_fastde_rttest_spam32, 1},
     {"_fastde_rttest_spam64", (DL_FUNC) &_fastde_rttest_spam64, 1},
     {"_fastde_ComputeFoldChange", (DL_FUNC) &_fastde_ComputeFoldChange, 11},

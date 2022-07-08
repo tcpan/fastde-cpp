@@ -12,6 +12,28 @@ rttest_dgCMatrix <- function(mat) {
     .Call('_fastde_rttest_dgCMatrix', PACKAGE = 'fastde', mat)
 }
 
+#' round trip testing for spamx32
+#'
+#' @rdname rttest_spamx32
+#' @param mat an spam sparse compressed column matrix
+#' @return spam sparse compressed column matrix
+#' @name rttest_spamx32
+#' @export
+rttest_spamx32 <- function(mat) {
+    .Call('_fastde_rttest_spamx32', PACKAGE = 'fastde', mat)
+}
+
+#' round trip testing for spamx64
+#'
+#' @rdname rttest_spamx64
+#' @param mat an spam sparse compressed column matrix
+#' @return spam sparse compressed column matrix
+#' @name rttest_spamx64
+#' @export
+rttest_spamx64 <- function(mat) {
+    .Call('_fastde_rttest_spamx64', PACKAGE = 'fastde', mat)
+}
+
 #' round trip testing for spam32
 #'
 #' @rdname rttest_spam32

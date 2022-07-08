@@ -9,30 +9,6 @@
 
 
 
-// from https://gallery.rcpp.org/articles/sparse-matrix-class/
-// namespace Rcpp {
-
-//     // specialization of Rcpp::as
-//     template <> dgCMatrix as(SEXP mat);
-
-//     // specialization of Rcpp::wrap
-//     template <> SEXP wrap(const dgCMatrix& sm);
-
-
-//     // NOTE : spam is row major. here we are column major, so it's a transpose of original.
-
-//     // no specialization of Rcpp::as - no way to 
-//     template <> spam32 as(SEXP mat);
-//     template <> spam64 as(SEXP mat);
-
-//     // // specialization of Rcpp::wrap
-//     // template <> SEXP wrap(const spam64& sm);
-//     // specialization of Rcpp::wrap
-//     template <> SEXP wrap(const spam64& sm);
-//     template <> SEXP wrap(const spam32& sm);
-
-// }
-
 //' round trip testing for dgCMatrix
 //'
 //' @rdname rttest_dgCMatrix
@@ -42,6 +18,27 @@
 //' @export
 //[[Rcpp::export]]
 Rcpp::dgCMatrix rttest_dgCMatrix(Rcpp::dgCMatrix& mat);
+
+//' round trip testing for spamx32
+//'
+//' @rdname rttest_spamx32
+//' @param mat an spam sparse compressed column matrix
+//' @return spam sparse compressed column matrix
+//' @name rttest_spamx32
+//' @export
+//[[Rcpp::export]]
+Rcpp::spamx32 rttest_spamx32(Rcpp::spamx32& mat);
+
+//' round trip testing for spamx64
+//'
+//' @rdname rttest_spamx64
+//' @param mat an spam sparse compressed column matrix
+//' @return spam sparse compressed column matrix
+//' @name rttest_spamx64
+//' @export
+//[[Rcpp::export]]
+Rcpp::spamx64 rttest_spamx64(Rcpp::spamx64& mat);
+
 
 //' round trip testing for spam32
 //'
@@ -101,6 +98,19 @@ Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spam32 matrix,
     std::vector<int> & i,
     std::vector<int> & p,
     size_t & nrow, size_t & ncol, size_t & nelem);
+
+Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spamx64 matrix, 
+    std::vector<double> & x,
+    std::vector<long> & i,
+    std::vector<long> & p,
+    size_t & nrow, size_t & ncol, size_t & nelem);
+
+Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spamx32 matrix, 
+    std::vector<double> & x,
+    std::vector<int> & i,
+    std::vector<int> & p,
+    size_t & nrow, size_t & ncol, size_t & nelem);
+
 
 Rcpp::StringVector copy_rsparsematrix_to_cppvectors(
     Rcpp::NumericVector _x, Rcpp::IntegerVector _i, Rcpp::IntegerVector _p, 
