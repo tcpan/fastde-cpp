@@ -235,7 +235,7 @@ FastFindMarkers.default <- function(
 ) {
   if (verbose) { print("TCP FASTDE: FastFindMarkers.default") }
 
-  if (verbose) { tic("FastFindMarkers.assay FastFoldChange")  }
+  if (verbose) { tic("FastFindMarkers.default FastFoldChange")  }
 
   if (! is.null(features)) {
     data <- object[features, , drop=FALSE]
@@ -377,6 +377,9 @@ FastFindMarkers.default <- function(
   if (verbose) { print("TCP FASTDE: FastFindMarkers.default DONE") }
   return(de.results)
 }
+
+## FastFindMarkers.default should be okay for spamx.
+
 
 #' @rdname FastFindMarkers
 #' @param object FIXME
@@ -520,7 +523,7 @@ FastFindMarkers.DimReduc <- function(
   # Calculate avg difference.  This is just rowMeans.
   tic("FastFindMarkers.DimReduc FastPerformFC")
   
-  PerformFCFunc <- if (is(data, 'sparseMatrix'))  {
+  PerformFCFunc <- if (is(data, 'sparseMatrix') | is(data, 'spamx') | is(data, 'spam'))  {
     FastPerformSparseFC
   } else {
     FastPerformFC
@@ -842,7 +845,7 @@ FastFoldChange.default <- function(
   
   tic("FastFoldChange.default FastPerformFC")
   
-  PerformFCFunc <- if (is(data, 'sparseMatrix'))  {
+  PerformFCFunc <- if (is(data, 'sparseMatrix')| is(data, 'spamx') | is(data, 'spam'))  {
     FastPerformSparseFC
   } else {
     FastPerformFC
@@ -979,7 +982,7 @@ FastFoldChange.DimReduc <- function(
   tic("FastFoldChange.DimReduc FastPerformFC")
   # Calculate avg difference.  This is just rowMeans.
   
-  PerformFCFunc <- if (is(data, 'sparseMatrix'))  {
+  PerformFCFunc <- if (is(data, 'sparseMatrix')| is(data, 'spamx') | is(data, 'spam'))  {
     FastPerformSparseFC
   } else {
     FastPerformFC
@@ -1358,12 +1361,12 @@ FastPerformDE <- function(
   }
   DEFunc <- switch(
     EXPR = test.use,
-    'fastwmw' = if (is(data, 'sparseMatrix'))  {
+    'fastwmw' = if (is(data, 'sparseMatrix')| is(data, 'spamx') | is(data, 'spam'))  {
       FastSparseWilcoxDETest
     } else {
       FastWilcoxDETest
     },
-    'fast_t' = if (is (data, 'sparseMatrix')) {
+    'fast_t' = if (is (data, 'sparseMatrix')| is(data, 'spamx') | is(data, 'spam')) {
       FastSparseDiffTTest
     } else {
       FastDiffTTest
@@ -2059,7 +2062,7 @@ BioQCDETest <- function(
 
     # need to put features into columns.
     tic("BioQC sparse to dense")
-    if (is(data.use, 'sparseMatrix'))  {
+    if (is(data.use, 'sparseMatrix')| is(data.use, 'spamx') | is(data.use, 'spam'))  {
 
       if (features.as.rows == TRUE) {
         # slice and transpose
@@ -2092,7 +2095,7 @@ BioQCDETest <- function(
         end <- pmin(nfeatures, (i + 1) * block_size )
         # slice the data
         tic("BioQC sparse to dense")
-        if (is(data.use, 'sparseMatrix'))  {
+        if (is(data.use, 'sparseMatrix') | is(data.use, 'spamx') | is(data.use, 'spam'))  {
 
           if (features.as.rows == TRUE) {
             # slice and transpose

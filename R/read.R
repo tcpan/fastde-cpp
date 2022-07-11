@@ -2,6 +2,7 @@
 library(rhdf5)
 
 
+
 #' Read 10X hdf5 file
 #'
 #' Read count matrix from 10X CellRanger hdf5 file.
@@ -53,7 +54,7 @@ Read10X_h5_big <- function(filename, use.names = TRUE, unique.features = TRUE) {
     barcodes <- infile[[paste0(genome, '/barcodes')]]
     # TCP: using spam for sparse matrix.
     print(shp)
-    sparse.mat <- spam(0, shp[1], shp[2])
+    sparse.mat <- spamx(0, shp[1], shp[2])
     sparse.mat@entries <- as.numeric(x = counts[])
     sparse.mat@colindices <- as.numeric(x = indices[] + 1)
     sparse.mat@rowpointers <- as.numeric(x = indptr[])
