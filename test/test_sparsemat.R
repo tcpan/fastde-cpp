@@ -59,7 +59,15 @@ cdtM <- fastde::sp_to_dense(fastde::sp_transpose(M))
 toc()
 
 print(all.equal(tdM, cdtM))
+
+tic("fastde transpose sparse then convert to dense")
+cdtM2 <- fastde::sp_to_dense_transposed(M)
+toc()
+
+print(all.equal(tdM, cdtM2))
+
 rm(tdM)
 rm(cdtM)
+rm(cdtM2)
 
 rm(M)

@@ -10,8 +10,18 @@ comparemat <- function(name, A, B) {
     mediandiff <- median(diff)
     meandiff <- mean(diff * diff)
     stdevdiff <- sd(diff * diff)
-    cat(sprintf("%s : diff range [%f, %f], median %f, mean %f, sd %f\n", 
+    cat(sprintf("%s : diff range [%.17g, %.17g], median %.17g, mean %.17g, sd %.17g\n", 
         name, mindiff, maxdiff, mediandiff, meandiff, stdevdiff))
+    mxpos = which(diff == maxdiff, arr.ind = TRUE)
+    mnpos = which(diff == mindiff, arr.ind = TRUE)
+
+    if ( abs(maxdiff) > .Machine$double.eps)
+       cat(sprintf("%s : max diff at pos %d:  A %.17g - B %.17g = DIFF %.17g.\n", 
+            name, mxpos, A[mxpos], B[mxpos], diff[mxpos]))
+    if  ( abs(mindiff) > .Machine$double.eps)
+        cat(sprintf("%s : min diff at pos %d:  A %.17g - B %.17g = DIFF %.17g.\n", 
+            name, mnpos, A[mnpos], B[mnpos], diff[mnpos]))
+    
 }
 
 
@@ -49,7 +59,7 @@ cat(sprintf("Labels unique: %d \n", length(L)))
 # time and run BioQC
 cat(sprintf("warm up\n"));
 fastdewilcox <- fastde::wmw_fast(input, labels, rtype=as.integer(2), 
-    continuity_correction=TRUE, as_dataframe = FALSE, threads = as.integer(4))
+    continuity_correction=TRUE, as_dataframe = FALSE, threads = as.integer(1))
 
 # # print(fastdewilcox_df)
 # # fastdewilcox_df$p_val
@@ -62,7 +72,7 @@ tic("fastde")
 # time and run BioQC
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
 fastdewilcox <- fastde::wmw_fast(input, labels, rtype=as.integer(2), 
-    continuity_correction=TRUE, as_dataframe = FALSE, threads = as.integer(4))
+    continuity_correction=TRUE, as_dataframe = FALSE, threads = as.integer(1))
 toc()
 
 
@@ -70,7 +80,7 @@ tic("fastde_df")
 # time and run BioQC
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
 fastdewilcox_df <- fastde::wmw_fast(input, labels, rtype=as.integer(2), 
-    continuity_correction=TRUE, as_dataframe = TRUE, threads = as.integer(4))
+    continuity_correction=TRUE, as_dataframe = TRUE, threads = as.integer(1))
 toc()
 
 # print(fastdewilcox2_df)
@@ -191,11 +201,14 @@ toc()
 # Limmawilcox[1, ]
 # Rwilcox[1, ]
 
+head(Rwilcox[, 1:10])
+head(fastdewilcox[ , 1:10])
+
 # comparemat("c++ vs R wilcox", wilcox, Rwilcox)
 # comparemat("c++ vs fastde wilcox", wilcox, fastdewilcox)
-comparemat("c++ vs fastde wilcox2", Rwilcox, fastdewilcox)
+comparemat("R vs fastde wilcox2", Rwilcox, fastdewilcox)
 # comparemat("c++ vs BioQC wilcox", Rwilcox, BioQCwilcox2)
-comparemat("c++ vs Limma wilcox", Rwilcox, Limmawilcox)
+comparemat("R vs Limma wilcox", Rwilcox, Limmawilcox)
 
 
 # # time and run wilcox.test
