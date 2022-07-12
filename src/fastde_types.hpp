@@ -1,6 +1,7 @@
+#pragma once
+
 // This file contains defined Rcpp types that are automatically included in RcppExports...
 #include <Rcpp.h>
-
 
 // from https://gallery.rcpp.org/articles/sparse-matrix-class/
 namespace Rcpp {
@@ -12,6 +13,7 @@ namespace Rcpp {
 
         // constructor
         dgCMatrix(Rcpp::S4 mat);
+        dgCMatrix(int nrows, int ncols, int nelem);
 
         // column iterator -- see https://gallery.rcpp.org/articles/sparse-matrix-class/
         
@@ -25,18 +27,22 @@ namespace Rcpp {
         public:
             Rcpp::IntegerVector i, p, Dim;
             Rcpp::NumericVector x;
+            Rcpp::List Dimnames;
 
             // constructor
             spamx32(Rcpp::S4 mat);
+            spamx32(int nrows, int ncols, int nelem);
     };
 
     class spamx64 {
         public:
             Rcpp::NumericVector i, p, Dim;
             Rcpp::NumericVector x;
+            Rcpp::List Dimnames;
 
             // constructor
             spamx64(Rcpp::S4 mat);
+            spamx64(long nrows, long ncols, long nelem);
     };
 
 
@@ -47,6 +53,7 @@ namespace Rcpp {
 
             // constructor
             spam32(Rcpp::S4 mat);
+            spam32(int nrows, int ncols, int nelem);
     };
 
     class spam64 {
@@ -56,6 +63,7 @@ namespace Rcpp {
 
             // constructor
             spam64(Rcpp::S4 mat);
+            spam64(long nrows, long ncols, long nelem);
     };
 
 

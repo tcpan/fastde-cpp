@@ -472,21 +472,22 @@ void wmw(
 //' @export
 // [[Rcpp::export]]
 extern SEXP wmw_fast(
-    SEXP matrix, SEXP labels, SEXP rtype, 
-    SEXP continuity_correction, 
-    SEXP as_dataframe,
-    SEXP threads) {
+    Rcpp::NumericMatrix matrix, Rcpp::IntegerVector labels, 
+    int rtype, 
+    bool continuity_correction, 
+    bool as_dataframe,
+    int threads) {
 
   // ----------- copy to local
   // ---- input matrix
   std::vector<double> mat;
   size_t nsamples, nfeatures, nelem;
   Rcpp::StringVector features = 
-    copy_rmatrix_to_cppvector(Rcpp::NumericMatrix(matrix), mat, nsamples, nfeatures, nelem);
+    copy_rmatrix_to_cppvector(matrix, mat, nsamples, nfeatures, nelem);
 
   // ---- label vector
   std::vector<int> lab;
-  copy_rvector_to_cppvector(Rcpp::IntegerVector(labels), lab, nsamples);
+  copy_rvector_to_cppvector(labels, lab, nsamples);
 
   // get the number of unique labels.
   std::vector<std::pair<int, size_t> > sorted_cluster_counts;
@@ -497,23 +498,23 @@ extern SEXP wmw_fast(
   std::vector<double> pv(nfeatures * label_count);
 
   // ------------------------ parameter
-  int type, nthreads;
-  bool _as_dataframe, continuity;
-  import_de_common_params(rtype, continuity_correction, type, continuity);
-  import_r_common_params(as_dataframe, threads,
-    _as_dataframe, nthreads);
+  // int rtype, threads;
+  // bool as_dataframe, continuity_correction;
+  // import_de_common_params(rtype, continuity_correction, rtype, continuity_correction);
+  // import_r_common_params(as_dataframe, threads,
+  //   as_dataframe, threads);
 
   // ------------------------ compute
-  omp_set_num_threads(nthreads);
-  Rprintf("THREADING: using %d threads\n", nthreads);
+  omp_set_num_threads(threads);
+  Rprintf("THREADING: using %d threads\n", threads);
 
   std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start = std::chrono::steady_clock::now();
 
-#pragma omp parallel num_threads(nthreads)
+#pragma omp parallel num_threads(threads)
   {
     int tid = omp_get_thread_num();
-    size_t block = nfeatures / nthreads;
-    size_t rem = nfeatures - nthreads * block;
+    size_t block = nfeatures / threads;
+    size_t rem = nfeatures - threads * block;
     size_t offset = tid * block + (tid > rem ? rem : tid);
     int nid = tid + 1;
     size_t end = nid * block + (nid > rem ? rem : nid);
@@ -528,7 +529,7 @@ extern SEXP wmw_fast(
         lab.data(), nsamples, 
         static_cast<double>(0),
         sorted_cluster_counts, rank_sums, tie_sum);
-      wmw(sorted_cluster_counts, rank_sums, tie_sum, nsamples, &(pv[offset * label_count]), type, continuity);
+      wmw(sorted_cluster_counts, rank_sums, tie_sum, nsamples, &(pv[offset * label_count]), rtype, continuity_correction);
     }
   }
   Rprintf("[TIME] WMW Elapsed(ms)= %f\n", since(start).count());
@@ -538,7 +539,7 @@ extern SEXP wmw_fast(
   // GET features.
   Rcpp::StringVector new_features = populate_feature_names(features, nfeatures);
 
-  if (_as_dataframe) {
+  if (as_dataframe) {
     return(Rcpp::wrap(export_de_to_r_dataframe(pv, "p_val", sorted_cluster_counts, new_features)));
   } else {
     // use clust for column names.
@@ -563,7 +564,7 @@ extern SEXP wmw_fast(
 //' \item{2} : p(twoSided)
 //' \item{3} : U
 //' }
-//' @param continuity_correction TRUE/FALSE for continuity correction
+//' @param continuity_correction TRUE/FALSE for continuity_correction correction
 //' @param as_dataframe TRUE/FALSE - TRUE returns a dataframe, FALSE returns a matrix
 //' @param threads  number of concurrent threads.
 //' @return array or dataframe.  for each gene/feature, the rows for the clusters are ordered by id.
@@ -571,11 +572,11 @@ extern SEXP wmw_fast(
 //' @export
 // [[Rcpp::export]]
 extern SEXP sparse_wmw_fast(
-    SEXP matrix, SEXP labels, 
-    SEXP rtype, 
-    SEXP continuity_correction, 
-    SEXP as_dataframe,
-    SEXP threads) {
+    Rcpp::dgCMatrix matrix, Rcpp::IntegerVector labels, 
+    int rtype, 
+    bool continuity_correction, 
+    bool as_dataframe,
+    int threads) {
   // Rprintf("here 1\n");
 
   // ----------- copy to local
@@ -584,13 +585,13 @@ extern SEXP sparse_wmw_fast(
   std::vector<int> i, p;
   size_t nsamples, nfeatures, nelem;
   Rcpp::StringVector features = 
-    copy_rsparsematrix_to_cppvectors(Rcpp::dgCMatrix(matrix), x, i, p, nsamples, nfeatures, nelem);
+    copy_rsparsematrix_to_cppvectors(matrix, x, i, p, nsamples, nfeatures, nelem);
 
   Rprintf("Sparse DIM: samples %lu x features %lu, non-zeros %lu\n", nsamples, nfeatures, nelem); 
 
   // ---- label vector
   std::vector<int> lab;
-  copy_rvector_to_cppvector(Rcpp::IntegerVector(labels), lab, nsamples);
+  copy_rvector_to_cppvector(labels, lab, nsamples);
 
   // get the number of unique labels.
   std::vector<std::pair<int, size_t> > sorted_cluster_counts;
@@ -601,24 +602,24 @@ extern SEXP sparse_wmw_fast(
   std::vector<double> pv(nfeatures * label_count);
 
   // ------------------------ parameter
-  int type, nthreads;
-  bool _as_dataframe, continuity;
-  import_de_common_params(rtype, continuity_correction, type, continuity);
-  import_r_common_params(as_dataframe, threads,
-    _as_dataframe, nthreads);
+  // int rtype, threads;
+  // bool as_dataframe, continuity_correction;
+  // import_de_common_params(rtype, continuity_correction, rtype, continuity_correction);
+  // import_r_common_params(as_dataframe, threads,
+  //   as_dataframe, threads);
 
 
   // ------------------------- compute
-  omp_set_num_threads(nthreads);
-  Rprintf("THREADING: using %d threads\n", nthreads);
+  omp_set_num_threads(threads);
+  Rprintf("THREADING: using %d threads\n", threads);
 
   std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start = std::chrono::steady_clock::now();
 
-#pragma omp parallel num_threads(nthreads)
+#pragma omp parallel num_threads(threads)
   {
     int tid = omp_get_thread_num();
-    size_t block = nfeatures / nthreads;
-    size_t rem = nfeatures - nthreads * block;
+    size_t block = nfeatures / threads;
+    size_t rem = nfeatures - threads * block;
     size_t offset = tid * block + (tid > rem ? rem : tid);
     int nid = tid + 1;
     size_t end = nid * block + (nid > rem ? rem : nid);
@@ -637,7 +638,7 @@ extern SEXP sparse_wmw_fast(
         lab.data(), nsamples, 
         static_cast<double>(0),
         sorted_cluster_counts, rank_sums, tie_sum);
-      wmw(sorted_cluster_counts, rank_sums, tie_sum, nsamples, &(pv[offset * label_count]), type, continuity);
+      wmw(sorted_cluster_counts, rank_sums, tie_sum, nsamples, &(pv[offset * label_count]), rtype, continuity_correction);
     }
   }
   Rprintf("[TIME] WMW Elapsed(ms)= %f\n", since(start).count());
@@ -645,7 +646,115 @@ extern SEXP sparse_wmw_fast(
   // ----------------------- make output
   Rcpp::StringVector new_features = populate_feature_names(features, nfeatures);
 
-  if (_as_dataframe) {
+  if (as_dataframe) {
+    return(Rcpp::wrap(export_de_to_r_dataframe(pv, "p_val", sorted_cluster_counts, new_features)));
+  } else {
+    // use clust for column names.
+    return (Rcpp::wrap(export_de_to_r_matrix(pv, sorted_cluster_counts, new_features)));
+  }
+}
+
+
+
+// =================================
+
+//' Fast Wilcoxon-Mann-Whitney Test for dense matrix
+//'
+//' This implementation uses normal approximation, which works reasonably well if sample size is large (say N>=20)
+//' 
+//' @rdname spamx_wmw_fast
+//' @param matrix an expression matrix, COLUMN-MAJOR, each col is a feature, each row a sample
+//' @param labels an integer vector, each element indicating the group to which a sample belongs.
+//' @param rtype 
+//' \itemize{
+//' \item{0} : p(less)
+//' \item{1} : p(greater)
+//' \item{2} : p(twoSided)
+//' \item{3} : U
+//' }
+//' @param continuity_correction TRUE/FALSE for continuity_correction correction
+//' @param as_dataframe TRUE/FALSE - TRUE returns a dataframe, FALSE returns a matrix
+//' @param threads  number of concurrent threads.
+//' @return array or dataframe.  for each gene/feature, the rows for the clusters are ordered by id.
+//' @name spamx_wmw_fast
+//' @export
+// [[Rcpp::export]]
+extern SEXP spamx_wmw_fast(
+    Rcpp::spamx64 matrix, Rcpp::IntegerVector labels, 
+    int rtype, 
+    bool continuity_correction, 
+    bool as_dataframe,
+    int threads) {
+  // Rprintf("here 1\n");
+
+  // ----------- copy to local
+  // ---- input matrix
+  std::vector<double> x;
+  std::vector<long> i, p;
+  size_t nsamples, nfeatures, nelem;
+  Rcpp::StringVector features = 
+    copy_rsparsematrix_to_cppvectors(matrix, x, i, p, nsamples, nfeatures, nelem);
+
+  Rprintf("Sparse DIM: samples %lu x features %lu, non-zeros %lu\n", nsamples, nfeatures, nelem); 
+
+  // ---- label vector
+  std::vector<int> lab;
+  copy_rvector_to_cppvector(labels, lab, nsamples);
+
+  // get the number of unique labels.
+  std::vector<std::pair<int, size_t> > sorted_cluster_counts;
+  count_clusters(lab, sorted_cluster_counts);
+  size_t label_count = sorted_cluster_counts.size();
+
+  // ---- output pval matrix
+  std::vector<double> pv(nfeatures * label_count);
+
+  // ------------------------ parameter
+  // int rtype, threads;
+  // bool as_dataframe, continuity_correction;
+  // import_de_common_params(rtype, continuity_correction, rtype, continuity_correction);
+  // import_r_common_params(as_dataframe, threads,
+  //   as_dataframe, threads);
+
+
+  // ------------------------- compute
+  omp_set_num_threads(threads);
+  Rprintf("THREADING: using %d threads\n", threads);
+
+  std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start = std::chrono::steady_clock::now();
+
+#pragma omp parallel num_threads(threads)
+  {
+    int tid = omp_get_thread_num();
+    size_t block = nfeatures / threads;
+    size_t rem = nfeatures - threads * block;
+    size_t offset = tid * block + (tid > rem ? rem : tid);
+    int nid = tid + 1;
+    size_t end = nid * block + (nid > rem ? rem : nid);
+
+    long nz_offset, nz_count;
+    std::unordered_map<int, size_t> rank_sums;
+    double tie_sum;
+
+    for(; offset < end; ++offset) {
+      nz_offset = p[offset];
+      nz_count = p[offset+1] - nz_offset;
+
+      // directly compute matrix and res pointers.
+      // Rprintf("thread %d processing feature %d\n", omp_get_thread_num(), i);
+      sparse_wmw_summary(&(x[nz_offset]), &(i[nz_offset]), nz_count,
+        lab.data(), nsamples, 
+        static_cast<double>(0),
+        sorted_cluster_counts, rank_sums, tie_sum);
+      wmw(sorted_cluster_counts, rank_sums, tie_sum, nsamples, &(pv[offset * label_count]), rtype, continuity_correction);
+    }
+  }
+  Rprintf("[TIME] WMW Elapsed(ms)= %f\n", since(start).count());
+
+  // ----------------------- make output
+  Rcpp::StringVector new_features = populate_feature_names(features, nfeatures);
+
+  if (as_dataframe) {
     return(Rcpp::wrap(export_de_to_r_dataframe(pv, "p_val", sorted_cluster_counts, new_features)));
   } else {
     // use clust for column names.

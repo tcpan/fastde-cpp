@@ -523,7 +523,7 @@ FastFindMarkers.DimReduc <- function(
   # Calculate avg difference.  This is just rowMeans.
   tic("FastFindMarkers.DimReduc FastPerformFC")
   
-  PerformFCFunc <- if (is(data, 'sparseMatrix') | is(data, 'spamx') | is(data, 'spam'))  {
+  PerformFCFunc <- if (is(data, 'dgCMatrix') | is(data, 'spamx') )  {
     FastPerformSparseFC
   } else {
     FastPerformFC
@@ -845,7 +845,7 @@ FastFoldChange.default <- function(
   
   tic("FastFoldChange.default FastPerformFC")
   
-  PerformFCFunc <- if (is(data, 'sparseMatrix')| is(data, 'spamx') | is(data, 'spam'))  {
+  PerformFCFunc <- if (is(data, 'dgCMatrix')| is(data, 'spamx') )  {
     FastPerformSparseFC
   } else {
     FastPerformFC
@@ -982,7 +982,7 @@ FastFoldChange.DimReduc <- function(
   tic("FastFoldChange.DimReduc FastPerformFC")
   # Calculate avg difference.  This is just rowMeans.
   
-  PerformFCFunc <- if (is(data, 'sparseMatrix')| is(data, 'spamx') | is(data, 'spam'))  {
+  PerformFCFunc <- if (is(data, 'dgCMatrix')| is(data, 'spamx') )  {
     FastPerformSparseFC
   } else {
     FastPerformFC
@@ -1147,13 +1147,24 @@ FastPerformSparseFC <- function(data, clusters,
   # need to put features into columns.
   if (features_as_rows == TRUE) {
     # slice and transpose
-    dd <- fastde::sp_transpose(data)
+    if (is(data, 'spamx') )  {
+      dd <- fastde::spamx_transpose(data)
+    } else {
+      dd <- fastde::sp_transpose(data)
+    }
   } else {
     # slice the data
     dd <- data
   }
+
+  PerformFCFunc <- if (is(data, 'spamx') )  {
+    ComputeSpamxFoldChange
+  } else {
+    ComputeSparseFoldChange
+  }
+
   # output has features in columns, and clusters in rows
-  fc.results <- ComputeSparseFoldChange(dd, as.integer(clusters),
+  fc.results <- PerformFCFunc(dd, as.integer(clusters),
     calc_percents = calc_percents, fc_name = fc_name, 
     use_expm1 = use_expm1, min_threshold = min_threshold, 
     use_log = use_log, log_base = log_base, use_pseudocount = use_pseudocount, 
@@ -1361,12 +1372,12 @@ FastPerformDE <- function(
   }
   DEFunc <- switch(
     EXPR = test.use,
-    'fastwmw' = if (is(data, 'sparseMatrix')| is(data, 'spamx') | is(data, 'spam'))  {
+    'fastwmw' = if (is(data, 'dgCMatrix')| is(data, 'spamx') )  {
       FastSparseWilcoxDETest
     } else {
       FastWilcoxDETest
     },
-    'fast_t' = if (is (data, 'sparseMatrix')| is(data, 'spamx') | is(data, 'spam')) {
+    'fast_t' = if (is (data, 'dgCMatrix')| is(data, 'spamx') ) {
       FastSparseDiffTTest
     } else {
       FastDiffTTest
@@ -1456,12 +1467,23 @@ FastSparseWilcoxDETest <- function(
   # need to put features into columns.
   if (features.as.rows == TRUE) {
     # slice and transpose
-    dd <- fastde::sp_transpose(data.use)
+    if (is(data, 'spamx') )  {
+      dd <- fastde::spamx_transpose(data.use)
+    } else {
+      dd <- fastde::sp_transpose(data.use)
+    }
   } else {
     # slice the data
-    dd <- data.use
+    dd <- data
   }
-  p_val <- sparse_wmw_fast(dd, as.integer(cells.clusters), rtype = as.integer(2), 
+
+  PerformDEFunc <- if (is(data, 'spamx') )  {
+    spamx_wmw_fast
+  } else {
+    sparse_wmw_fast
+  }
+
+  p_val <- PerformDEFunc(dd, as.integer(cells.clusters), rtype = as.integer(2), 
           continuity_correction = TRUE,
           as_dataframe = return.dataframe, threads = get_num_threads())
 
@@ -1747,16 +1769,29 @@ FastSparseDiffTTest <- function(
   # print(head(data.use))
   tic("FasTTestDETest fast_t")
 
+
   # need to put features into columns.
   if (features.as.rows == TRUE) {
     # slice and transpose
-    dd <- fastde::sp_transpose(data.use)
+    if (is(data.use, 'spamx') )  {
+      dd <- fastde::spamx_transpose(data.use)
+    } else {
+      dd <- fastde::sp_transpose(data.use)
+    }
   } else {
     # slice the data
     dd <- data.use
   }
+
+  PerformDEFunc <- if (is(data.use, 'spamx') )  {
+    spamx_ttest_fast
+  } else {
+    sparse_ttest_fast
+  }
+
+
   # default type is 2 (2 sided)
-  p_val <- sparse_ttest_fast(dd, as.integer(cells.clusters),
+  p_val <- PerformDEFunc(dd, as.integer(cells.clusters),
           as_dataframe = return.dataframe, threads = get_num_threads(),
           alternative = as.integer(2), var_equal = FALSE)
   if (return.dataframe == FALSE) {
@@ -2062,14 +2097,22 @@ BioQCDETest <- function(
 
     # need to put features into columns.
     tic("BioQC sparse to dense")
-    if (is(data.use, 'sparseMatrix')| is(data.use, 'spamx') | is(data.use, 'spam'))  {
-
+    if (is(data.use, 'dgCMatrix')) {
       if (features.as.rows == TRUE) {
         # slice and transpose
-        dd <- fastde::sp_to_dense(fastde::sp_transpose(data.use[1:block_size, ]))
+        dd <- fastde::sp_to_dense_transposed(data.use[1:block_size, ])
       } else {
         # slice the data
         dd <- fastde::sp_to_dense(data.use[, 1:block_size])
+      }
+    } else if (is(data.use, 'spamx') ) {
+
+      if (features.as.rows == TRUE) {
+        # slice and transpose
+        dd <- fastde::spamx_to_dense_transposed(data.use[1:block_size, ])
+      } else {
+        # slice the data
+        dd <- fastde::spamx_to_dense(data.use[, 1:block_size])
       }
     } else {
       if (features.as.rows == TRUE) {
@@ -2095,14 +2138,22 @@ BioQCDETest <- function(
         end <- pmin(nfeatures, (i + 1) * block_size )
         # slice the data
         tic("BioQC sparse to dense")
-        if (is(data.use, 'sparseMatrix') | is(data.use, 'spamx') | is(data.use, 'spam'))  {
-
+        if (is(data.use, 'dgCMatrix')) {
           if (features.as.rows == TRUE) {
             # slice and transpose
-            dd <- fastde::sp_to_dense(fastde::sp_transpose(data.use[start:end, ]))
+            dd <- fastde::sp_to_dense_transposed(data.use[start:end, ])
           } else {
             # slice the data
             dd <- fastde::sp_to_dense(data.use[, start:end])
+          }
+        } else if (is(data.use, 'spamx') )  {
+
+          if (features.as.rows == TRUE) {
+            # slice and transpose
+            dd <- fastde::spamx_to_dense_transposed(data.use[start:end, ])
+          } else {
+            # slice the data
+            dd <- fastde::spamx_to_dense(data.use[, start:end])
           }
         } else { # dense matrix
           if (features.as.rows == TRUE) {

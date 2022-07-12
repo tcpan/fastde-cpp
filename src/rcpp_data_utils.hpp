@@ -128,21 +128,21 @@ Rcpp::StringVector copy_rsparsematrix_to_cppvectors(
     size_t & nrow, size_t & ncol, size_t & nelem);
 
 
-//------ these may not be needed - Rcpp can wrap?
-void import_r_common_params(SEXP as_dataframe, SEXP threads,
-    bool & _as_dataframe, int & nthreads);
-void import_de_common_params(SEXP rtype,
-    SEXP bool_param, int & type, bool & bool_val);
-void import_fc_common_params(SEXP calc_percents, 
-    SEXP min_threshold, SEXP use_expm1,
-    SEXP use_log, SEXP log_base, SEXP use_pseudocount,
-    bool & perc, double & min_thresh, bool & _use_expm1, 
-    bool & _use_log, double & _log_base, bool & _use_pseudocount);
+// //------ these may not be needed - Rcpp can wrap?
+// void import_r_common_params(SEXP as_dataframe, SEXP threads,
+//     bool & _as_dataframe, int & nthreads);
+// void import_de_common_params(SEXP rtype,
+//     SEXP bool_param, int & type, bool & bool_val);
+// void import_fc_common_params(SEXP calc_percents, 
+//     SEXP min_threshold, SEXP use_expm1,
+//     SEXP use_log, SEXP log_base, SEXP use_pseudocount,
+//     bool & perc, double & min_thresh, bool & _use_expm1, 
+//     bool & _use_log, double & _log_base, bool & _use_pseudocount);
 
-void import_filterfc_common_params(SEXP min_pct, 
-    SEXP min_diff_pct, SEXP logfc_threshold, SEXP only_pos, 
-    double & _min_pct, double & _min_diff_pct, double & _logfc_thresh, bool & _only_pos);
-//-----------------
+// void import_filterfc_common_params(SEXP min_pct, 
+//     SEXP min_diff_pct, SEXP logfc_threshold, SEXP only_pos, 
+//     double & _min_pct, double & _min_diff_pct, double & _logfc_thresh, bool & _only_pos);
+// //-----------------
 
 Rcpp::StringVector populate_feature_names(Rcpp::StringVector const & features,
     size_t const & nfeatures);

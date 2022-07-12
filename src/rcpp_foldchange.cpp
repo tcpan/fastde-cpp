@@ -313,11 +313,12 @@ void foldchange_logmean(
 //' @export
 // [[Rcpp::export]]
 extern SEXP ComputeFoldChange(
-  Rcpp::NumericMatrix matrix, Rcpp::IntegerVector labels, SEXP calc_percents, SEXP fc_name, 
-  SEXP use_expm1, SEXP min_threshold, 
-  SEXP use_log, SEXP log_base, SEXP use_pseudocount, 
-  SEXP as_dataframe,
-  SEXP threads) {
+  Rcpp::NumericMatrix matrix, Rcpp::IntegerVector labels, 
+  bool calc_percents, std::string fc_name, 
+  bool use_expm1, double min_threshold, 
+  bool use_log, double log_base, bool use_pseudocount, 
+  bool as_dataframe,
+  int threads) {
 
   // ----------- copy to local
   // ---- input matrix
@@ -341,29 +342,29 @@ extern SEXP ComputeFoldChange(
   std::vector<double> p2(nfeatures * label_count);
   
   // ------------------------ parameter
-  int nthreads;
-  double min_thresh, _log_base;
-  bool _as_dataframe, perc, _use_expm1, _use_log, _use_pseudocount;
-  import_fc_common_params(calc_percents, min_threshold, use_expm1,
-    use_log, log_base, use_pseudocount,
-    perc, min_thresh, _use_expm1, _use_log, _log_base, _use_pseudocount);
-  import_r_common_params(as_dataframe, threads,
-    _as_dataframe, nthreads);
-  std::string _fc_name = Rcpp::as<std::string>(fc_name);
+  // int threads;
+  // double min_threshold, log_base;
+  // bool as_dataframe, calc_percents, use_expm1, use_log, use_pseudocount;
+  // import_fc_common_params(calc_percents, min_threshold, use_expm1,
+  //   use_log, log_base, use_pseudocount,
+  //   calc_percents, min_threshold, use_expm1, use_log, log_base, use_pseudocount);
+  // import_r_common_params(as_dataframe, threads,
+  //   as_dataframe, threads);
+  // std::string fc_name = Rcpp::as<std::string>(fc_name);
 
   // ------------------------ compute
-  omp_set_num_threads(nthreads);
-  Rprintf("THREADING: using %d threads\n", nthreads);
+  omp_set_num_threads(threads);
+  Rprintf("THREADING: using %d threads\n", threads);
 
 
   std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start = std::chrono::steady_clock::now();
   // ======= compute.
-#pragma omp parallel num_threads(nthreads)
+#pragma omp parallel num_threads(threads)
   {
     
     int tid = omp_get_thread_num();
-    size_t block = nfeatures / nthreads;
-    size_t rem = nfeatures - nthreads * block;
+    size_t block = nfeatures / threads;
+    size_t rem = nfeatures - threads * block;
     size_t offset = tid * block + (tid > rem ? rem : tid);
     int nid = tid + 1;
     size_t end = nid * block + (nid > rem ? rem : nid);
@@ -373,17 +374,17 @@ extern SEXP ComputeFoldChange(
     for(; offset < end; ++offset) {
       pseudosparse_foldchange_summary(&(mat[offset * nsamples]), 
         lab.data(), nsamples, static_cast<double>(0),
-        sorted_cluster_counts, cl_sums, min_thresh, _use_expm1);
+        sorted_cluster_counts, cl_sums, min_threshold, use_expm1);
 
       // if percent is required, calc
-      if (perc) {
+      if (calc_percents) {
         foldchange_percents(sorted_cluster_counts, cl_sums,
           nsamples, &(p1[offset * label_count]), &(p2[offset * label_count]));
       }
 
-      if (_use_log) {
+      if (use_log) {
         foldchange_logmean(sorted_cluster_counts, cl_sums,
-          nsamples, &(fc[offset * label_count]), _use_pseudocount, _log_base);
+          nsamples, &(fc[offset * label_count]), use_pseudocount, log_base);
       } else {
         foldchange_mean(sorted_cluster_counts, cl_sums, 
           nsamples, &(fc[offset * label_count]));
@@ -397,26 +398,26 @@ extern SEXP ComputeFoldChange(
   // GET features.
   Rcpp::StringVector new_features = populate_feature_names(features, nfeatures);
 
-  if (_as_dataframe) {
-    if (perc)
+  if (as_dataframe) {
+    if (calc_percents)
       return(Rcpp::wrap(export_fc_to_r_dataframe(
-        fc, _fc_name, 
+        fc, fc_name, 
         p1, "pct.1", 
         p2, "pct.2",
         sorted_cluster_counts, new_features)));
     else
-      return(Rcpp::wrap(export_de_to_r_dataframe(fc, _fc_name,
+      return(Rcpp::wrap(export_de_to_r_dataframe(fc, fc_name,
       sorted_cluster_counts, new_features)));
   } else {
-    if (perc)
+    if (calc_percents)
       return (Rcpp::wrap(export_fc_to_r_matrix(
-        fc, _fc_name, 
+        fc, fc_name, 
         p1, "pct.1", 
         p2, "pct.2",
         sorted_cluster_counts, new_features)));
     else
     // use clust for column names.
-      return (Rcpp::wrap(export_fc_to_r_matrix(fc, _fc_name,
+      return (Rcpp::wrap(export_fc_to_r_matrix(fc, fc_name,
         sorted_cluster_counts, new_features)));
   }
   
@@ -444,11 +445,12 @@ extern SEXP ComputeFoldChange(
 //' @export
 // [[Rcpp::export]]
 extern SEXP ComputeSparseFoldChange(
-  Rcpp::dgCMatrix matrix, Rcpp::IntegerVector labels, SEXP calc_percents, SEXP fc_name, 
-  SEXP use_expm1, SEXP min_threshold, 
-  SEXP use_log, SEXP log_base, SEXP use_pseudocount, 
-  SEXP as_dataframe,
-  SEXP threads) {
+  Rcpp::dgCMatrix matrix, Rcpp::IntegerVector labels,
+  bool calc_percents, std::string fc_name, 
+  bool use_expm1, double min_threshold, 
+  bool use_log, double log_base, bool use_pseudocount, 
+  bool as_dataframe,
+  int threads) {
 
   // ----------- copy to local
   // ---- input matrix
@@ -475,29 +477,29 @@ extern SEXP ComputeSparseFoldChange(
   std::vector<double> p2(nfeatures * label_count);
   
   // ------------------------ parameter
-  int nthreads;
-  double min_thresh, _log_base;
-  bool _as_dataframe, perc, _use_expm1, _use_log, _use_pseudocount;
-  import_fc_common_params(calc_percents, min_threshold, use_expm1,
-    use_log, log_base, use_pseudocount,
-    perc, min_thresh, _use_expm1, _use_log, _log_base, _use_pseudocount);
-  import_r_common_params(as_dataframe, threads,
-    _as_dataframe, nthreads);
-  std::string _fc_name = Rcpp::as<std::string>(fc_name);
+  // int threads;
+  // double min_threshold, log_base;
+  // bool as_dataframe, calc_percents, use_expm1, use_log, use_pseudocount;
+  // import_fc_common_params(calc_percents, min_threshold, use_expm1,
+  //   use_log, log_base, use_pseudocount,
+  //   calc_percents, min_threshold, use_expm1, use_log, log_base, use_pseudocount);
+  // import_r_common_params(as_dataframe, threads,
+  //   as_dataframe, threads);
+  // std::string fc_name = Rcpp::as<std::string>(fc_name);
 
 
   // ======= compute.
   
-  omp_set_num_threads(nthreads);
-  Rprintf("THREADING: using %d threads\n", nthreads);
+  omp_set_num_threads(threads);
+  Rprintf("THREADING: using %d threads\n", threads);
   
   std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start = std::chrono::steady_clock::now();
 
-#pragma omp parallel num_threads(nthreads)
+#pragma omp parallel num_threads(threads)
   {
     int tid = omp_get_thread_num();
-    size_t block = nfeatures / nthreads;
-    size_t rem = nfeatures - nthreads * block;
+    size_t block = nfeatures / threads;
+    size_t rem = nfeatures - threads * block;
     size_t offset = tid * block + (tid > rem ? rem : tid);
     int nid = tid + 1;
     size_t end = nid * block + (nid > rem ? rem : nid);
@@ -512,16 +514,16 @@ extern SEXP ComputeSparseFoldChange(
       sparse_foldchange_summary(&(x[nz_offset]), &(i[nz_offset]), nz_count,
         lab.data(), nsamples,
         static_cast<double>(0),
-        sorted_cluster_counts, cl_sums, min_thresh, _use_expm1);
+        sorted_cluster_counts, cl_sums, min_threshold, use_expm1);
 
       // if percent is required, calc
-      if (perc) {
+      if (calc_percents) {
         foldchange_percents(sorted_cluster_counts, cl_sums, nsamples, 
         &(p1[offset * label_count]), &(p2[offset * label_count]));
       }
 
-      if (_use_log) {
-        foldchange_logmean(sorted_cluster_counts, cl_sums, nsamples, &(fc[offset * label_count]), _use_pseudocount, _log_base);
+      if (use_log) {
+        foldchange_logmean(sorted_cluster_counts, cl_sums, nsamples, &(fc[offset * label_count]), use_pseudocount, log_base);
       } else {
         foldchange_mean(sorted_cluster_counts, cl_sums, nsamples, &(fc[offset * label_count]));
       }
@@ -533,26 +535,164 @@ extern SEXP ComputeSparseFoldChange(
   // GET features.
   Rcpp::StringVector new_features = populate_feature_names(features, nfeatures);
 
-  if (_as_dataframe) {
-    if (perc)
+  if (as_dataframe) {
+    if (calc_percents)
       return(Rcpp::wrap(export_fc_to_r_dataframe(
-        fc, _fc_name, 
+        fc, fc_name, 
         p1, "pct.1", 
         p2, "pct.2",
         sorted_cluster_counts, new_features)));
     else
-      return(Rcpp::wrap(export_de_to_r_dataframe(fc, _fc_name,
+      return(Rcpp::wrap(export_de_to_r_dataframe(fc, fc_name,
       sorted_cluster_counts, new_features)));
   } else {
-    if (perc)
+    if (calc_percents)
       return (Rcpp::wrap(export_fc_to_r_matrix(
-        fc, _fc_name, 
+        fc, fc_name, 
         p1, "pct.1", 
         p2, "pct.2",
         sorted_cluster_counts, new_features)));
     else
     // use clust for column names.
-      return (Rcpp::wrap(export_fc_to_r_matrix(fc, _fc_name,
+      return (Rcpp::wrap(export_fc_to_r_matrix(fc, fc_name,
+        sorted_cluster_counts, new_features)));
+  }
+
+}
+
+
+
+//' Fold Change
+//' 
+//' https://stackoverflow.com/questions/38338270/how-to-return-a-named-vecsxp-when-writing-r-extensions
+//' 
+//' @rdname ComputeSpamxFoldChange
+//' @param matrix an expression matrix, COLUMN-MAJOR, each row is a sample, each column a gene
+//' @param labels an integer vector, each element indicating the group to which a sample belongs.
+//' @param calc_percents  a boolean to indicate whether to compute percents or not.
+//' @param fc_name column name to use for the fold change results 
+//' @param use_expm1 for "data", use expm1
+//' @param min_threshold minimum threshold to count towards pct.1 and pct.2 percentages.
+//' @param use_log for "data" and default log type, indicate log of the sum is to be used.
+//' @param log_base base for the log
+//' @param use_pseudocount for "data" and default log type, add pseudocount after log.
+//' @param as_dataframe TRUE/FALSE.  TRUE = return a linearized dataframe.  FALSE = return matrices.
+//' @param threads number of threads to use
+//' @return dense array or dataframe of size features*clusters
+//' @name ComputeSpamxFoldChange
+//' @export
+// [[Rcpp::export]]
+extern SEXP ComputeSpamxFoldChange(
+  Rcpp::spamx64 matrix, Rcpp::IntegerVector labels,
+  bool calc_percents, std::string fc_name, 
+  bool use_expm1, double min_threshold, 
+  bool use_log, double log_base, bool use_pseudocount, 
+  bool as_dataframe,
+  int threads) {
+
+  // ----------- copy to local
+  // ---- input matrix
+  std::vector<double> x;
+  std::vector<long> i, p;
+  size_t nsamples, nfeatures, nelem;
+  Rcpp::StringVector features = 
+    copy_rsparsematrix_to_cppvectors(matrix, x, i, p, nsamples, nfeatures, nelem);
+
+  Rprintf("Sparse DIM: samples %lu x features %lu, non-zeros %lu\n", nsamples, nfeatures, nelem); 
+
+  // ---- label vector
+  std::vector<int> lab;
+  copy_rvector_to_cppvector(labels, lab, nsamples);
+
+  // get the number of unique labels.
+  std::vector<std::pair<int, size_t> > sorted_cluster_counts;
+  count_clusters(lab, sorted_cluster_counts);
+  size_t label_count = sorted_cluster_counts.size();
+
+  // ---- output pval matrix
+  std::vector<double> fc(nfeatures * label_count);
+  std::vector<double> p1(nfeatures * label_count);
+  std::vector<double> p2(nfeatures * label_count);
+  
+  // ------------------------ parameter
+  // int threads;
+  // double min_threshold, log_base;
+  // bool as_dataframe, calc_percents, use_expm1, use_log, use_pseudocount;
+  // import_fc_common_params(calc_percents, min_threshold, use_expm1,
+  //   use_log, log_base, use_pseudocount,
+  //   calc_percents, min_threshold, use_expm1, use_log, log_base, use_pseudocount);
+  // import_r_common_params(as_dataframe, threads,
+  //   as_dataframe, threads);
+  // std::string fc_name = Rcpp::as<std::string>(fc_name);
+
+
+  // ======= compute.
+  
+  omp_set_num_threads(threads);
+  Rprintf("THREADING: using %d threads\n", threads);
+  
+  std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start = std::chrono::steady_clock::now();
+
+#pragma omp parallel num_threads(threads)
+  {
+    int tid = omp_get_thread_num();
+    size_t block = nfeatures / threads;
+    size_t rem = nfeatures - threads * block;
+    size_t offset = tid * block + (tid > rem ? rem : tid);
+    int nid = tid + 1;
+    size_t end = nid * block + (nid > rem ? rem : nid);
+
+    long nz_offset, nz_count;
+    std::unordered_map<int, clust_info> cl_sums;
+
+    for(; offset < end; ++offset) {
+      nz_offset = p[offset];
+      nz_count = p[offset+1] - nz_offset;
+
+      sparse_foldchange_summary(&(x[nz_offset]), &(i[nz_offset]), nz_count,
+        lab.data(), nsamples,
+        static_cast<double>(0),
+        sorted_cluster_counts, cl_sums, min_threshold, use_expm1);
+
+      // if percent is required, calc
+      if (calc_percents) {
+        foldchange_percents(sorted_cluster_counts, cl_sums, nsamples, 
+        &(p1[offset * label_count]), &(p2[offset * label_count]));
+      }
+
+      if (use_log) {
+        foldchange_logmean(sorted_cluster_counts, cl_sums, nsamples, &(fc[offset * label_count]), use_pseudocount, log_base);
+      } else {
+        foldchange_mean(sorted_cluster_counts, cl_sums, nsamples, &(fc[offset * label_count]));
+      }
+    }
+  }
+  Rprintf("[TIME] FC Elapsed(ms)= %f\n", since(start).count());
+
+  // ------------------------ generate output
+  // GET features.
+  Rcpp::StringVector new_features = populate_feature_names(features, nfeatures);
+
+  if (as_dataframe) {
+    if (calc_percents)
+      return(Rcpp::wrap(export_fc_to_r_dataframe(
+        fc, fc_name, 
+        p1, "pct.1", 
+        p2, "pct.2",
+        sorted_cluster_counts, new_features)));
+    else
+      return(Rcpp::wrap(export_de_to_r_dataframe(fc, fc_name,
+      sorted_cluster_counts, new_features)));
+  } else {
+    if (calc_percents)
+      return (Rcpp::wrap(export_fc_to_r_matrix(
+        fc, fc_name, 
+        p1, "pct.1", 
+        p2, "pct.2",
+        sorted_cluster_counts, new_features)));
+    else
+    // use clust for column names.
+      return (Rcpp::wrap(export_fc_to_r_matrix(fc, fc_name,
         sorted_cluster_counts, new_features)));
   }
 
@@ -581,9 +721,9 @@ extern SEXP ComputeSparseFoldChange(
 // [[Rcpp::export]]
 extern SEXP FilterFoldChange(SEXP fc, SEXP pct1, SEXP pct2,
   SEXP init_mask,
-  SEXP min_pct, SEXP min_diff_pct, SEXP logfc_threshold, 
-  SEXP only_pos, SEXP not_count,
-  SEXP threads) {
+  double min_pct, double min_diff_pct, double logfc_threshold, 
+  bool only_pos, bool not_count,
+  int threads) {
   
     // ----------- copy to local
     // ---- input matrix
@@ -621,31 +761,31 @@ extern SEXP FilterFoldChange(SEXP fc, SEXP pct1, SEXP pct2,
 
 
     // ------------------------ parameter
-    int nthreads;
-    double _min_pct, _min_diff_pct, _logfc_thresh;
-    bool _not_count, _only_pos;
-    import_filterfc_common_params(min_pct, min_diff_pct, logfc_threshold,
-      only_pos, _min_pct, _min_diff_pct, _logfc_thresh, _only_pos);
-    import_r_common_params(not_count, threads,
-      _not_count, nthreads);
+    // int threads;
+    // double min_pct, min_diff_pct, logfc_threshold;
+    // bool not_count, only_pos;
+    // import_filterfc_common_params(min_pct, min_diff_pct, logfc_threshold,
+    //   only_pos, min_pct, min_diff_pct, logfc_threshold, only_pos);
+    // import_r_common_params(not_count, threads,
+    //   not_count, threads);
 
-      // Rprintf("C++ pct %f, diff pct %f, logfc_thresh %f, pos %d\n", _min_pct, _min_diff_pct, _logfc_thresh, (_only_pos ? 1 : 0));
-      // Rprintf("C++ not count %d, nthreads %d\n", _not_count, nthreads);
+      // Rprintf("C++ pct %f, diff pct %f, logfc_thresh %f, pos %d\n", min_pct, min_diff_pct, logfc_threshold, (only_pos ? 1 : 0));
+      // Rprintf("C++ not count %d, threads %d\n", not_count, threads);
 
     // ----- compute
-    omp_set_num_threads(nthreads);
-    Rprintf("THREADING: using %d threads\n", nthreads);
+    omp_set_num_threads(threads);
+    Rprintf("THREADING: using %d threads\n", threads);
 
   std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start = std::chrono::steady_clock::now();
 
     // ======= compute.
     // size_t init_count = 0, fc_count = 0, scale_count = 0, pos_count = 0, final_count = 0;
-#pragma omp parallel num_threads(nthreads) 
+#pragma omp parallel num_threads(threads) 
 // reduction( + : init_count, scale_count, fc_count, pos_count, final_count)
     {
       int tid = omp_get_thread_num();
-      size_t block = nelem / nthreads;
-      size_t rem = nelem - nthreads * block;
+      size_t block = nelem / threads;
+      size_t rem = nelem - threads * block;
       size_t offset = tid * block + (tid > rem ? rem : tid);
       int nid = tid + 1;
       size_t end = nid * block + (nid > rem ? rem : nid);
@@ -661,11 +801,11 @@ extern SEXP FilterFoldChange(SEXP fc, SEXP pct1, SEXP pct2,
           // alpha.min <- pmax(fc.results$pct.1, fc.results$pct.2)
           // features <- names(x = which(x = alpha.min >= min.pct))
           mx = std::max(_pct1[offset], _pct2[offset]);
-          out &= (mx >= _min_pct);
+          out &= (mx >= min_pct);
           // alpha.diff <- alpha.min - pmin(fc.results$pct.1, fc.results$pct.2)
           // x = which(x = alpha.min >= min.pct & alpha.diff >= min.diff.pct)
           mn = std::min(_pct1[offset], _pct2[offset]);
-          out &= ((mx - mn) >= _min_diff_pct);
+          out &= ((mx - mn) >= min_diff_pct);
 
           // fc_count += (out == true);
 
@@ -679,18 +819,18 @@ extern SEXP FilterFoldChange(SEXP fc, SEXP pct1, SEXP pct2,
           mx = _fc[offset];
           //   features <- intersect(x = features, y = features.diff)
           // }
-          if (_not_count) {
-            mn = _only_pos ? mx : fabs(mx);
-            out &= (mn >= _logfc_thresh);
+          if (not_count) {
+            mn = only_pos ? mx : fabs(mx);
+            out &= (mn >= logfc_threshold);
             // scale_count += (out == true);
           }
 
           // if (only.pos)
           // de.results <- de.results[de.results[, fc.name] > 0, , drop = FALSE]
-          //              | _only_pos   | !_only_pos 
+          //              | only_pos   | !only_pos 
           //  fc_ptr > 0  | y           |   y
           //  fc_ptr <= 0 | n           |   y
-          if (_only_pos) {
+          if (only_pos) {
             out &= (mx > 0);
             // pos_count += (out == true);
           }

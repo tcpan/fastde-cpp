@@ -21,11 +21,10 @@ cat(sprintf("NOTE: rounding is done differently in R and C++ (and python):\nR an
 tic("read")
 
 # read input
-input <- h5read("/home/tpan/build/wave/input.h5", "array/block0_values")
-samplenames <- h5read("/home/tpan/build/wave/input.h5", "array/axis0")
-genenames <- h5read("/home/tpan/build/wave/input.h5", "array/axis1")
-
-labels_all <- as.vector(h5read("/home/tpan/build/wave/labels.h5", "array/block0_values"))
+input <- h5read("/home/tpan/data/gnw2000/gnw2000.h5", "array/block0_values")
+labels_all <- as.vector(h5read("/home/tpan/data/gnw2000/gnw2000_truth.h5", "array/block0_values"))
+genenames <- h5read("/home/tpan/data/gnw2000/gnw2000.h5", "array/axis1")
+samplenames <- h5read("/home/tpan/data/gnw2000/gnw2000.h5", "array/axis0")
 
 colnames(input) <- genenames
 rownames(input) <- samplenames

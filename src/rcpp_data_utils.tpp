@@ -13,6 +13,16 @@ namespace Rcpp {
         Dim = mat.slot("Dim");
         Dimnames = mat.slot("Dimnames");
     };
+    dgCMatrix::dgCMatrix(int nrow, int ncol, int nelem) {
+        i = Rcpp::IntegerVector(nelem);  // row id
+        p = Rcpp::IntegerVector(ncol + 1);  // offsets for starts of columns
+        x = Rcpp::NumericVector(nelem);
+        Dim = Rcpp::IntegerVector(2);
+        Dim[0] = nrow;
+        Dim[1] = ncol;
+        Dimnames = Rcpp::List();
+    };
+
 
     // specialization of Rcpp::as
     template <> dgCMatrix as(SEXP mat) { return dgCMatrix(mat); };
@@ -34,11 +44,27 @@ namespace Rcpp {
         x = mat.slot("entries");
         Dim = mat.slot("dimension");
     };
+    spam32::spam32(int nrow, int ncol, int nelem) {
+        i = Rcpp::IntegerVector(nelem);  // row id
+        p = Rcpp::IntegerVector(ncol + 1);  // offsets for starts of columns
+        x = Rcpp::NumericVector(nelem);
+        Dim = Rcpp::IntegerVector(2);
+        Dim[0] = nrow;
+        Dim[1] = ncol;
+    };
     spam64::spam64(Rcpp::S4 mat) {
         i = mat.slot("colindices");
         p = mat.slot("rowpointers");
         x = mat.slot("entries");
         Dim = mat.slot("dimension");
+    };
+    spam64::spam64(long nrow, long ncol, long nelem) {
+        i = Rcpp::NumericVector(nelem);  // row id
+        p = Rcpp::NumericVector(ncol + 1);  // offsets for starts of columns
+        x = Rcpp::NumericVector(nelem);
+        Dim = Rcpp::NumericVector(2);
+        Dim[0] = nrow;
+        Dim[1] = ncol;
     };
 
     // specialization of Rcpp::as 
@@ -69,12 +95,32 @@ namespace Rcpp {
         p = mat.slot("rowpointers");
         x = mat.slot("entries");
         Dim = mat.slot("dimension");
+        Dimnames = mat.slot("Dimnames");
+    };
+    spamx32::spamx32(int nrow, int ncol, int nelem) {
+        i = Rcpp::IntegerVector(nelem);  // row id
+        p = Rcpp::IntegerVector(ncol + 1);  // offsets for starts of columns
+        x = Rcpp::NumericVector(nelem);
+        Dim = Rcpp::IntegerVector(2);
+        Dim[0] = nrow;
+        Dim[1] = ncol;
+        Dimnames = Rcpp::List();
     };
     spamx64::spamx64(Rcpp::S4 mat) {
         i = mat.slot("colindices");
         p = mat.slot("rowpointers");
         x = mat.slot("entries");
         Dim = mat.slot("dimension");
+        Dimnames = mat.slot("Dimnames");
+    };
+    spamx64::spamx64(long nrow, long ncol, long nelem) {
+        i = Rcpp::NumericVector(nelem);  // row id
+        p = Rcpp::NumericVector(ncol + 1);  // offsets for starts of columns
+        x = Rcpp::NumericVector(nelem);
+        Dim = Rcpp::NumericVector(2);
+        Dim[0] = nrow;
+        Dim[1] = ncol;
+        Dimnames = Rcpp::List();
     };
 
     // specialization of Rcpp::as 
@@ -88,6 +134,7 @@ namespace Rcpp {
         s.slot("rowpointers") = sm.p;
         s.slot("entries") = sm.x;
         s.slot("dimension") = sm.Dim;
+        s.slot("Dimnames") = sm.Dimnames;
         return s;
     };
     template <> SEXP wrap(const spamx64& sm) {
@@ -96,6 +143,7 @@ namespace Rcpp {
         s.slot("rowpointers") = sm.p;
         s.slot("entries") = sm.x;
         s.slot("dimension") = sm.Dim;
+        s.slot("Dimnames") = sm.Dimnames;
         return s;
     };
 
@@ -330,46 +378,46 @@ Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spamx32 obj,
 }
 
 
-void import_r_common_params(SEXP as_dataframe, SEXP threads,
-    bool & _as_dataframe, int & nthreads) {
-    _as_dataframe = Rcpp::as<bool>(as_dataframe);
-    nthreads = Rcpp::as<int>(threads);
-    if (nthreads < 1) nthreads = 1;
-}
-void import_de_common_params(SEXP rtype,
-    SEXP bool_param, int & type, bool & bool_val) {
+// void import_r_common_params(SEXP as_dataframe, SEXP threads,
+//     bool & _as_dataframe, int & nthreads) {
+//     _as_dataframe = Rcpp::as<bool>(as_dataframe);
+//     nthreads = Rcpp::as<int>(threads);
+//     if (nthreads < 1) nthreads = 1;
+// }
+// void import_de_common_params(SEXP rtype,
+//     SEXP bool_param, int & type, bool & bool_val) {
 
-    type = Rcpp::as<int>(rtype);
-    if (type > 4) Rprintf("ERROR: unsupported type: %d. Supports only less, greater, two.sided, stat, params\n", type);
+//     type = Rcpp::as<int>(rtype);
+//     if (type > 4) Rprintf("ERROR: unsupported type: %d. Supports only less, greater, two.sided, stat, params\n", type);
   
-    bool_val = Rcpp::as<bool>(bool_param);
-}
-void import_fc_common_params(SEXP calc_percents, 
-    SEXP min_threshold, SEXP use_expm1,
-    SEXP use_log, SEXP log_base, SEXP use_pseudocount,
-    bool & perc, double & min_thresh, bool & _use_expm1, 
-    bool & _use_log, double & _log_base, bool & _use_pseudocount) {
+//     bool_val = Rcpp::as<bool>(bool_param);
+// }
+// void import_fc_common_params(SEXP calc_percents, 
+//     SEXP min_threshold, SEXP use_expm1,
+//     SEXP use_log, SEXP log_base, SEXP use_pseudocount,
+//     bool & perc, double & min_thresh, bool & _use_expm1, 
+//     bool & _use_log, double & _log_base, bool & _use_pseudocount) {
 
-    perc = Rcpp::as<bool>(calc_percents);
-    min_thresh = Rcpp::as<double>(min_threshold);
-    _use_expm1 = Rcpp::as<bool>(use_expm1);
-    _use_log = Rcpp::as<bool>(use_log);
-    _log_base = Rcpp::as<double>(log_base);
-    _use_pseudocount = Rcpp::as<bool>(use_pseudocount);
+//     perc = Rcpp::as<bool>(calc_percents);
+//     min_thresh = Rcpp::as<double>(min_threshold);
+//     _use_expm1 = Rcpp::as<bool>(use_expm1);
+//     _use_log = Rcpp::as<bool>(use_log);
+//     _log_base = Rcpp::as<double>(log_base);
+//     _use_pseudocount = Rcpp::as<bool>(use_pseudocount);
 
-}
+// }
 
-void import_filterfc_common_params(SEXP min_pct, 
-    SEXP min_diff_pct, SEXP logfc_threshold,
-    SEXP only_pos, 
-    double & _min_pct, double & _min_diff_pct, 
-    double & _logfc_thresh, bool & _only_pos) {
+// void import_filterfc_common_params(SEXP min_pct, 
+//     SEXP min_diff_pct, SEXP logfc_threshold,
+//     SEXP only_pos, 
+//     double & _min_pct, double & _min_diff_pct, 
+//     double & _logfc_thresh, bool & _only_pos) {
 
-    _min_pct = Rcpp::as<double>(min_pct);
-    _min_diff_pct = Rcpp::as<double>(min_diff_pct);
-    _logfc_thresh = Rcpp::as<double>(logfc_threshold);
-    _only_pos = Rcpp::as<bool>(only_pos);
-    }
+//     _min_pct = Rcpp::as<double>(min_pct);
+//     _min_diff_pct = Rcpp::as<double>(min_diff_pct);
+//     _logfc_thresh = Rcpp::as<double>(logfc_threshold);
+//     _only_pos = Rcpp::as<bool>(only_pos);
+//     }
 
 
 
