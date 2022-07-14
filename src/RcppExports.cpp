@@ -11,69 +11,90 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// start_profiler
+extern SEXP start_profiler(SEXP str);
+RcppExport SEXP _fastde_start_profiler(SEXP strSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type str(strSEXP);
+    rcpp_result_gen = Rcpp::wrap(start_profiler(str));
+    return rcpp_result_gen;
+END_RCPP
+}
+// stop_profiler
+extern SEXP stop_profiler();
+RcppExport SEXP _fastde_stop_profiler() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(stop_profiler());
+    return rcpp_result_gen;
+END_RCPP
+}
 // rttest_dgCMatrix
-Rcpp::dgCMatrix rttest_dgCMatrix(Rcpp::dgCMatrix& mat);
+Rcpp::dgCMatrix rttest_dgCMatrix(Rcpp::dgCMatrix const& mat);
 RcppExport SEXP _fastde_rttest_dgCMatrix(SEXP matSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::dgCMatrix& >::type mat(matSEXP);
+    Rcpp::traits::input_parameter< Rcpp::dgCMatrix const& >::type mat(matSEXP);
     rcpp_result_gen = Rcpp::wrap(rttest_dgCMatrix(mat));
     return rcpp_result_gen;
 END_RCPP
 }
 // rttest_spamx32
-Rcpp::spamx32 rttest_spamx32(Rcpp::spamx32& mat);
+Rcpp::spamx32 rttest_spamx32(Rcpp::spamx32 const& mat);
 RcppExport SEXP _fastde_rttest_spamx32(SEXP matSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::spamx32& >::type mat(matSEXP);
+    Rcpp::traits::input_parameter< Rcpp::spamx32 const& >::type mat(matSEXP);
     rcpp_result_gen = Rcpp::wrap(rttest_spamx32(mat));
     return rcpp_result_gen;
 END_RCPP
 }
 // rttest_spamx64
-Rcpp::spamx64 rttest_spamx64(Rcpp::spamx64& mat);
+Rcpp::spamx64 rttest_spamx64(Rcpp::spamx64 const& mat);
 RcppExport SEXP _fastde_rttest_spamx64(SEXP matSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::spamx64& >::type mat(matSEXP);
+    Rcpp::traits::input_parameter< Rcpp::spamx64 const& >::type mat(matSEXP);
     rcpp_result_gen = Rcpp::wrap(rttest_spamx64(mat));
     return rcpp_result_gen;
 END_RCPP
 }
 // rttest_spam32
-Rcpp::spam32 rttest_spam32(Rcpp::spam32& mat);
+Rcpp::spam32 rttest_spam32(Rcpp::spam32 const& mat);
 RcppExport SEXP _fastde_rttest_spam32(SEXP matSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::spam32& >::type mat(matSEXP);
+    Rcpp::traits::input_parameter< Rcpp::spam32 const& >::type mat(matSEXP);
     rcpp_result_gen = Rcpp::wrap(rttest_spam32(mat));
     return rcpp_result_gen;
 END_RCPP
 }
 // rttest_spam64
-Rcpp::spam64 rttest_spam64(Rcpp::spam64& mat);
+Rcpp::spam64 rttest_spam64(Rcpp::spam64 const& mat);
 RcppExport SEXP _fastde_rttest_spam64(SEXP matSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::spam64& >::type mat(matSEXP);
+    Rcpp::traits::input_parameter< Rcpp::spam64 const& >::type mat(matSEXP);
     rcpp_result_gen = Rcpp::wrap(rttest_spam64(mat));
     return rcpp_result_gen;
 END_RCPP
 }
 // ComputeFoldChange
-extern SEXP ComputeFoldChange(Rcpp::NumericMatrix matrix, Rcpp::IntegerVector labels, bool calc_percents, std::string fc_name, bool use_expm1, double min_threshold, bool use_log, double log_base, bool use_pseudocount, bool as_dataframe, int threads);
+extern SEXP ComputeFoldChange(Rcpp::NumericMatrix const& matrix, Rcpp::IntegerVector const& labels, bool calc_percents, std::string fc_name, bool use_expm1, double min_threshold, bool use_log, double log_base, bool use_pseudocount, bool as_dataframe, int threads);
 RcppExport SEXP _fastde_ComputeFoldChange(SEXP matrixSEXP, SEXP labelsSEXP, SEXP calc_percentsSEXP, SEXP fc_nameSEXP, SEXP use_expm1SEXP, SEXP min_thresholdSEXP, SEXP use_logSEXP, SEXP log_baseSEXP, SEXP use_pseudocountSEXP, SEXP as_dataframeSEXP, SEXP threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type matrix(matrixSEXP);
-    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type labels(labelsSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix const& >::type matrix(matrixSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector const& >::type labels(labelsSEXP);
     Rcpp::traits::input_parameter< bool >::type calc_percents(calc_percentsSEXP);
     Rcpp::traits::input_parameter< std::string >::type fc_name(fc_nameSEXP);
     Rcpp::traits::input_parameter< bool >::type use_expm1(use_expm1SEXP);
@@ -88,13 +109,13 @@ BEGIN_RCPP
 END_RCPP
 }
 // ComputeSparseFoldChange
-extern SEXP ComputeSparseFoldChange(Rcpp::dgCMatrix matrix, Rcpp::IntegerVector labels, bool calc_percents, std::string fc_name, bool use_expm1, double min_threshold, bool use_log, double log_base, bool use_pseudocount, bool as_dataframe, int threads);
+extern SEXP ComputeSparseFoldChange(Rcpp::dgCMatrix const& matrix, Rcpp::IntegerVector const& labels, bool calc_percents, std::string fc_name, bool use_expm1, double min_threshold, bool use_log, double log_base, bool use_pseudocount, bool as_dataframe, int threads);
 RcppExport SEXP _fastde_ComputeSparseFoldChange(SEXP matrixSEXP, SEXP labelsSEXP, SEXP calc_percentsSEXP, SEXP fc_nameSEXP, SEXP use_expm1SEXP, SEXP min_thresholdSEXP, SEXP use_logSEXP, SEXP log_baseSEXP, SEXP use_pseudocountSEXP, SEXP as_dataframeSEXP, SEXP threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::dgCMatrix >::type matrix(matrixSEXP);
-    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type labels(labelsSEXP);
+    Rcpp::traits::input_parameter< Rcpp::dgCMatrix const& >::type matrix(matrixSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector const& >::type labels(labelsSEXP);
     Rcpp::traits::input_parameter< bool >::type calc_percents(calc_percentsSEXP);
     Rcpp::traits::input_parameter< std::string >::type fc_name(fc_nameSEXP);
     Rcpp::traits::input_parameter< bool >::type use_expm1(use_expm1SEXP);
@@ -109,13 +130,13 @@ BEGIN_RCPP
 END_RCPP
 }
 // ComputeSpamxFoldChange
-extern SEXP ComputeSpamxFoldChange(Rcpp::spamx64 matrix, Rcpp::IntegerVector labels, bool calc_percents, std::string fc_name, bool use_expm1, double min_threshold, bool use_log, double log_base, bool use_pseudocount, bool as_dataframe, int threads);
+extern SEXP ComputeSpamxFoldChange(Rcpp::spamx64 const& matrix, Rcpp::IntegerVector const& labels, bool calc_percents, std::string fc_name, bool use_expm1, double min_threshold, bool use_log, double log_base, bool use_pseudocount, bool as_dataframe, int threads);
 RcppExport SEXP _fastde_ComputeSpamxFoldChange(SEXP matrixSEXP, SEXP labelsSEXP, SEXP calc_percentsSEXP, SEXP fc_nameSEXP, SEXP use_expm1SEXP, SEXP min_thresholdSEXP, SEXP use_logSEXP, SEXP log_baseSEXP, SEXP use_pseudocountSEXP, SEXP as_dataframeSEXP, SEXP threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::spamx64 >::type matrix(matrixSEXP);
-    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type labels(labelsSEXP);
+    Rcpp::traits::input_parameter< Rcpp::spamx64 const& >::type matrix(matrixSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector const& >::type labels(labelsSEXP);
     Rcpp::traits::input_parameter< bool >::type calc_percents(calc_percentsSEXP);
     Rcpp::traits::input_parameter< std::string >::type fc_name(fc_nameSEXP);
     Rcpp::traits::input_parameter< bool >::type use_expm1(use_expm1SEXP);
@@ -149,80 +170,80 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// sp_transpose
-extern Rcpp::dgCMatrix sp_transpose(Rcpp::dgCMatrix sp_matrix);
-RcppExport SEXP _fastde_sp_transpose(SEXP sp_matrixSEXP) {
+// rc_sp_transpose
+extern SEXP rc_sp_transpose(SEXP sp_matrix);
+RcppExport SEXP _fastde_rc_sp_transpose(SEXP sp_matrixSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::dgCMatrix >::type sp_matrix(sp_matrixSEXP);
-    rcpp_result_gen = Rcpp::wrap(sp_transpose(sp_matrix));
+    Rcpp::traits::input_parameter< SEXP >::type sp_matrix(sp_matrixSEXP);
+    rcpp_result_gen = Rcpp::wrap(rc_sp_transpose(sp_matrix));
     return rcpp_result_gen;
 END_RCPP
 }
-// spamx_transpose
-extern Rcpp::spamx64 spamx_transpose(Rcpp::spamx64 sp_matrix);
-RcppExport SEXP _fastde_spamx_transpose(SEXP sp_matrixSEXP) {
+// rc_spamx_transpose
+extern SEXP rc_spamx_transpose(S4 obj);
+RcppExport SEXP _fastde_rc_spamx_transpose(SEXP objSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::spamx64 >::type sp_matrix(sp_matrixSEXP);
-    rcpp_result_gen = Rcpp::wrap(spamx_transpose(sp_matrix));
+    Rcpp::traits::input_parameter< S4 >::type obj(objSEXP);
+    rcpp_result_gen = Rcpp::wrap(rc_spamx_transpose(obj));
     return rcpp_result_gen;
 END_RCPP
 }
-// sp_to_dense
-extern Rcpp::NumericMatrix sp_to_dense(Rcpp::dgCMatrix sp_matrix);
-RcppExport SEXP _fastde_sp_to_dense(SEXP sp_matrixSEXP) {
+// rc_sp_to_dense
+extern SEXP rc_sp_to_dense(S4 obj);
+RcppExport SEXP _fastde_rc_sp_to_dense(SEXP objSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::dgCMatrix >::type sp_matrix(sp_matrixSEXP);
-    rcpp_result_gen = Rcpp::wrap(sp_to_dense(sp_matrix));
+    Rcpp::traits::input_parameter< S4 >::type obj(objSEXP);
+    rcpp_result_gen = Rcpp::wrap(rc_sp_to_dense(obj));
     return rcpp_result_gen;
 END_RCPP
 }
-// spamx_to_dense
-extern Rcpp::NumericMatrix spamx_to_dense(Rcpp::spamx64 sp_matrix);
-RcppExport SEXP _fastde_spamx_to_dense(SEXP sp_matrixSEXP) {
+// rc_spamx_to_dense
+extern SEXP rc_spamx_to_dense(S4 obj);
+RcppExport SEXP _fastde_rc_spamx_to_dense(SEXP objSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::spamx64 >::type sp_matrix(sp_matrixSEXP);
-    rcpp_result_gen = Rcpp::wrap(spamx_to_dense(sp_matrix));
+    Rcpp::traits::input_parameter< S4 >::type obj(objSEXP);
+    rcpp_result_gen = Rcpp::wrap(rc_spamx_to_dense(obj));
     return rcpp_result_gen;
 END_RCPP
 }
-// sp_to_dense_transposed
-extern Rcpp::NumericMatrix sp_to_dense_transposed(Rcpp::dgCMatrix sp_matrix);
-RcppExport SEXP _fastde_sp_to_dense_transposed(SEXP sp_matrixSEXP) {
+// rc_sp_to_dense_transposed
+extern SEXP rc_sp_to_dense_transposed(S4 obj);
+RcppExport SEXP _fastde_rc_sp_to_dense_transposed(SEXP objSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::dgCMatrix >::type sp_matrix(sp_matrixSEXP);
-    rcpp_result_gen = Rcpp::wrap(sp_to_dense_transposed(sp_matrix));
+    Rcpp::traits::input_parameter< S4 >::type obj(objSEXP);
+    rcpp_result_gen = Rcpp::wrap(rc_sp_to_dense_transposed(obj));
     return rcpp_result_gen;
 END_RCPP
 }
-// spamx_to_dense_transposed
-extern Rcpp::NumericMatrix spamx_to_dense_transposed(Rcpp::spamx64 sp_matrix);
-RcppExport SEXP _fastde_spamx_to_dense_transposed(SEXP sp_matrixSEXP) {
+// rc_spamx_to_dense_transposed
+extern SEXP rc_spamx_to_dense_transposed(S4 obj);
+RcppExport SEXP _fastde_rc_spamx_to_dense_transposed(SEXP objSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::spamx64 >::type sp_matrix(sp_matrixSEXP);
-    rcpp_result_gen = Rcpp::wrap(spamx_to_dense_transposed(sp_matrix));
+    Rcpp::traits::input_parameter< S4 >::type obj(objSEXP);
+    rcpp_result_gen = Rcpp::wrap(rc_spamx_to_dense_transposed(obj));
     return rcpp_result_gen;
 END_RCPP
 }
 // ttest_fast
-extern SEXP ttest_fast(Rcpp::NumericMatrix matrix, Rcpp::IntegerVector labels, int alternative, bool var_equal, bool as_dataframe, int threads);
+extern SEXP ttest_fast(Rcpp::NumericMatrix const& matrix, Rcpp::IntegerVector const& labels, int alternative, bool var_equal, bool as_dataframe, int threads);
 RcppExport SEXP _fastde_ttest_fast(SEXP matrixSEXP, SEXP labelsSEXP, SEXP alternativeSEXP, SEXP var_equalSEXP, SEXP as_dataframeSEXP, SEXP threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type matrix(matrixSEXP);
-    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type labels(labelsSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix const& >::type matrix(matrixSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector const& >::type labels(labelsSEXP);
     Rcpp::traits::input_parameter< int >::type alternative(alternativeSEXP);
     Rcpp::traits::input_parameter< bool >::type var_equal(var_equalSEXP);
     Rcpp::traits::input_parameter< bool >::type as_dataframe(as_dataframeSEXP);
@@ -232,13 +253,13 @@ BEGIN_RCPP
 END_RCPP
 }
 // sparse_ttest_fast
-extern SEXP sparse_ttest_fast(Rcpp::dgCMatrix matrix, Rcpp::IntegerVector labels, int alternative, bool var_equal, bool as_dataframe, int threads);
+extern SEXP sparse_ttest_fast(Rcpp::dgCMatrix const& matrix, Rcpp::IntegerVector const& labels, int alternative, bool var_equal, bool as_dataframe, int threads);
 RcppExport SEXP _fastde_sparse_ttest_fast(SEXP matrixSEXP, SEXP labelsSEXP, SEXP alternativeSEXP, SEXP var_equalSEXP, SEXP as_dataframeSEXP, SEXP threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::dgCMatrix >::type matrix(matrixSEXP);
-    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type labels(labelsSEXP);
+    Rcpp::traits::input_parameter< Rcpp::dgCMatrix const& >::type matrix(matrixSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector const& >::type labels(labelsSEXP);
     Rcpp::traits::input_parameter< int >::type alternative(alternativeSEXP);
     Rcpp::traits::input_parameter< bool >::type var_equal(var_equalSEXP);
     Rcpp::traits::input_parameter< bool >::type as_dataframe(as_dataframeSEXP);
@@ -248,13 +269,13 @@ BEGIN_RCPP
 END_RCPP
 }
 // spamx_ttest_fast
-extern SEXP spamx_ttest_fast(Rcpp::spamx64 matrix, Rcpp::IntegerVector labels, int alternative, bool var_equal, bool as_dataframe, int threads);
+extern SEXP spamx_ttest_fast(Rcpp::spamx64 const& matrix, Rcpp::IntegerVector const& labels, int alternative, bool var_equal, bool as_dataframe, int threads);
 RcppExport SEXP _fastde_spamx_ttest_fast(SEXP matrixSEXP, SEXP labelsSEXP, SEXP alternativeSEXP, SEXP var_equalSEXP, SEXP as_dataframeSEXP, SEXP threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::spamx64 >::type matrix(matrixSEXP);
-    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type labels(labelsSEXP);
+    Rcpp::traits::input_parameter< Rcpp::spamx64 const& >::type matrix(matrixSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector const& >::type labels(labelsSEXP);
     Rcpp::traits::input_parameter< int >::type alternative(alternativeSEXP);
     Rcpp::traits::input_parameter< bool >::type var_equal(var_equalSEXP);
     Rcpp::traits::input_parameter< bool >::type as_dataframe(as_dataframeSEXP);
@@ -264,13 +285,13 @@ BEGIN_RCPP
 END_RCPP
 }
 // wmw_fast
-extern SEXP wmw_fast(Rcpp::NumericMatrix matrix, Rcpp::IntegerVector labels, int rtype, bool continuity_correction, bool as_dataframe, int threads);
+extern SEXP wmw_fast(Rcpp::NumericMatrix const& matrix, Rcpp::IntegerVector const& labels, int rtype, bool continuity_correction, bool as_dataframe, int threads);
 RcppExport SEXP _fastde_wmw_fast(SEXP matrixSEXP, SEXP labelsSEXP, SEXP rtypeSEXP, SEXP continuity_correctionSEXP, SEXP as_dataframeSEXP, SEXP threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type matrix(matrixSEXP);
-    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type labels(labelsSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix const& >::type matrix(matrixSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector const& >::type labels(labelsSEXP);
     Rcpp::traits::input_parameter< int >::type rtype(rtypeSEXP);
     Rcpp::traits::input_parameter< bool >::type continuity_correction(continuity_correctionSEXP);
     Rcpp::traits::input_parameter< bool >::type as_dataframe(as_dataframeSEXP);
@@ -280,13 +301,13 @@ BEGIN_RCPP
 END_RCPP
 }
 // sparse_wmw_fast
-extern SEXP sparse_wmw_fast(Rcpp::dgCMatrix matrix, Rcpp::IntegerVector labels, int rtype, bool continuity_correction, bool as_dataframe, int threads);
+extern SEXP sparse_wmw_fast(Rcpp::dgCMatrix const& matrix, Rcpp::IntegerVector const& labels, int rtype, bool continuity_correction, bool as_dataframe, int threads);
 RcppExport SEXP _fastde_sparse_wmw_fast(SEXP matrixSEXP, SEXP labelsSEXP, SEXP rtypeSEXP, SEXP continuity_correctionSEXP, SEXP as_dataframeSEXP, SEXP threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::dgCMatrix >::type matrix(matrixSEXP);
-    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type labels(labelsSEXP);
+    Rcpp::traits::input_parameter< Rcpp::dgCMatrix const& >::type matrix(matrixSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector const& >::type labels(labelsSEXP);
     Rcpp::traits::input_parameter< int >::type rtype(rtypeSEXP);
     Rcpp::traits::input_parameter< bool >::type continuity_correction(continuity_correctionSEXP);
     Rcpp::traits::input_parameter< bool >::type as_dataframe(as_dataframeSEXP);
@@ -296,13 +317,13 @@ BEGIN_RCPP
 END_RCPP
 }
 // spamx_wmw_fast
-extern SEXP spamx_wmw_fast(Rcpp::spamx64 matrix, Rcpp::IntegerVector labels, int rtype, bool continuity_correction, bool as_dataframe, int threads);
+extern SEXP spamx_wmw_fast(Rcpp::spamx64 const& matrix, Rcpp::IntegerVector const& labels, int rtype, bool continuity_correction, bool as_dataframe, int threads);
 RcppExport SEXP _fastde_spamx_wmw_fast(SEXP matrixSEXP, SEXP labelsSEXP, SEXP rtypeSEXP, SEXP continuity_correctionSEXP, SEXP as_dataframeSEXP, SEXP threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::spamx64 >::type matrix(matrixSEXP);
-    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type labels(labelsSEXP);
+    Rcpp::traits::input_parameter< Rcpp::spamx64 const& >::type matrix(matrixSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector const& >::type labels(labelsSEXP);
     Rcpp::traits::input_parameter< int >::type rtype(rtypeSEXP);
     Rcpp::traits::input_parameter< bool >::type continuity_correction(continuity_correctionSEXP);
     Rcpp::traits::input_parameter< bool >::type as_dataframe(as_dataframeSEXP);
@@ -313,6 +334,8 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_fastde_start_profiler", (DL_FUNC) &_fastde_start_profiler, 1},
+    {"_fastde_stop_profiler", (DL_FUNC) &_fastde_stop_profiler, 0},
     {"_fastde_rttest_dgCMatrix", (DL_FUNC) &_fastde_rttest_dgCMatrix, 1},
     {"_fastde_rttest_spamx32", (DL_FUNC) &_fastde_rttest_spamx32, 1},
     {"_fastde_rttest_spamx64", (DL_FUNC) &_fastde_rttest_spamx64, 1},
@@ -322,12 +345,12 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fastde_ComputeSparseFoldChange", (DL_FUNC) &_fastde_ComputeSparseFoldChange, 11},
     {"_fastde_ComputeSpamxFoldChange", (DL_FUNC) &_fastde_ComputeSpamxFoldChange, 11},
     {"_fastde_FilterFoldChange", (DL_FUNC) &_fastde_FilterFoldChange, 10},
-    {"_fastde_sp_transpose", (DL_FUNC) &_fastde_sp_transpose, 1},
-    {"_fastde_spamx_transpose", (DL_FUNC) &_fastde_spamx_transpose, 1},
-    {"_fastde_sp_to_dense", (DL_FUNC) &_fastde_sp_to_dense, 1},
-    {"_fastde_spamx_to_dense", (DL_FUNC) &_fastde_spamx_to_dense, 1},
-    {"_fastde_sp_to_dense_transposed", (DL_FUNC) &_fastde_sp_to_dense_transposed, 1},
-    {"_fastde_spamx_to_dense_transposed", (DL_FUNC) &_fastde_spamx_to_dense_transposed, 1},
+    {"_fastde_rc_sp_transpose", (DL_FUNC) &_fastde_rc_sp_transpose, 1},
+    {"_fastde_rc_spamx_transpose", (DL_FUNC) &_fastde_rc_spamx_transpose, 1},
+    {"_fastde_rc_sp_to_dense", (DL_FUNC) &_fastde_rc_sp_to_dense, 1},
+    {"_fastde_rc_spamx_to_dense", (DL_FUNC) &_fastde_rc_spamx_to_dense, 1},
+    {"_fastde_rc_sp_to_dense_transposed", (DL_FUNC) &_fastde_rc_sp_to_dense_transposed, 1},
+    {"_fastde_rc_spamx_to_dense_transposed", (DL_FUNC) &_fastde_rc_spamx_to_dense_transposed, 1},
     {"_fastde_ttest_fast", (DL_FUNC) &_fastde_ttest_fast, 6},
     {"_fastde_sparse_ttest_fast", (DL_FUNC) &_fastde_sparse_ttest_fast, 6},
     {"_fastde_spamx_ttest_fast", (DL_FUNC) &_fastde_spamx_ttest_fast, 6},

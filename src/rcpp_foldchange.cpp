@@ -313,7 +313,7 @@ void foldchange_logmean(
 //' @export
 // [[Rcpp::export]]
 extern SEXP ComputeFoldChange(
-  Rcpp::NumericMatrix matrix, Rcpp::IntegerVector labels, 
+  Rcpp::NumericMatrix const & matrix, Rcpp::IntegerVector const & labels, 
   bool calc_percents, std::string fc_name, 
   bool use_expm1, double min_threshold, 
   bool use_log, double log_base, bool use_pseudocount, 
@@ -445,7 +445,7 @@ extern SEXP ComputeFoldChange(
 //' @export
 // [[Rcpp::export]]
 extern SEXP ComputeSparseFoldChange(
-  Rcpp::dgCMatrix matrix, Rcpp::IntegerVector labels,
+  Rcpp::dgCMatrix const & matrix, Rcpp::IntegerVector const & labels,
   bool calc_percents, std::string fc_name, 
   bool use_expm1, double min_threshold, 
   bool use_log, double log_base, bool use_pseudocount, 
@@ -583,7 +583,7 @@ extern SEXP ComputeSparseFoldChange(
 //' @export
 // [[Rcpp::export]]
 extern SEXP ComputeSpamxFoldChange(
-  Rcpp::spamx64 matrix, Rcpp::IntegerVector labels,
+  Rcpp::spamx64 const & matrix, Rcpp::IntegerVector const & labels,
   bool calc_percents, std::string fc_name, 
   bool use_expm1, double min_threshold, 
   bool use_log, double log_base, bool use_pseudocount, 

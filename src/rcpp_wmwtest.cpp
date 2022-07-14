@@ -472,7 +472,7 @@ void wmw(
 //' @export
 // [[Rcpp::export]]
 extern SEXP wmw_fast(
-    Rcpp::NumericMatrix matrix, Rcpp::IntegerVector labels, 
+    Rcpp::NumericMatrix const & matrix, Rcpp::IntegerVector const & labels, 
     int rtype, 
     bool continuity_correction, 
     bool as_dataframe,
@@ -572,7 +572,7 @@ extern SEXP wmw_fast(
 //' @export
 // [[Rcpp::export]]
 extern SEXP sparse_wmw_fast(
-    Rcpp::dgCMatrix matrix, Rcpp::IntegerVector labels, 
+    Rcpp::dgCMatrix const & matrix, Rcpp::IntegerVector const & labels, 
     int rtype, 
     bool continuity_correction, 
     bool as_dataframe,
@@ -680,7 +680,7 @@ extern SEXP sparse_wmw_fast(
 //' @export
 // [[Rcpp::export]]
 extern SEXP spamx_wmw_fast(
-    Rcpp::spamx64 matrix, Rcpp::IntegerVector labels, 
+    Rcpp::spamx64 const & matrix, Rcpp::IntegerVector const & labels, 
     int rtype, 
     bool continuity_correction, 
     bool as_dataframe,

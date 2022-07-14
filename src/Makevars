@@ -6,3 +6,5 @@ CXXFLAGS = -O2 -g -fno-omit-frame-pointer -mtune=native -march=native -fopenmp
 CXXPICFLAGS = -fpic
 	
 LDFLAGS += -lomp
+
+PKG_LIBS = -Wl,--no-as-needed -lprofiler -Wl,--as-needed

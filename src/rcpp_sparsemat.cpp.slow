@@ -1,0 +1,460 @@
+#include <Rcpp.h>
+#include <R.h>
+#include <Rdefines.h>
+using namespace Rcpp;
+
+
+/*
+ * wrapper for R dgCMatrix
+ *
+ */
+
+#include <vector>
+#include <algorithm>
+
+// Enable C++11
+// [[Rcpp::plugins(cpp11)]]
+
+// Enable OpenMP (excludes macOS)
+// [[Rcpp::plugins(openmp)]]
+
+#include <omp.h>
+#include "rcpp_data_utils.hpp"
+
+
+//' R Sparse Matrix Transpose
+//'
+//' This implementation directly constructs the new sparse matrix.  
+//'     Output is also column-major, so there is random memory writes.
+//' 
+//' @rdname rcpp_sparse_transpose
+//' @param sp_matrix a sparse matrix, of the form dgCMatrix
+//' @return sp_matrix, transposed.
+//' @name rcpp_sparse_transpose
+//' @export
+// [[Rcpp::export]]
+extern Rcpp::dgCMatrix rcpp_sp_transpose(Rcpp::dgCMatrix const & sp_matrix) {
+
+    // https://www.r-bloggers.com/2020/03/what-is-a-dgcmatrix-object-made-of-sparse-matrix-format-in-r/
+    // ======= decompose the input matrix in CSC format, S4 object with slots:
+    // i :  int, row numbers, 0-based.
+    // p :  int, p[i] is the position offset in x for row i.  i has range [0-r] inclusive.
+    // x :  numeric, values
+    // Dim:  int, 2D, sizes of full matrix
+    // Dimnames:  2D, names.
+    // factors:  ignore.
+    
+    int nrow = sp_matrix.Dim[0];
+    int ncol = sp_matrix.Dim[1];
+    int nelem = sp_matrix.p[ncol];   // since p is offsets, the ncol+1 entry has the total count.
+
+    // ======= create new output
+    // this part is likely to fail.
+    // Rcpp::StringVector rns(nrow);
+    // for (size_t r = 0; r < nrow; ++r) {
+    //     rns[r] = Rcpp::String(sp_matrix.Dimnames[0][r]);
+    // }
+    // Rcpp::StringVector cns(ncol);
+    // for (size_t c = 0; c < ncol; ++c) {
+    //     cns[c] = Rcpp::String(sp_matrix.Dimnames[1][c]);
+    // }
+
+    // ======= create new output and set row and col names.
+    Rcpp::dgCMatrix out(ncol, nrow, nelem);
+    Rcpp::List dimns(2);
+    dimns[0] = sp_matrix.Dimnames[1];
+    dimns[1] = sp_matrix.Dimnames[0];
+    out.Dimnames = dimns;
+
+       // ======= do the transpose.
+    
+    // do the swap.  do random memory access instead of sorting.
+    // 1. iterate over i to get row (tcol) counts, store in new p[1..nrow].   these are offsets in new x
+    // 2. compute exclusive prefix sum as offsets in x.
+    // 3. use p to get range of elements in x belonging to the same column, scatter to new x
+    //     and increment offset in p.
+    // 4. shift p to the right by 1 element, and set p[0] = 0
+    // step 1
+    for (int r = 0; r <= nrow; ++r) {
+        out.p[r] = 0;
+    }
+    // first count each element and store in out.p.   input.i is zero based.
+    for (int e = 0; e < nelem; ++e) {
+        ++out.p[ sp_matrix.i[e] + 1 ];
+    }
+
+    // step 2 - create max offset + 1 for each transposed row ( == new column).  prefix sum
+    for (int r = 1; r <= nrow; ++r) {
+        out.p[r] += out.p[r - 1];
+    }
+
+    // step 3
+    int rid, cid = 0;   // column id needs to start with 0.  row ids start with 0
+    int pos;
+    double val;
+    for (size_t e = 0; e < nelem; ++e) {
+        rid = sp_matrix.i[e];   // current row id (starts with 0)
+        val = sp_matrix.x[e];   // current value
+        // if the current element pos reaches first elem of next column (*pptr),
+        // then go to next column (increment cid and pptr).
+        for (; e >= sp_matrix.p[cid+1]; ++cid);  // current column id
+
+        // now copy and update.
+        // curr pos is the offset for the transposed row (new col), in tp.
+        // note we are using tp array to track current offset.
+        pos = out.p[rid];  // where to insert the data
+        out.x[pos] = val;  // place the data
+        out.i[pos] = cid;  // place the row id (original col id. 0-based)
+        ++out.p[rid];  // update the offset - 1 space consumed.
+    }
+    // step 4.  shift the offsets
+    auto off = out.p[0]; 
+    out.p[0] = 0;
+    for (size_t r = 1; r <= nrow; ++r) {
+        std::swap(off, out.p[r]);
+    }
+
+    // ======= return
+    return out;
+}
+
+
+//' R Sparse Matrix Transpose
+//'
+//' This implementation directly constructs the new sparse matrix.  
+//'     Output is also column-major, so there is random memory writes.
+//' 
+//' @rdname rcpp_spamx_transpose
+//' @param sp_matrix a sparse matrix, of the form dgCMatrix
+//' @return sp_matrix, transposed.
+//' @name rcpp_spamx_transpose
+//' @export
+// [[Rcpp::export]]
+extern Rcpp::spamx64 rcpp_spamx_transpose(Rcpp::spamx64 const & sp_matrix) {
+
+    // https://www.r-bloggers.com/2020/03/what-is-a-dgcmatrix-object-made-of-sparse-matrix-format-in-r/
+    // ======= decompose the input matrix in CSC format, S4 object with slots:
+    // i :  int, row numbers, 0-based.
+    // p :  int, p[i] is the position offset in x for row i.  i has range [0-r] inclusive.
+    // x :  numeric, values
+    // Dim:  int, 2D, sizes of full matrix
+    // Dimnames:  2D, names.
+    // factors:  ignore.
+    
+    size_t nrow = sp_matrix.Dim[0];
+    size_t ncol = sp_matrix.Dim[1];
+    size_t nelem = sp_matrix.p[ncol];   // since p is offsets, the ncol+1 entry has the total count.
+
+    // ======= create new output
+    // this part is likely to fail.
+    // Rcpp::StringVector rns(nrow);
+    // for (size_t r = 0; r < nrow; ++r) {
+    //     rns[r] = Rcpp::String(sp_matrix.Dimnames[0][r]);
+    // }
+    // Rcpp::StringVector cns(ncol);
+    // for (size_t c = 0; c < ncol; ++c) {
+    //     cns[c] = Rcpp::String(sp_matrix.Dimnames[1][c]);
+    // }
+
+    // ======= create new output and set row and col names.
+    Rcpp::spamx64 out(ncol, nrow, nelem);
+    Rcpp::List dimns(2);
+    dimns[0] = sp_matrix.Dimnames[1];
+    dimns[1] = sp_matrix.Dimnames[0];
+    out.Dimnames = dimns;
+
+       // ======= do the transpose.
+    
+    // do the swap.  do random memory access instead of sorting.
+    // 1. iterate over i to get row (tcol) counts, store in new p[1..nrow].   these are offsets in new x
+    // 2. compute exclusive prefix sum as offsets in x.
+    // 3. use p to get range of elements in x belonging to the same column, scatter to new x
+    //     and increment offset in p.
+    // 4. shift p to the right by 1 element, and set p[0] = 0
+    // step 1
+    for (size_t r = 0; r <= nrow; ++r) {
+        out.p[r] = 0;
+    }
+    // first count each element and store in out.p.   input.i is zero based.
+    for (size_t e = 0; e < nelem; ++e) {
+        ++out.p[ sp_matrix.i[e] + 1 ];
+    }
+
+    // step 2 - create max offset + 1 for each transposed row ( == new column).  prefix sum
+    for (size_t r = 1; r <= nrow; ++r) {
+        out.p[r] += out.p[r - 1];
+    }
+
+    // step 3
+    size_t rid, cid = 0;   // column id needs to start with 0.  row ids start with 0
+    size_t pos;
+    double val;
+    for (size_t e = 0; e < nelem; ++e) {
+        rid = sp_matrix.i[e];   // current row id (starts with 0)
+        val = sp_matrix.x[e];   // current value
+        // if the current element pos reaches first elem of next column (*pptr),
+        // then go to next column (increment cid and pptr).
+        for (; e >= sp_matrix.p[cid+1]; ++cid);  // current column id
+
+        // now copy and update.
+        // curr pos is the offset for the transposed row (new col), in tp.
+        // note we are using tp array to track current offset.
+        pos = out.p[rid];  // where to insert the data
+        out.x[pos] = val;  // place the data
+        out.i[pos] = cid;  // place the row id (original col id. 0-based)
+        ++out.p[rid];  // update the offset - 1 space consumed.
+    }
+    // step 4.  shift the offsets
+    auto off = out.p[0]; 
+    out.p[0] = 0;
+    for (size_t r = 1; r <= nrow; ++r) {
+        std::swap(off, out.p[r]);
+    }
+
+    // ======= return
+    return out;
+}
+
+
+
+//' R Sparse To Dense Matrix.  SLOWER.  DO NOT USE
+//'
+//' This implementation directly constructs the new dense matrix.  
+//'     There is random memory writes.
+//' 
+//' @rdname rcpp_sp_to_dense
+//' @param sp_matrix a sparse matrix, of the form dgCMatrix
+//' @return matrix dense matrix.
+//' @name rcpp_sp_to_dense
+//' @export
+// [[Rcpp::export]]
+extern Rcpp::NumericMatrix rcpp_sp_to_dense(Rcpp::dgCMatrix const & sp_matrix) {
+
+    // https://www.r-bloggers.com/2020/03/what-is-a-dgcmatrix-object-made-of-sparse-matrix-format-in-r/
+    // ======= decompose the input matrix in CSC format, S4 object with slots:
+    // i :  int, row numbers, 0-based.
+    // p :  int, p[i] is the position offset in x for row i.  i has range [0-r] inclusive.
+    // x :  numeric, values
+    // Dim:  int, 2D, sizes of full matrix
+    // Dimnames:  2D, names.
+    // factors:  ignore.
+    
+    // extract https://stackoverflow.com/questions/29477621/iterate-over-s4-object-slots-rcpp
+    int nrow = sp_matrix.Dim[0];
+    int ncol = sp_matrix.Dim[1];
+    int nelem = sp_matrix.p[ncol];  // since p is offsets, the ncol+1 entry has the total count.
+
+    Rprintf("Sparse DIM: samples (c) %lu x features (r) %lu, non-zeros %lu\n", ncol, nrow, nelem); 
+
+    // ======= create new output and set row and col names.
+    // int proc_count = 0;
+    // SEXP mat;
+    // PROTECT(mat = Rf_allocMatrix(REALSXP, nrow, ncol));
+    // ++proc_count;
+    // double * data = REAL(mat);
+    // memset(data, 0, ncol * nrow * sizeof(double));
+    // Rcpp::NumericMatrix dense(mat);
+    Rcpp::NumericMatrix dense(nrow, ncol);
+    // set the column and row names in the R function.
+
+    // iterate over all elements.
+    int c=0, c_end=sp_matrix.p[1];
+    // Rcpp::NumericMatrix::Column col = dense.column(0);
+    for (int e = 0; e < nelem; ++e) {
+        while (e >= c_end ) {
+            ++c;
+            c_end = sp_matrix.p[c + 1];
+            // col = dense.column(c);
+        }
+        dense(sp_matrix.i[e], c) = sp_matrix.x[e];        
+        // col[sp_matrix.i[e]] = sp_matrix.x[e];        
+    }
+
+    // UNPROTECT(proc_count);
+    return dense;
+}
+
+
+
+
+//' R Sparse To Dense Matrix
+//'
+//' This implementation directly constructs the new dense matrix.  
+//'     There is random memory writes.
+//' 
+//' @rdname rcpp_spamx_to_dense
+//' @param sp_matrix a sparse matrix, of the form dgCMatrix
+//' @return matrix dense matrix.
+//' @name rcpp_spamx_to_dense
+//' @export
+// [[Rcpp::export]]
+extern Rcpp::NumericMatrix rcpp_spamx_to_dense(Rcpp::spamx64 const & sp_matrix) {
+
+    // https://www.r-bloggers.com/2020/03/what-is-a-dgcmatrix-object-made-of-sparse-matrix-format-in-r/
+    // ======= decompose the input matrix in CSC format, S4 object with slots:
+    // i :  int, row numbers, 0-based.
+    // p :  int, p[i] is the position offset in x for row i.  i has range [0-r] inclusive.
+    // x :  numeric, values
+    // Dim:  int, 2D, sizes of full matrix
+    // Dimnames:  2D, names.
+    // factors:  ignore.
+    
+    // extract https://stackoverflow.com/questions/29477621/iterate-over-s4-object-slots-rcpp
+    size_t nrow = sp_matrix.Dim[0];
+    size_t ncol = sp_matrix.Dim[1];
+    size_t nelem = sp_matrix.p[ncol];  // since p is offsets, the ncol+1 entry has the total count.
+
+    Rprintf("Sparse DIM: samples (c) %lu x features (r) %lu, non-zeros %lu\n", ncol, nrow, nelem); 
+
+    // ======= create new output and set row and col names.
+    // Rcpp::StringVector rns(nrow);
+    // for (size_t i = 0; i < nrow; ++i) {
+    //     rns[i] = Rcpp::String(sp_matrix.Dimnames[0][i]);
+    // }
+    // Rcpp::StringVector cns(ncol);
+    // for (size_t i = 0; i < ncol; ++i) {
+    //     cns[i] = Rcpp::String(sp_matrix.Dimnames[1][i]);
+    // }
+
+    // ======= create new output and set row and col names.
+    Rcpp::NumericMatrix dense(nrow, ncol);
+    // TO BE FIXED.
+    // rownames(dense) = sp_matrix.Dimnames[0];
+    // colnames(dense) = sp_matrix.Dimnames[1];
+
+    
+    // iterate over all elements.
+    size_t c=0, c_end=sp_matrix.p[1];
+    for (size_t e = 0; e < nelem; ++e) {
+        while (e >= c_end ) {
+            ++c;
+            c_end = sp_matrix.p[c + 1];
+        }
+        dense(sp_matrix.i[e], c) = sp_matrix.x[e];
+    }
+
+    return dense;
+}
+
+
+//' R Sparse To Dense Matrix
+//'
+//' This implementation directly constructs the new dense matrix.  
+//'     There is random memory writes.
+//' 
+//' @rdname rcpp_sp_to_dense_transposed
+//' @param sp_matrix a sparse matrix, of the form dgCMatrix
+//' @return matrix dense matrix.
+//' @name rcpp_sp_to_dense_transposed
+//' @export
+// [[Rcpp::export]]
+extern Rcpp::NumericMatrix rcpp_sp_to_dense_transposed(Rcpp::dgCMatrix const & sp_matrix) {
+
+    // https://www.r-bloggers.com/2020/03/what-is-a-dgcmatrix-object-made-of-sparse-matrix-format-in-r/
+    // ======= decompose the input matrix in CSC format, S4 object with slots:
+    // i :  int, row numbers, 0-based.
+    // p :  int, p[i] is the position offset in x for row i.  i has range [0-r] inclusive.
+    // x :  numeric, values
+    // Dim:  int, 2D, sizes of full matrix
+    // Dimnames:  2D, names.
+    // factors:  ignore.
+    
+    // extract https://stackoverflow.com/questions/29477621/iterate-over-s4-object-slots-rcpp
+    int nrow = sp_matrix.Dim[0];
+    int ncol = sp_matrix.Dim[1];
+    int nelem = sp_matrix.p[ncol];  // since p is offsets, the ncol+1 entry has the total count.
+
+    Rprintf("Sparse DIM: samples (c) %lu x features (r) %lu, non-zeros %lu\n", ncol, nrow, nelem); 
+
+    // ======= create new output and set row and col names.
+    // Rcpp::StringVector rns(nrow);
+    // for (size_t i = 0; i < nrow; ++i) {
+    //     rns[i] = Rcpp::String(sp_matrix.Dimnames[0][i]);
+    // }
+    // Rcpp::StringVector cns(ncol);
+    // for (size_t i = 0; i < ncol; ++i) {
+    //     cns[i] = Rcpp::String(sp_matrix.Dimnames[1][i]);
+    // }
+
+    // ======= create new output and set row and col names.
+    Rcpp::NumericMatrix dense(ncol, nrow);
+    // TO BE FIXED.
+    // rownames(dense) = sp_matrix.Dimnames[1];
+    // colnames(dense) = sp_matrix.Dimnames[0];
+
+    
+    // iterate over all elements.
+    int c=0, c_end=sp_matrix.p[1];
+    for (int e = 0; e < nelem; ++e) {
+        while (e >= c_end ) {
+            ++c;
+            c_end = sp_matrix.p[c + 1];
+        }
+        dense(c, sp_matrix.i[e]) = sp_matrix.x[e];        
+    }
+
+    return dense;
+}
+
+
+
+//' R Sparse To Dense Matrix
+//'
+//' This implementation directly constructs the new dense matrix.  
+//'     There is random memory writes.
+//' 
+//' @rdname rcpp_spamx_to_dense_transposed
+//' @param sp_matrix a sparse matrix, of the form dgCMatrix
+//' @return matrix dense matrix.
+//' @name rcpp_spamx_to_dense_transposed
+//' @export
+// [[Rcpp::export]]
+extern Rcpp::NumericMatrix rcpp_spamx_to_dense_transposed(Rcpp::spamx64 const & sp_matrix) {
+
+    // https://www.r-bloggers.com/2020/03/what-is-a-dgcmatrix-object-made-of-sparse-matrix-format-in-r/
+    // ======= decompose the input matrix in CSC format, S4 object with slots:
+    // i :  int, row numbers, 0-based.
+    // p :  int, p[i] is the position offset in x for row i.  i has range [0-r] inclusive.
+    // x :  numeric, values
+    // Dim:  int, 2D, sizes of full matrix
+    // Dimnames:  2D, names.
+    // factors:  ignore.
+    
+    // extract https://stackoverflow.com/questions/29477621/iterate-over-s4-object-slots-rcpp
+    size_t nrow = sp_matrix.Dim[0];
+    size_t ncol = sp_matrix.Dim[1];
+    size_t nelem = sp_matrix.p[ncol];  // since p is offsets, the ncol+1 entry has the total count.
+
+    Rprintf("Sparse DIM: samples (c) %lu x features (r) %lu, non-zeros %lu\n", ncol, nrow, nelem); 
+
+    // copy the row and col names
+    // Rcpp::StringVector rns(nrow);
+    // for (size_t i = 0; i < nrow; ++i) {
+    //     rns[i] = Rcpp::String(sp_matrix.Dimnames[0][i]);
+    // }
+    // Rcpp::StringVector cns(ncol);
+    // for (size_t i = 0; i < ncol; ++i) {
+    //     cns[i] = Rcpp::String(sp_matrix.Dimnames[1][i]);
+    // }
+
+    // ======= create new output and set row and col names.
+    Rcpp::NumericMatrix dense(ncol, nrow);
+    // TO BE FIXED.
+    // rownames(dense) = sp_matrix.Dimnames[1];
+    // colnames(dense) = sp_matrix.Dimnames[0];
+
+    
+    // iterate over all elements.
+    size_t c=0, c_end=sp_matrix.p[1];
+    for (size_t e = 0; e < nelem; ++e) {
+        while (e >= c_end ) {
+            ++c;
+            c_end = sp_matrix.p[c + 1];
+        }
+        dense(c, sp_matrix.i[e]) = sp_matrix.x[e];        
+    }
+
+    return dense;
+}
+
+

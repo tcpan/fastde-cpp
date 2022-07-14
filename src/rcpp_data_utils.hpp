@@ -17,7 +17,7 @@
 //' @name rttest_dgCMatrix
 //' @export
 //[[Rcpp::export]]
-Rcpp::dgCMatrix rttest_dgCMatrix(Rcpp::dgCMatrix& mat);
+Rcpp::dgCMatrix rttest_dgCMatrix(Rcpp::dgCMatrix const & mat);
 
 //' round trip testing for spamx32
 //'
@@ -27,7 +27,7 @@ Rcpp::dgCMatrix rttest_dgCMatrix(Rcpp::dgCMatrix& mat);
 //' @name rttest_spamx32
 //' @export
 //[[Rcpp::export]]
-Rcpp::spamx32 rttest_spamx32(Rcpp::spamx32& mat);
+Rcpp::spamx32 rttest_spamx32(Rcpp::spamx32 const & mat);
 
 //' round trip testing for spamx64
 //'
@@ -37,7 +37,7 @@ Rcpp::spamx32 rttest_spamx32(Rcpp::spamx32& mat);
 //' @name rttest_spamx64
 //' @export
 //[[Rcpp::export]]
-Rcpp::spamx64 rttest_spamx64(Rcpp::spamx64& mat);
+Rcpp::spamx64 rttest_spamx64(Rcpp::spamx64 const & mat);
 
 
 //' round trip testing for spam32
@@ -48,7 +48,7 @@ Rcpp::spamx64 rttest_spamx64(Rcpp::spamx64& mat);
 //' @name rttest_spam32
 //' @export
 //[[Rcpp::export]]
-Rcpp::spam32 rttest_spam32(Rcpp::spam32& mat);
+Rcpp::spam32 rttest_spam32(Rcpp::spam32 const & mat);
 
 //' round trip testing for spam64
 //'
@@ -58,54 +58,54 @@ Rcpp::spam32 rttest_spam32(Rcpp::spam32& mat);
 //' @name rttest_spam64
 //' @export
 //[[Rcpp::export]]
-Rcpp::spam64 rttest_spam64(Rcpp::spam64& mat);
+Rcpp::spam64 rttest_spam64(Rcpp::spam64 const & mat);
 
 
-Rcpp::StringVector copy_rmatrix_to_cppvector(Rcpp::LogicalMatrix _matrix, std::vector<bool> & mat,
+Rcpp::StringVector copy_rmatrix_to_cppvector(Rcpp::LogicalMatrix const & _matrix, std::vector<bool> & mat,
     size_t & nrow, size_t & ncol, size_t & nelem);
 
-Rcpp::StringVector copy_rmatrix_to_cppvector(Rcpp::NumericMatrix _matrix, std::vector<double> & mat,
+Rcpp::StringVector copy_rmatrix_to_cppvector(Rcpp::NumericMatrix const & _matrix, std::vector<double> & mat,
     size_t & nrow, size_t & ncol, size_t & nelem);
 
-size_t copy_rvector_to_cppvector(Rcpp::LogicalVector _vector, std::vector<bool> & vec, 
+size_t copy_rvector_to_cppvector(Rcpp::LogicalVector const & _vector, std::vector<bool> & vec, 
     size_t const & length = std::numeric_limits<size_t>::max(), size_t const & offset = 0);
 
-size_t copy_rvector_to_cppvector(Rcpp::NumericVector _vector, std::vector<double> & vec, 
+size_t copy_rvector_to_cppvector(Rcpp::NumericVector const & _vector, std::vector<double> & vec, 
     size_t const & length = std::numeric_limits<size_t>::max(), size_t const & offset = 0);
 
-size_t copy_rvector_to_cppvector(Rcpp::IntegerVector _vector, std::vector<int> & vec, 
+size_t copy_rvector_to_cppvector(Rcpp::IntegerVector const & _vector, std::vector<int> & vec, 
     size_t const & length = std::numeric_limits<size_t>::max(), size_t const & offset = 0);
 
-size_t copy_rvector_to_cppvector(Rcpp::NumericVector _vector, std::vector<long> & vec, 
+size_t copy_rvector_to_cppvector(Rcpp::NumericVector const & _vector, std::vector<long> & vec, 
     size_t const & length = std::numeric_limits<size_t>::max(), size_t const & offset = 0);
 
 
-Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::dgCMatrix matrix, 
+Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::dgCMatrix const & matrix, 
     std::vector<double> & x,
     std::vector<int> & i,
     std::vector<int> & p,
     size_t & nrow, size_t & ncol, size_t & nelem);
 
 
-Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spam64 matrix, 
+Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spam64 const & matrix, 
     std::vector<double> & x,
     std::vector<long> & i,
     std::vector<long> & p,
     size_t & nrow, size_t & ncol, size_t & nelem);
 
-Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spam32 matrix, 
+Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spam32 const & matrix, 
     std::vector<double> & x,
     std::vector<int> & i,
     std::vector<int> & p,
     size_t & nrow, size_t & ncol, size_t & nelem);
 
-Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spamx64 matrix, 
+Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spamx64 const & matrix, 
     std::vector<double> & x,
     std::vector<long> & i,
     std::vector<long> & p,
     size_t & nrow, size_t & ncol, size_t & nelem);
 
-Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spamx32 matrix, 
+Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spamx32 const & matrix, 
     std::vector<double> & x,
     std::vector<int> & i,
     std::vector<int> & p,
@@ -113,7 +113,7 @@ Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spamx32 matrix,
 
 
 Rcpp::StringVector copy_rsparsematrix_to_cppvectors(
-    Rcpp::NumericVector _x, Rcpp::IntegerVector _i, Rcpp::IntegerVector _p, 
+    Rcpp::NumericVector const & _x, Rcpp::IntegerVector const & _i, Rcpp::IntegerVector const & _p, 
     std::vector<double> & x,
     std::vector<int> & i,
     std::vector<int> & p,
@@ -121,7 +121,7 @@ Rcpp::StringVector copy_rsparsematrix_to_cppvectors(
 
 
 Rcpp::StringVector copy_rsparsematrix_to_cppvectors(
-    Rcpp::NumericVector _x, Rcpp::NumericVector _i, Rcpp::NumericVector _p, 
+    Rcpp::NumericVector const & _x, Rcpp::NumericVector const & _i, Rcpp::NumericVector const & _p, 
     std::vector<double> & x,
     std::vector<long> & i,
     std::vector<long> & p,

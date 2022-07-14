@@ -723,7 +723,7 @@ void two_sample_ttest(
 //' @export
 // [[Rcpp::export]]
 extern SEXP ttest_fast(
-    Rcpp::NumericMatrix matrix, Rcpp::IntegerVector labels, 
+    Rcpp::NumericMatrix const & matrix, Rcpp::IntegerVector const & labels, 
     int alternative, 
     bool var_equal, 
     bool as_dataframe,
@@ -822,7 +822,7 @@ extern SEXP ttest_fast(
 //' @export
 // [[Rcpp::export]]
 extern SEXP sparse_ttest_fast(
-    Rcpp::dgCMatrix matrix, Rcpp::IntegerVector labels, 
+    Rcpp::dgCMatrix const & matrix, Rcpp::IntegerVector const & labels, 
     int alternative, 
     bool var_equal, 
     bool as_dataframe,
@@ -926,7 +926,7 @@ extern SEXP sparse_ttest_fast(
 //' @export
 // [[Rcpp::export]]
 extern SEXP spamx_ttest_fast(
-    Rcpp::spamx64 matrix, Rcpp::IntegerVector labels, 
+    Rcpp::spamx64 const & matrix, Rcpp::IntegerVector const & labels, 
     int alternative, 
     bool var_equal, 
     bool as_dataframe,

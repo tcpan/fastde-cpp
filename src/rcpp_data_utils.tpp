@@ -150,19 +150,19 @@ namespace Rcpp {
 
 }
 
-Rcpp::dgCMatrix rttest_dgCMatrix(Rcpp::dgCMatrix& mat){
+Rcpp::dgCMatrix rttest_dgCMatrix(Rcpp::dgCMatrix const & mat){
     return mat;
 }
-Rcpp::spam32 rttest_spam32(Rcpp::spam32 & mat){
+Rcpp::spam32 rttest_spam32(Rcpp::spam32 const & mat){
     return mat;
 }
-Rcpp::spam64 rttest_spam64(Rcpp::spam64 & mat){
+Rcpp::spam64 rttest_spam64(Rcpp::spam64 const & mat){
     return mat;
 }
-Rcpp::spamx32 rttest_spamx32(Rcpp::spamx32 & mat){
+Rcpp::spamx32 rttest_spamx32(Rcpp::spamx32 const & mat){
     return mat;
 }
-Rcpp::spamx64 rttest_spamx64(Rcpp::spamx64 & mat){
+Rcpp::spamx64 rttest_spamx64(Rcpp::spamx64 const & mat){
     return mat;
 }
 
@@ -170,7 +170,7 @@ Rcpp::spamx64 rttest_spamx64(Rcpp::spamx64 & mat){
 // ------- function def
 
 
-Rcpp::StringVector copy_rmatrix_to_cppvector(Rcpp::NumericMatrix _matrix, std::vector<double> & mat,
+Rcpp::StringVector copy_rmatrix_to_cppvector(Rcpp::NumericMatrix const &  _matrix, std::vector<double> & mat,
     size_t & nrow, size_t & ncol, size_t & nelem) {
     nrow=_matrix.nrow(); // n
     ncol=_matrix.ncol(); // m
@@ -181,7 +181,7 @@ Rcpp::StringVector copy_rmatrix_to_cppvector(Rcpp::NumericMatrix _matrix, std::v
 
     return Rcpp::colnames(_matrix);
 }
-Rcpp::StringVector copy_rmatrix_to_cppvector(Rcpp::LogicalMatrix _matrix, std::vector<bool> & mat,
+Rcpp::StringVector copy_rmatrix_to_cppvector(Rcpp::LogicalMatrix const & _matrix, std::vector<bool> & mat,
     size_t & nrow, size_t & ncol, size_t & nelem) {
     nrow=_matrix.nrow(); // n
     ncol=_matrix.ncol(); // m
@@ -194,7 +194,7 @@ Rcpp::StringVector copy_rmatrix_to_cppvector(Rcpp::LogicalMatrix _matrix, std::v
 }
 
 
-size_t copy_rvector_to_cppvector(Rcpp::LogicalVector _vector, std::vector<bool> & vec, size_t const & length, size_t const & offset) {
+size_t copy_rvector_to_cppvector(Rcpp::LogicalVector const & _vector, std::vector<bool> & vec, size_t const & length, size_t const & offset) {
     size_t veclen = static_cast<size_t>(_vector.size());
     if (offset >= veclen) return 0;  // offset is greater than vector length
     size_t len = std::min(length, veclen - offset);   // length to return
@@ -204,7 +204,7 @@ size_t copy_rvector_to_cppvector(Rcpp::LogicalVector _vector, std::vector<bool> 
     return len;
 }
 
-size_t copy_rvector_to_cppvector(Rcpp::NumericVector _vector, std::vector<double> & vec, size_t const & length, size_t const & offset) {
+size_t copy_rvector_to_cppvector(Rcpp::NumericVector const & _vector, std::vector<double> & vec, size_t const & length, size_t const & offset) {
     size_t veclen = static_cast<size_t>(_vector.size());
     if (offset >= veclen) return 0;  // offset is greater than vector length
     size_t len = std::min(length, veclen - offset);   // length to return
@@ -214,7 +214,7 @@ size_t copy_rvector_to_cppvector(Rcpp::NumericVector _vector, std::vector<double
     return len;
 }
 
-size_t copy_rvector_to_cppvector(Rcpp::IntegerVector _vector, std::vector<int> & vec, size_t const & length, size_t const & offset) {
+size_t copy_rvector_to_cppvector(Rcpp::IntegerVector const & _vector, std::vector<int> & vec, size_t const & length, size_t const & offset) {
     size_t veclen = static_cast<size_t>(_vector.size());
     if (offset >= veclen) return 0;  // offset is greater than vector length
     size_t len = std::min(length, veclen - offset);   // length to return
@@ -223,7 +223,7 @@ size_t copy_rvector_to_cppvector(Rcpp::IntegerVector _vector, std::vector<int> &
 
     return len;
 }
-size_t copy_rvector_to_cppvector(Rcpp::NumericVector _vector, std::vector<long> & vec, size_t const & length, size_t const & offset) {
+size_t copy_rvector_to_cppvector(Rcpp::NumericVector const & _vector, std::vector<long> & vec, size_t const & length, size_t const & offset) {
     size_t veclen = static_cast<size_t>(_vector.size());
     if (offset >= veclen) return 0;  // offset is greater than vector length
     size_t len = std::min(length, veclen - offset);   // length to return
@@ -234,7 +234,7 @@ size_t copy_rvector_to_cppvector(Rcpp::NumericVector _vector, std::vector<long> 
 }
 
 
-Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::dgCMatrix obj, 
+Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::dgCMatrix const & obj, 
     std::vector<double> & x,
     std::vector<int> & i,
     std::vector<int> & p,
@@ -258,7 +258,7 @@ Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::dgCMatrix obj,
 }
 
 void copy_rsparsematrix_to_cppvectors(
-    Rcpp::NumericVector _x, Rcpp::NumericVector _i, Rcpp::NumericVector _p, 
+    Rcpp::NumericVector const & _x, Rcpp::NumericVector const & _i, Rcpp::NumericVector const & _p, 
     std::vector<double> & x,
     std::vector<long> & i,
     std::vector<long> & p) {
@@ -280,7 +280,7 @@ void copy_rsparsematrix_to_cppvectors(
 }
 
 
-Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spam64 obj, 
+Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spam64 const & obj, 
     std::vector<double> & x,
     std::vector<long> & i,
     std::vector<long> & p,
@@ -304,7 +304,7 @@ Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spam64 obj,
 
 }
 
-Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spam32 obj, 
+Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spam32 const & obj, 
     std::vector<double> & x,
     std::vector<int> & i,
     std::vector<int> & p,
@@ -329,7 +329,7 @@ Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spam32 obj,
 }
 
 
-Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spamx64 obj, 
+Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spamx64 const & obj, 
     std::vector<double> & x,
     std::vector<long> & i,
     std::vector<long> & p,
@@ -353,7 +353,7 @@ Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spamx64 obj,
 
 }
 
-Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spamx32 obj, 
+Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spamx32 const & obj, 
     std::vector<double> & x,
     std::vector<int> & i,
     std::vector<int> & p,
