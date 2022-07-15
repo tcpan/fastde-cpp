@@ -35,6 +35,137 @@ get_num_threads <- function() {
 #' @importFrom Seurat Idents
 #' @importFrom Seurat FindAllMarkers
 #'
+#' @name FastFindAllMarkers64
+#' @export
+#'
+#' @concept differential_expression
+#'
+# @examples
+# data("pbmc_small")
+# # Find markers for all clusters
+# all.markers <- FindAllMarkers(object = pbmc_small)
+# head(x = all.markers)
+# \dontrun{
+# # Pass a value to node as a replacement for FindAllMarkersNode
+# pbmc_small <- BuildClusterTree(object = pbmc_small)
+# all.markers <- FindAllMarkers(object = pbmc_small, node = 4)
+# head(x = all.markers)
+# }
+#
+FastFindAllMarkers64 <- function(
+  object,
+  idents.clusters,
+  assay = NULL,
+  features = NULL,
+  logfc.threshold = 0.25,
+  test.use = 'fastwmw',
+  slot = 'data',
+  min.pct = 0.1,
+  min.diff.pct = -Inf,
+  node = NULL,
+  verbose = FALSE,
+  only.pos = FALSE,
+  max.cells.per.ident = Inf,
+  random.seed = 1,
+  latent.vars = NULL,
+  min.cells.feature = 3,
+  min.cells.group = 3,
+  pseudocount.use = 1,
+  mean.fxn = NULL,
+  fc.name = NULL,
+  base = 2,
+  return.thresh = 1e-2,
+  ...
+) {
+  # call ours if possible.  conditiions:
+  #   node is null
+  #   test.use = "fastwmw"
+  tic("FastFindAllMarkers64")
+  # what does this do?
+  if ((test.use == "fastwmw") || (test.use == 'fast_t') ) {
+  
+
+    # compute for all rows/cols
+    messages <- list()
+    if (verbose) {
+      idents.all <- sort(x = unique(x = idents.clusters))
+      # message("Calculating all clusters ", idents.all)
+    }
+    # genes.de dim = cluster as rows, genes as columns
+    gde.all <- FastFindMarkers(
+      object = object,
+      cells.clusters = idents.clusters,
+      assay = assay,
+      features = features,
+      logfc.threshold = logfc.threshold,
+      test.use = test.use,
+      slot = slot,
+      min.pct = min.pct,
+      min.diff.pct = min.diff.pct,
+      verbose = verbose,
+      only.pos = only.pos,
+      pseudocount.use = pseudocount.use,
+      fc.name = fc.name,
+      base = base,
+      return.dataframe = TRUE,
+      ...
+    )
+
+    if ((test.use == "fastroc") && (return.thresh == 1e-2)) {
+      return.thresh <- 0.7
+    }
+    # message("FASTDE number of rows for gde.all ", nrow(x = gde.all))
+    # output should be less than p_val thresh, and has columns cluster and gene.
+    gde.all <- subset(x = gde.all, subset = gde.all$p_val < return.thresh)
+    # also already filtered by p val > 0 if only.pos.
+    # message("FASTDE number of rows for gde.all thresholded ", nrow(x = gde.all))
+    print.data.frame(head(gde.all))
+    print.data.frame(tail(gde.all))
+    # write.csv(gde.all, "~/fastde_t.csv", row.names=FALSE)
+
+    # this hsould not happen
+    # rownames(x = gde.all) <- make.unique(names = as.character(x = gde.all$gene))
+    
+    # print error messgaes.
+    if (nrow(x = gde.all) == 0) {
+      warning("FASTDE 64 No DE genes identified", call. = FALSE, immediate. = TRUE)
+    }
+    if (length(x = messages) > 0) {
+      warning("FASTDE 64 The following tests were not performed: ", call. = FALSE, immediate. = TRUE)
+      for (i in 1:length(x = messages)) {
+        if (!is.null(x = messages[[i]])) {
+          warning("When testing ", idents.all[i], " versus all:\n\t", messages[[i]], call. = FALSE, immediate. = TRUE)
+        }
+      }
+    }
+  }
+  toc()
+  return(gde.all)
+
+}
+
+#' 
+#' Gene expression markers for all identity classes
+#'
+#' Finds markers (differentially expressed genes) for each of the identity classes in a dataset
+#'
+#' @inheritParams FastFindMarkers
+#' @param return.thresh Only return markers that have a p-value < return.thresh, or a power > return.thresh (if the test is ROC)
+#' @param node FIXME
+#' @param max.cells.per.ident FIXME
+#' @param random.seed FIXME
+#' @param latent.vars FIXME
+#' @param min.cells.feature FIXME
+#' @param min.cells.group FIXME
+#' @param mean.fxn FIXME
+#'
+#' @return Matrix containing a ranked list of putative markers, and associated
+#' statistics (p-values, ROC score, etc.)
+#'
+#' @importFrom stats setNames
+#' @importFrom Seurat Idents
+#' @importFrom Seurat FindAllMarkers
+#'
 #' @name FastFindAllMarkers
 #' @export
 #'
@@ -79,9 +210,9 @@ FastFindAllMarkers <- function(
   # call ours if possible.  conditiions:
   #   node is null
   #   test.use = "fastwmw"
-  tic("FindAllMarkers")
   # what does this do?
   if ((test.use == "fastwmw") || (test.use == "bioqc") || (test.use == 'fast_t') ) {
+    tic("FindAllMarkers")
   
     # Idents get the cell identity (not name), which correspond to cluster ids? 
     idents.clusters = Seurat::Idents(object = object)
@@ -139,6 +270,7 @@ FastFindAllMarkers <- function(
         }
       }
     }
+    toc()
     return(gde.all)
 
   } else {
@@ -167,8 +299,8 @@ FastFindAllMarkers <- function(
         ...
       ))
   }
-  toc()
 }
+
 
 
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

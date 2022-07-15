@@ -4,7 +4,7 @@
 // from https://stackoverflow.com/questions/2808398/easily-measure-elapsed-time
 #include <chrono>
 #include <Rcpp.h>
-#include "gperftools/profiler.h"
+// #include "gperftools/profiler.h"
 
 template <
     class clock_t    = std::chrono::steady_clock,
@@ -12,20 +12,20 @@ template <
 >
 duration_t since(std::chrono::time_point<clock_t, duration_t> const& start);
 
-//' start profiler
-//'
-//' @rdname start_profiler
-//' @param str name of output file
-//' @return Nil value
-//' @name start_profiler
-//' @export
-// [[Rcpp::export]]
-extern SEXP start_profiler(SEXP str);
+// //' start profiler
+// //'
+// //' @rdname start_profiler
+// //' @param str name of output file
+// //' @return Nil value
+// //' @name start_profiler
+// //' @export
+// // [[Rcpp::export]]
+// extern SEXP start_profiler(SEXP str);
 
-//' stop profiler
-//'
-//' @rdname stop_profiler
-//' @name stop_profiler
-//' @export
-// [[Rcpp::export]]
-extern SEXP stop_profiler();
+// //' stop profiler
+// //'
+// //' @rdname stop_profiler
+// //' @name stop_profiler
+// //' @export
+// // [[Rcpp::export]]
+// extern SEXP stop_profiler();

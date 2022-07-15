@@ -11,27 +11,6 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// start_profiler
-extern SEXP start_profiler(SEXP str);
-RcppExport SEXP _fastde_start_profiler(SEXP strSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< SEXP >::type str(strSEXP);
-    rcpp_result_gen = Rcpp::wrap(start_profiler(str));
-    return rcpp_result_gen;
-END_RCPP
-}
-// stop_profiler
-extern SEXP stop_profiler();
-RcppExport SEXP _fastde_stop_profiler() {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    rcpp_result_gen = Rcpp::wrap(stop_profiler());
-    return rcpp_result_gen;
-END_RCPP
-}
 // rttest_dgCMatrix
 Rcpp::dgCMatrix rttest_dgCMatrix(Rcpp::dgCMatrix const& mat);
 RcppExport SEXP _fastde_rttest_dgCMatrix(SEXP matSEXP) {
@@ -334,8 +313,6 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_fastde_start_profiler", (DL_FUNC) &_fastde_start_profiler, 1},
-    {"_fastde_stop_profiler", (DL_FUNC) &_fastde_stop_profiler, 0},
     {"_fastde_rttest_dgCMatrix", (DL_FUNC) &_fastde_rttest_dgCMatrix, 1},
     {"_fastde_rttest_spamx32", (DL_FUNC) &_fastde_rttest_spamx32, 1},
     {"_fastde_rttest_spamx64", (DL_FUNC) &_fastde_rttest_spamx64, 1},

@@ -7,4 +7,4 @@ CXXPICFLAGS = -fpic
 	
 LDFLAGS += -lomp
 
-PKG_LIBS = -Wl,--no-as-needed -lprofiler -Wl,--as-needed
+# PKG_LIBS = -Wl,--no-as-needed -lprofiler -Wl,--as-needed
