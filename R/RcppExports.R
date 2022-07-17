@@ -12,48 +12,15 @@ rttest_dgCMatrix <- function(mat) {
     .Call('_fastde_rttest_dgCMatrix', PACKAGE = 'fastde', mat)
 }
 
-#' round trip testing for spamx32
+#' round trip testing for dgCMatrix
 #'
-#' @rdname rttest_spamx32
-#' @param mat an spam sparse compressed column matrix
-#' @return spam sparse compressed column matrix
-#' @name rttest_spamx32
+#' @rdname rttest_dgCMatrix64
+#' @param mat an R sparse compressed column matrix
+#' @return R sparse compressed column matrix
+#' @name rttest_dgCMatrix64
 #' @export
-rttest_spamx32 <- function(mat) {
-    .Call('_fastde_rttest_spamx32', PACKAGE = 'fastde', mat)
-}
-
-#' round trip testing for spamx64
-#'
-#' @rdname rttest_spamx64
-#' @param mat an spam sparse compressed column matrix
-#' @return spam sparse compressed column matrix
-#' @name rttest_spamx64
-#' @export
-rttest_spamx64 <- function(mat) {
-    .Call('_fastde_rttest_spamx64', PACKAGE = 'fastde', mat)
-}
-
-#' round trip testing for spam32
-#'
-#' @rdname rttest_spam32
-#' @param mat an spam sparse compressed column matrix
-#' @return spam sparse compressed column matrix
-#' @name rttest_spam32
-#' @export
-rttest_spam32 <- function(mat) {
-    .Call('_fastde_rttest_spam32', PACKAGE = 'fastde', mat)
-}
-
-#' round trip testing for spam64
-#'
-#' @rdname rttest_spam64
-#' @param mat an spam sparse compressed column matrix
-#' @return spam sparse compressed column matrix
-#' @name rttest_spam64
-#' @export
-rttest_spam64 <- function(mat) {
-    .Call('_fastde_rttest_spam64', PACKAGE = 'fastde', mat)
+rttest_dgCMatrix64 <- function(mat) {
+    .Call('_fastde_rttest_dgCMatrix64', PACKAGE = 'fastde', mat)
 }
 
 #' Fold Change
@@ -106,7 +73,7 @@ ComputeFoldChangeSparse <- function(matrix, labels, calc_percents, fc_name, use_
 #' 
 #' https://stackoverflow.com/questions/38338270/how-to-return-a-named-vecsxp-when-writing-r-extensions
 #' 
-#' @rdname ComputeFoldChangeSpamx32
+#' @rdname ComputeFoldChangeSparse64
 #' @param matrix an expression matrix, COLUMN-MAJOR, each row is a sample, each column a gene
 #' @param labels an integer vector, each element indicating the group to which a sample belongs.
 #' @param calc_percents  a boolean to indicate whether to compute percents or not.
@@ -119,33 +86,10 @@ ComputeFoldChangeSparse <- function(matrix, labels, calc_percents, fc_name, use_
 #' @param as_dataframe TRUE/FALSE.  TRUE = return a linearized dataframe.  FALSE = return matrices.
 #' @param threads number of threads to use
 #' @return dense array or dataframe of size features*clusters
-#' @name ComputeFoldChangeSpamx32
+#' @name ComputeFoldChangeSparse64
 #' @export
-ComputeFoldChangeSpamx32 <- function(matrix, labels, calc_percents, fc_name, use_expm1, min_threshold, use_log, log_base, use_pseudocount, as_dataframe, threads) {
-    .Call('_fastde_ComputeFoldChangeSpamx32', PACKAGE = 'fastde', matrix, labels, calc_percents, fc_name, use_expm1, min_threshold, use_log, log_base, use_pseudocount, as_dataframe, threads)
-}
-
-#' Fold Change
-#' 
-#' https://stackoverflow.com/questions/38338270/how-to-return-a-named-vecsxp-when-writing-r-extensions
-#' 
-#' @rdname ComputeFoldChangeSpamx64
-#' @param matrix an expression matrix, COLUMN-MAJOR, each row is a sample, each column a gene
-#' @param labels an integer vector, each element indicating the group to which a sample belongs.
-#' @param calc_percents  a boolean to indicate whether to compute percents or not.
-#' @param fc_name column name to use for the fold change results 
-#' @param use_expm1 for "data", use expm1
-#' @param min_threshold minimum threshold to count towards pct.1 and pct.2 percentages.
-#' @param use_log for "data" and default log type, indicate log of the sum is to be used.
-#' @param log_base base for the log
-#' @param use_pseudocount for "data" and default log type, add pseudocount after log.
-#' @param as_dataframe TRUE/FALSE.  TRUE = return a linearized dataframe.  FALSE = return matrices.
-#' @param threads number of threads to use
-#' @return dense array or dataframe of size features*clusters
-#' @name ComputeFoldChangeSpamx64
-#' @export
-ComputeFoldChangeSpamx64 <- function(matrix, labels, calc_percents, fc_name, use_expm1, min_threshold, use_log, log_base, use_pseudocount, as_dataframe, threads) {
-    .Call('_fastde_ComputeFoldChangeSpamx64', PACKAGE = 'fastde', matrix, labels, calc_percents, fc_name, use_expm1, min_threshold, use_log, log_base, use_pseudocount, as_dataframe, threads)
+ComputeFoldChangeSparse64 <- function(matrix, labels, calc_percents, fc_name, use_expm1, min_threshold, use_log, log_base, use_pseudocount, as_dataframe, threads) {
+    .Call('_fastde_ComputeFoldChangeSparse64', PACKAGE = 'fastde', matrix, labels, calc_percents, fc_name, use_expm1, min_threshold, use_log, log_base, use_pseudocount, as_dataframe, threads)
 }
 
 #' Filter based on FoldChange
@@ -189,27 +133,13 @@ rc_sp_transpose <- function(sp_matrix) {
 #' This implementation directly constructs the new sparse matrix.  
 #'     Output is also column-major, so there is random memory writes.
 #' 
-#' @rdname rc_spamx32_transpose
+#' @rdname rc_sp64_transpose
 #' @param obj a sparse matrix, of the form dgCMatrix
 #' @return sp_matrix, transposed.
-#' @name rc_spamx32_transpose
+#' @name rc_sp64_transpose
 #' @export
-rc_spamx32_transpose <- function(obj) {
-    .Call('_fastde_rc_spamx32_transpose', PACKAGE = 'fastde', obj)
-}
-
-#' R Sparse Matrix Transpose
-#'
-#' This implementation directly constructs the new sparse matrix.  
-#'     Output is also column-major, so there is random memory writes.
-#' 
-#' @rdname rc_spamx64_transpose
-#' @param obj a sparse matrix, of the form dgCMatrix
-#' @return sp_matrix, transposed.
-#' @name rc_spamx64_transpose
-#' @export
-rc_spamx64_transpose <- function(obj) {
-    .Call('_fastde_rc_spamx64_transpose', PACKAGE = 'fastde', obj)
+rc_sp64_transpose <- function(obj) {
+    .Call('_fastde_rc_sp64_transpose', PACKAGE = 'fastde', obj)
 }
 
 #' R Sparse To Dense Matrix
@@ -231,27 +161,13 @@ rc_sp_to_dense <- function(obj) {
 #' This implementation directly constructs the new dense matrix.  
 #'     There is random memory writes.
 #' 
-#' @rdname rc_spamx32_to_dense
+#' @rdname rc_sp64_to_dense
 #' @param obj a sparse matrix, of the form dgCMatrix
 #' @return matrix dense matrix.
-#' @name rc_spamx32_to_dense
+#' @name rc_sp64_to_dense
 #' @export
-rc_spamx32_to_dense <- function(obj) {
-    .Call('_fastde_rc_spamx32_to_dense', PACKAGE = 'fastde', obj)
-}
-
-#' R Sparse To Dense Matrix
-#'
-#' This implementation directly constructs the new dense matrix.  
-#'     There is random memory writes.
-#' 
-#' @rdname rc_spamx64_to_dense
-#' @param obj a sparse matrix, of the form dgCMatrix
-#' @return matrix dense matrix.
-#' @name rc_spamx64_to_dense
-#' @export
-rc_spamx64_to_dense <- function(obj) {
-    .Call('_fastde_rc_spamx64_to_dense', PACKAGE = 'fastde', obj)
+rc_sp64_to_dense <- function(obj) {
+    .Call('_fastde_rc_sp64_to_dense', PACKAGE = 'fastde', obj)
 }
 
 #' R Sparse To Dense Matrix
@@ -273,27 +189,13 @@ rc_sp_to_dense_transposed <- function(obj) {
 #' This implementation directly constructs the new dense matrix.  
 #'     There is random memory writes.
 #' 
-#' @rdname rc_spamx32_to_dense_transposed
+#' @rdname rc_sp64_to_dense_transposed
 #' @param obj a sparse matrix, of the form dgCMatrix
 #' @return matrix dense matrix.
-#' @name rc_spamx32_to_dense_transposed
+#' @name rc_sp64_to_dense_transposed
 #' @export
-rc_spamx32_to_dense_transposed <- function(obj) {
-    .Call('_fastde_rc_spamx32_to_dense_transposed', PACKAGE = 'fastde', obj)
-}
-
-#' R Sparse To Dense Matrix
-#'
-#' This implementation directly constructs the new dense matrix.  
-#'     There is random memory writes.
-#' 
-#' @rdname rc_spamx64_to_dense_transposed
-#' @param obj a sparse matrix, of the form dgCMatrix
-#' @return matrix dense matrix.
-#' @name rc_spamx64_to_dense_transposed
-#' @export
-rc_spamx64_to_dense_transposed <- function(obj) {
-    .Call('_fastde_rc_spamx64_to_dense_transposed', PACKAGE = 'fastde', obj)
+rc_sp64_to_dense_transposed <- function(obj) {
+    .Call('_fastde_rc_sp64_to_dense_transposed', PACKAGE = 'fastde', obj)
 }
 
 #' Fast t-Test for dense matrix
@@ -346,7 +248,7 @@ sparse_ttest_fast <- function(matrix, labels, alternative, var_equal, as_datafra
 #'
 #' This implementation uses normal approximation, which works reasonably well if sample size is large (say N>=20)
 #' 
-#' @rdname spamx32_ttest_fast
+#' @rdname sparse64_ttest_fast
 #' @param matrix an expression matrix, COLUMN-MAJOR, each col is a feature, each row a sample
 #' @param labels an integer vector, each element indicating the group to which a sample belongs.
 #' @param alternative 
@@ -359,33 +261,10 @@ sparse_ttest_fast <- function(matrix, labels, alternative, var_equal, as_datafra
 #' @param as_dataframe TRUE/FALSE - TRUE returns a dataframe, FALSE returns a matrix
 #' @param threads  number of concurrent threads.
 #' @return array or dataframe.  for each gene/feature, the rows for the clusters are ordered by id.
-#' @name spamx32_ttest_fast
+#' @name sparse64_ttest_fast
 #' @export
-spamx32_ttest_fast <- function(matrix, labels, alternative, var_equal, as_dataframe, threads) {
-    .Call('_fastde_spamx32_ttest_fast', PACKAGE = 'fastde', matrix, labels, alternative, var_equal, as_dataframe, threads)
-}
-
-#' Fast T-Test for sparse matrix.  2 sample t-test.
-#'
-#' This implementation uses normal approximation, which works reasonably well if sample size is large (say N>=20)
-#' 
-#' @rdname spamx64_ttest_fast
-#' @param matrix an expression matrix, COLUMN-MAJOR, each col is a feature, each row a sample
-#' @param labels an integer vector, each element indicating the group to which a sample belongs.
-#' @param alternative 
-#' \itemize{
-#' \item{0} : p(two.sided)
-#' \item{1} : p(less)
-#' \item{2} : p(greater)
-#' }
-#' @param var_equal TRUE/FALSE to indicate the variance is expected to be equal
-#' @param as_dataframe TRUE/FALSE - TRUE returns a dataframe, FALSE returns a matrix
-#' @param threads  number of concurrent threads.
-#' @return array or dataframe.  for each gene/feature, the rows for the clusters are ordered by id.
-#' @name spamx64_ttest_fast
-#' @export
-spamx64_ttest_fast <- function(matrix, labels, alternative, var_equal, as_dataframe, threads) {
-    .Call('_fastde_spamx64_ttest_fast', PACKAGE = 'fastde', matrix, labels, alternative, var_equal, as_dataframe, threads)
+sparse64_ttest_fast <- function(matrix, labels, alternative, var_equal, as_dataframe, threads) {
+    .Call('_fastde_sparse64_ttest_fast', PACKAGE = 'fastde', matrix, labels, alternative, var_equal, as_dataframe, threads)
 }
 
 #' Fast Wilcoxon-Mann-Whitney Test for dense matrix
@@ -440,7 +319,7 @@ sparse_wmw_fast <- function(matrix, labels, rtype, continuity_correction, as_dat
 #'
 #' This implementation uses normal approximation, which works reasonably well if sample size is large (say N>=20)
 #' 
-#' @rdname spamx32_wmw_fast
+#' @rdname sparse64_wmw_fast
 #' @param matrix an expression matrix, COLUMN-MAJOR, each col is a feature, each row a sample
 #' @param labels an integer vector, each element indicating the group to which a sample belongs.
 #' @param rtype 
@@ -454,33 +333,9 @@ sparse_wmw_fast <- function(matrix, labels, rtype, continuity_correction, as_dat
 #' @param as_dataframe TRUE/FALSE - TRUE returns a dataframe, FALSE returns a matrix
 #' @param threads  number of concurrent threads.
 #' @return array or dataframe.  for each gene/feature, the rows for the clusters are ordered by id.
-#' @name spamx32_wmw_fast
+#' @name sparse64_wmw_fast
 #' @export
-spamx32_wmw_fast <- function(matrix, labels, rtype, continuity_correction, as_dataframe, threads) {
-    .Call('_fastde_spamx32_wmw_fast', PACKAGE = 'fastde', matrix, labels, rtype, continuity_correction, as_dataframe, threads)
-}
-
-#' Fast Wilcoxon-Mann-Whitney Test for dense matrix
-#'
-#' This implementation uses normal approximation, which works reasonably well if sample size is large (say N>=20)
-#' 
-#' @rdname spamx64_wmw_fast
-#' @param matrix an expression matrix, COLUMN-MAJOR, each col is a feature, each row a sample
-#' @param labels an integer vector, each element indicating the group to which a sample belongs.
-#' @param rtype 
-#' \itemize{
-#' \item{0} : p(less)
-#' \item{1} : p(greater)
-#' \item{2} : p(twoSided)
-#' \item{3} : U
-#' }
-#' @param continuity_correction TRUE/FALSE for continuity_correction correction
-#' @param as_dataframe TRUE/FALSE - TRUE returns a dataframe, FALSE returns a matrix
-#' @param threads  number of concurrent threads.
-#' @return array or dataframe.  for each gene/feature, the rows for the clusters are ordered by id.
-#' @name spamx64_wmw_fast
-#' @export
-spamx64_wmw_fast <- function(matrix, labels, rtype, continuity_correction, as_dataframe, threads) {
-    .Call('_fastde_spamx64_wmw_fast', PACKAGE = 'fastde', matrix, labels, rtype, continuity_correction, as_dataframe, threads)
+sparse64_wmw_fast <- function(matrix, labels, rtype, continuity_correction, as_dataframe, threads) {
+    .Call('_fastde_sparse64_wmw_fast', PACKAGE = 'fastde', matrix, labels, rtype, continuity_correction, as_dataframe, threads)
 }
 

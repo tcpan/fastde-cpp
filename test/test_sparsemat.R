@@ -19,33 +19,29 @@ colnames(M) <- paste0("c", 1:cols)
 # colnames(M) <- paste0("c", 1:150)
 # str(M)
 
+print("TESTING dgCMatrix functions")
+
 tic("rcpp overhead")
 M2 <- rttest_dgCMatrix(M)
 toc()
 rm(M2)
 
 tic("fastde SPARSE MAT TRANSPOSE sexp")
-tM3 <- fastde::rc_sp_transpose(M)
-toc()
-
-tic("fastde SPARSE MAT TRANSPOSE")
 tM <- fastde::sp_transpose(M)
 toc()
-# str(tM)
 
 tic("R sparse mat transpose")
 tM2 <- t(M)
 toc()
 # str(tM2)
+print("R and c++ transpose the same?")
 print(all.equal(tM2, tM))
-print(all.equal(tM2, tM3))
 rm(tM2)
-rm(tM3)
 
 ttM <- fastde::sp_transpose(tM)
 # str(ttM)
+print("c++ transpose invertible?")
 print(all.equal(M, ttM))
-
 rm(tM)
 rm(ttM)
 
@@ -54,13 +50,27 @@ tic("R convert sparse to dense")
 dM <- as.matrix(M)
 toc()
 
-
-
 tic("fastde convert sparse to dense")
 cdM <- fastde::sp_to_dense(M)
 toc()
+print("c++ to dense the same as R?")
 print(all.equal(dM, cdM))
+rm(dM)
 rm(cdM)
+
+
+tic("R convert sparse to dense transposed")
+dM <- as.matrix(t(M))
+toc()
+
+tic("fastde convert sparse to dense transposed")
+cdM <- fastde::sp_to_dense_transposed(M)
+toc()
+print("c++ to dense transposed the same as R?")
+print(all.equal(dM, cdM))
+rm(dM)
+rm(cdM)
+
 
 # out_file <- "sp_to_dense.prof" #tempfile("fastde_sp_to_dense", fileext = ".out")
 # print(out_file)
@@ -81,59 +91,64 @@ rm(cdM)
 # print(all.equal(dM, cdM4))
 # rm(cdM4)
 
-tic("fastde convert sparse to dense sexp")
-cdM2 <- fastde::rc_sp_to_dense(M)
-toc()
-print(all.equal(dM, cdM2))
-rm(cdM2)
 
-# str(dM)
-# str(cdM)
+
+tic("convert to 64")
+M64 <- as.dgCMatrix64(M)
+toc()
+
+
+print("TESTING dgCMatrix64 functions")
+
+tic("rcpp overhead")
+M2 <- rttest_dgCMatrix64(M64)
+toc()
+rm(M2)
+
+tic("R convert sparse to dense")
+dM <- as.matrix(M)
+toc()
+
+tic("fastde convert sparse to dense 64")
+cdM <- fastde::sp_to_dense(M64)
+toc()
+print("c++ to dense 64 the same as R?")
+print(all.equal(dM, cdM))
 rm(dM)
+rm(cdM)
 
-tic("R convert sparse to dense then transpose")
-tdM <- t(as.matrix(M))
+
+tic("fastde SPARSE 64 MAT TRANSPOSE sexp")
+tM <- fastde::sp_transpose(M64)
 toc()
 
+tic("R sparse mat transpose")
+tM2 <- as.dgCMatrix64(t(M))
+toc()
+# str(tM2)
+print("R and c++ transpose 64 the same?")
+print(all.equal(fastde::sp_to_dense(tM2), fastde::sp_to_dense(tM)))
+rm(tM2)
 
-tic("fastde convert sparse to dense then R transpose")
-ctdM <- t(fastde::sp_to_dense(M))
+ttM <- fastde::sp_transpose(tM)
+# str(ttM)
+print("c++ transpose 64 invertible?")
+print(all.equal(fastde::sp_to_dense(M64), fastde::sp_to_dense(ttM)))
+rm(tM)
+rm(ttM)
+
+
+
+
+tic("R convert sparse to dense transposed")
+dM <- as.matrix(t(M))
 toc()
 
-print(all.equal(tdM, ctdM))
-rm(ctdM)
-
-tic("R transpose than convert to dense")
-tdM <- as.matrix(t(M))
+tic("fastde convert sparse to dense transposed 64")
+cdM <- fastde::sp_to_dense_transposed(M64)
 toc()
+print("c++ to dense transposed 64 the same as R?")
+print(all.equal(dM, cdM))
+rm(dM)
+rm(cdM)
 
-
-tic("fastde transpose sparse then convert to dense")
-cdtM <- fastde::sp_to_dense(fastde::sp_transpose(M))
-toc()
-# str(tdM)
-# str(cdtM)
-print(all.equal(tdM, cdtM))
-rm(cdtM)
-
-tic("fastde to transposed dense")
-cdtM2 <- fastde::sp_to_dense_transposed(M)
-toc()
-
-print(all.equal(tdM, cdtM2))
-rm(cdtM2)
-
-
-tic("fastde to transposed dense sexp")
-cdtM3 <- fastde::rc_sp_to_dense_transposed(M)
-toc()
-
-# str(tdM)
-# str(cdtM3)
-print(all.equal(tdM, cdtM3))
-rm(cdtM3)
-
-
-rm(tdM)
-
-rm(M)

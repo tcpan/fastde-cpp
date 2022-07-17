@@ -2,8 +2,6 @@ unlink(".RData")
 library("devtools")
 
 library(rhdf5)
-library(spam)
-library(spam64)
 library(fastde)
 library(tictoc)
 
@@ -60,52 +58,45 @@ toc()
 
 message("FINISHED 1")
 
-# so2 <- new("spamx", entries = sobject@x, colindices = sobject@i, rowpointers = sobject@p, dimension = sobject@Dim, 
+# so2 <- new('dgCMatrix64', x = sobject@x, i = sobject@i, p = sobject@p, dimension = sobject@Dim, 
 #     Dim = sobject@Dim, Dimnames = sobject@Dimnames)
 
 
 
-# tic("spamx fastde FC")
-# # time and run BioQC
-# fastdefc3 <- fastde::ComputeFoldChangeSpamx32(so2, labels, calc_percents = TRUE, fc_name = "fc", 
-#     use_expm1 = FALSE, min_threshold = 0.0, use_log = FALSE, log_base = 2.0, 
-#     use_pseudocount = FALSE, as_dataframe = FALSE, threads = as.integer(1))
+tic("convert to 64bit")
+so64 <- as.dgCMatrix64(sobject)
+
+# tic("WRITE pbm3k h5")
+# f <- "~/data/SingleCell/pbmc3k.h5"
+# #f <- "~/scgc/data/pbmc3k.h5"
+# fastde::Write10X_h5(sobject, f)
 # toc()
 
 
+# tic("READ pbmc3k h5")
+# sobject <- fastde::Read10X_h5_big(f)
+# message("PBMC3K H5:  x size ", length(sobject@x), " i size ", length(sobject@i), " p size", length(sobject@p))
+# head(sobject@x)
+# head(sobject@i)
+# head(sobject@p)
+# head(sobject@Dimnames[[1]][1:10])
+# head(sobject@Dimnames[[2]][1:10])
+# message("PBMC3K dim")
+# sobject@dimension
+# class(sobject@dimension)
+# class(sobject@i)
+# class(sobject@p)
 
+# str(sobject)
 
-tic("WRITE pbm3k h5")
-f <- "~/data/SingleCell/pbmc3k.h5"
-#f <- "~/scgc/data/pbmc3k.h5"
-fastde::Write10X_h5(sobject, f)
-toc()
-
-
-tic("READ pbmc3k h5")
-sobject <- fastde::Read10X_h5_big(f)
-message("PBMC3K H5:  x size ", length(sobject@entries), " i size ", length(sobject@colindices), " p size", length(sobject@rowpointers))
-head(sobject@entries)
-head(sobject@colindices)
-head(sobject@rowpointers)
-head(sobject@Dimnames[[1]][1:10])
-head(sobject@Dimnames[[2]][1:10])
-message("PBMC3K dim")
-sobject@dimension
-class(sobject@dimension)
-class(sobject@colindices)
-class(sobject@rowpointers)
-
-str(sobject)
-
-nrows <- sobject@dimension[1]
+nrows <- so64@dimension[1]
 toc()
 
 
 
-tic("sparse fastde FC")
+tic("sparse fastde 64 FC")
 # time and run BioQC
-fastdefc2 <- fastde::ComputeFoldChangeSpamx32(sobject, labels, calc_percents = TRUE, fc_name = "fc", 
+fastdefc2 <- fastde::ComputeFoldChangeSparse64(so64, labels, calc_percents = TRUE, fc_name = "fc", 
     use_expm1 = FALSE, min_threshold = 0.0, use_log = FALSE, log_base = 2.0, 
     use_pseudocount = FALSE, as_dataframe = FALSE, threads = as.integer(1))
 toc()
@@ -113,14 +104,14 @@ str(fastdefc)
 # str(fastdefc3)
 str(fastdefc2)
 
-tic("wilcox pbmc3k")
+tic("wilcox pbmc3k 64")
 # run wilcox
-wilcox_de <- fastde::FastFindAllMarkers64(sobject, idents.clusters = labels, test.use = 'fastwmw')
+wilcox_de <- fastde::FastFindAllMarkers64(so64, idents.clusters = labels, test.use = 'fastwmw')
 toc()
 
 # run ttest
-tic("ttest pbmc3k")
-ttest_de <- fastde::FastFindAllMarkers64(sobject, idents.clusters = labels, test.use = 'fast_t')
+tic("ttest pbmc3k 64")
+ttest_de <- fastde::FastFindAllMarkers64(so64, idents.clusters = labels, test.use = 'fast_t')
 toc()
 
 
@@ -131,10 +122,10 @@ toc()
 # f2 <- "~/scgc/data/1M_neurons_filtered_gene_bc_matrices_h5.h5"
 
 # sobject2 <- fastde::Read10X_h5_big(f2)
-# message("Brain 1M:  x size ", length(sobject2@entries), " i size ", length(sobject2@colindices), " p size", length(sobject2@rowpointers))
-# head(sobject2@entries)
-# head(sobject2@colindices)
-# head(sobject2@rowpointers)
+# message("Brain 1M:  x size ", length(sobject2@x), " i size ", length(sobject2@i), " p size", length(sobject2@p))
+# head(sobject2@x)
+# head(sobject2@i)
+# head(sobject2@p)
 # head(sobject2@Dimnames)
 # message("Brain 1M dim")
 # sobject2@dimension

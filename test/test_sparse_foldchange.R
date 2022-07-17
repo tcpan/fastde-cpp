@@ -13,15 +13,15 @@ comparemat <- function(name, A, B) {
     stdevdiff <- sd(diff * diff)
     cat(sprintf("%s : diff range [%.17g, %.17g], median %.17g, mean %.17g, sd %.17g\n", 
         name, mindiff, maxdiff, mediandiff, meandiff, stdevdiff))
-    mxpos = which(diff == maxdiff, arr.ind = TRUE)
-    mnpos = which(diff == mindiff, arr.ind = TRUE)
+    # mxpos = which(diff == maxdiff, arr.ind = TRUE)
+    # mnpos = which(diff == mindiff, arr.ind = TRUE)
 
-    if ( abs(maxdiff) > .Machine$double.eps)
-       cat(sprintf("%s : max diff at pos %d:  A %.17g - B %.17g = DIFF %.17g.\n", 
-            name, mxpos, A[mxpos], B[mxpos], diff[mxpos]))
-    if  ( abs(mindiff) > .Machine$double.eps)
-        cat(sprintf("%s : min diff at pos %d:  A %.17g - B %.17g = DIFF %.17g.\n", 
-            name, mnpos, A[mnpos], B[mnpos], diff[mnpos]))
+    # if ( abs(maxdiff) > .Machine$double.eps)
+    #    cat(sprintf("%s : max diff at pos %d:  A %.17g - B %.17g = DIFF %.17g.\n", 
+    #         name, mxpos, A[mxpos], B[mxpos], diff[mxpos]))
+    # if  ( abs(mindiff) > .Machine$double.eps)
+    #     cat(sprintf("%s : min diff at pos %d:  A %.17g - B %.17g = DIFF %.17g.\n", 
+    #         name, mnpos, A[mnpos], B[mnpos], diff[mnpos]))
     
 }
 
@@ -45,8 +45,8 @@ cat(sprintf("NOTE: rounding is done differently in R and C++ (and python):\nR an
 
 tic("generate")
 # max is 2B.
-ncols = 2000  # features
-nrows = 2000  # samples
+ncols = 1000  # features
+nrows = 10000  # samples
 nclusters = 30
 
 clusters = 1:nclusters
@@ -79,7 +79,7 @@ toc()
 # time and run wilcox.test
 tic("Seurat builtin")
 
-x <- t(as.matrix(input))
+x <- as.matrix(t(input))
 colnames(x) <- samplenames
 rownames(x) <- genenames
 
@@ -215,3 +215,56 @@ comparemat("R vs sparse fastde fc", seuratfc, fastdesfcsorted)
 comparemat("R vs sparse fastde pct1", seuratperc1, fastdesfc_pct1_sorted)
 comparemat("R vs sparse fastde pct2", seuratperc2, fastdesfc_pct2_sorted)
 
+
+
+print("CONVERT to 64bit")
+# convert to 64bit
+input64 <- as.dgCMatrix64(input)
+
+tic("sparse64 fastde df")
+# time and run BioQC
+cat(sprintf("input 64 %d X %d\n", nrow(input64), ncol(input64)))
+fastdesfc_df <- fastde::ComputeFoldChangeSparse64(input64, labels, calc_percents = TRUE, fc_name = "fc", 
+    use_expm1 = FALSE, min_threshold = 0.0, use_log = FALSE, log_base = 2.0, 
+    use_pseudocount = FALSE, as_dataframe = TRUE, threads = as.integer(4))
+toc()
+
+
+tic("sparse64 fastde")
+# time and run BioQC
+cat(sprintf("input64 %d X %d\n", nrow(input64), ncol(input64)))
+fastdesfc <- fastde::ComputeFoldChangeSparse64(input64, labels, calc_percents = TRUE, fc_name = "fc", 
+    use_expm1 = FALSE, min_threshold = 0.0, use_log = FALSE, log_base = 2.0, 
+    use_pseudocount = FALSE, as_dataframe = FALSE, threads = as.integer(4))
+toc()
+cat(sprintf("output64 %d X %d\n", nrow(fastdefc$fc), ncol(fastdefc$fc)))
+
+
+
+tic("Ordering64 by cluster num")
+x <- as.integer(row.names(fastdesfc$fc))
+ord <- order(x)
+# x
+# ord
+
+fastdesfcsorted = fastdesfc$fc[ord, ]
+fastdesfc_pct1_sorted = fastdesfc$pct.1[ord, ]
+fastdesfc_pct2_sorted = fastdesfc$pct.2[ord, ]
+#fastdefc
+toc()
+
+# fastdefcsorted[, 1]
+# fastdefc_pct1_sorted[, 1]
+# fastdefc_pct2_sorted[, 1]
+
+
+
+# print(fastdefc_df)
+
+
+
+## compare by calculating the residuals.
+
+comparemat("R vs sparse64 fastde fc", seuratfc, fastdesfcsorted)
+comparemat("R vs sparse64 fastde pct1", seuratperc1, fastdesfc_pct1_sorted)
+comparemat("R vs sparse64 fastde pct2", seuratperc2, fastdesfc_pct2_sorted)

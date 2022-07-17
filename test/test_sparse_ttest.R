@@ -18,15 +18,15 @@ comparemat <- function(name, A, B) {
     stdevdiff <- sd(diff * diff)
     cat(sprintf("%s : diff range [%.17g, %.17g], median %.17g, mean %.17g, sd %.17g\n", 
         name, mindiff, maxdiff, mediandiff, meandiff, stdevdiff))
-    mxpos = which(diff == maxdiff, arr.ind = TRUE)
-    mnpos = which(diff == mindiff, arr.ind = TRUE)
+    # mxpos = which(diff == maxdiff, arr.ind = TRUE)
+    # mnpos = which(diff == mindiff, arr.ind = TRUE)
 
-    if ( abs(maxdiff) > .Machine$double.eps)
-       cat(sprintf("%s : max diff at pos %d:  A %.17g - B %.17g = DIFF %.17g.\n", 
-            name, mxpos, A[mxpos], B[mxpos], diff[mxpos]))
-    if  ( abs(mindiff) > .Machine$double.eps)
-        cat(sprintf("%s : min diff at pos %d:  A %.17g - B %.17g = DIFF %.17g.\n", 
-            name, mnpos, A[mnpos], B[mnpos], diff[mnpos]))
+    # if ( abs(maxdiff) > .Machine$double.eps)
+    #    cat(sprintf("%s : max diff at pos %d:  A %.17g - B %.17g = DIFF %.17g.\n", 
+    #         name, mxpos, A[mxpos], B[mxpos], diff[mxpos]))
+    # if  ( abs(mindiff) > .Machine$double.eps)
+    #     cat(sprintf("%s : min diff at pos %d:  A %.17g - B %.17g = DIFF %.17g.\n", 
+    #         name, mnpos, A[mnpos], B[mnpos], diff[mnpos]))
     
 }
 
@@ -47,8 +47,8 @@ nthreads <- as.integer(1)
 
 tic("generate")
 # max is 2B.
-ncols = 200  # features  - test with a small number. this is totally parallel
-nrows = 200000  # samples
+ncols = 1000  # features  - test with a small number. this is totally parallel
+nrows = 10000  # samples
 nclusters = 15
 
 clusters = 1:nclusters
@@ -342,4 +342,28 @@ toc()
 
 ## compare by calculating the residuals.
 comparemat("R vs sparse ttest", Rttest, fastdesparsettest)
+print_mat(fastdesparsettest, 5)
+
+
+
+print("Convert to sparse 64bit")
+
+input64 <- as.dgCMatrix64(input)
+
+tic("sparse64 fastde")
+# time and run BioQC
+cat(sprintf("input %d X %d\n", nrow(input64), ncol(input64)))
+fastdesparsettest <- fastde::sparse64_ttest_fast(input64, labels, as_dataframe = FALSE, threads = nthreads, alternative =  as.integer(2), var_equal = FALSE)
+toc()
+
+
+tic("sparse64 fastde_df")
+# time and run BioQC
+cat(sprintf("input %d X %d\n", nrow(input64), ncol(input64)))
+fastdesparsettest_df <- fastde::sparse64_ttest_fast(input64, labels,  as_dataframe = TRUE, threads = nthreads, alternative =  as.integer(2), var_equal = FALSE)
+toc()
+
+
+## compare by calculating the residuals.
+comparemat("R vs sparse64 ttest", Rttest, fastdesparsettest)
 print_mat(fastdesparsettest, 5)

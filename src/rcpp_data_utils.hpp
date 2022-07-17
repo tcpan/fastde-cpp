@@ -19,46 +19,17 @@
 //[[Rcpp::export]]
 Rcpp::dgCMatrix rttest_dgCMatrix(Rcpp::dgCMatrix const & mat);
 
-//' round trip testing for spamx32
+//' round trip testing for dgCMatrix
 //'
-//' @rdname rttest_spamx32
-//' @param mat an spam sparse compressed column matrix
-//' @return spam sparse compressed column matrix
-//' @name rttest_spamx32
+//' @rdname rttest_dgCMatrix64
+//' @param mat an R sparse compressed column matrix
+//' @return R sparse compressed column matrix
+//' @name rttest_dgCMatrix64
 //' @export
 //[[Rcpp::export]]
-Rcpp::spamx32 rttest_spamx32(Rcpp::spamx32 const & mat);
-
-//' round trip testing for spamx64
-//'
-//' @rdname rttest_spamx64
-//' @param mat an spam sparse compressed column matrix
-//' @return spam sparse compressed column matrix
-//' @name rttest_spamx64
-//' @export
-//[[Rcpp::export]]
-Rcpp::spamx64 rttest_spamx64(Rcpp::spamx64 const & mat);
+Rcpp::dgCMatrix64 rttest_dgCMatrix64(Rcpp::dgCMatrix64 const & mat);
 
 
-//' round trip testing for spam32
-//'
-//' @rdname rttest_spam32
-//' @param mat an spam sparse compressed column matrix
-//' @return spam sparse compressed column matrix
-//' @name rttest_spam32
-//' @export
-//[[Rcpp::export]]
-Rcpp::spam32 rttest_spam32(Rcpp::spam32 const & mat);
-
-//' round trip testing for spam64
-//'
-//' @rdname rttest_spam64
-//' @param mat an spam sparse compressed column matrix
-//' @return spam sparse compressed column matrix
-//' @name rttest_spam64
-//' @export
-//[[Rcpp::export]]
-Rcpp::spam64 rttest_spam64(Rcpp::spam64 const & mat);
 
 
 Rcpp::StringVector copy_rmatrix_to_cppvector(Rcpp::LogicalMatrix const & _matrix, std::vector<bool> & mat,
@@ -86,29 +57,10 @@ Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::dgCMatrix const & matr
     std::vector<int> & p,
     size_t & nrow, size_t & ncol, size_t & nelem);
 
-
-Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spam64 const & matrix, 
+Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::dgCMatrix64 const & matrix, 
     std::vector<double> & x,
     std::vector<long> & i,
     std::vector<long> & p,
-    size_t & nrow, size_t & ncol, size_t & nelem);
-
-Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spam32 const & matrix, 
-    std::vector<double> & x,
-    std::vector<int> & i,
-    std::vector<int> & p,
-    size_t & nrow, size_t & ncol, size_t & nelem);
-
-Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spamx64 const & matrix, 
-    std::vector<double> & x,
-    std::vector<long> & i,
-    std::vector<long> & p,
-    size_t & nrow, size_t & ncol, size_t & nelem);
-
-Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spamx32 const & matrix, 
-    std::vector<double> & x,
-    std::vector<int> & i,
-    std::vector<int> & p,
     size_t & nrow, size_t & ncol, size_t & nelem);
 
 
@@ -187,12 +139,18 @@ class SEXP_Mat {
         long ncol;
         int proc_count;
 
-        void copy_str_vec(SEXP src, SEXP dest, long const & count) {
+        SEXP copy_str_vec(SEXP src, SEXP dest, long const & count) {
             // deep copy the strings
+            if (TYPEOF(src) == NILSXP) return R_NilValue;
+            if (TYPEOF(dest) == NILSXP) {
+                PROTECT(dest = Rf_allocVector(STRSXP, count));
+                ++proc_count;
+            }
             SEXP * in_name_ptr = STRING_PTR(src);
             for (long i = 0; i < count; ++i, ++in_name_ptr) {
                 SET_STRING_ELT(dest, i, Rf_duplicate(*in_name_ptr));
             }
+            return dest;
         }
 
     public:
@@ -205,13 +163,16 @@ class SEXP_Mat {
             // https://stackoverflow.com/questions/5709940/r-extension-in-c-setting-matrix-row-column-names
             SEXP dimnms, rownms, colnms;
             PROTECT(dimnms = Rf_allocVector(VECSXP, 2));
-            PROTECT(rownms = Rf_allocVector(STRSXP, nrow));
-            PROTECT(colnms = Rf_allocVector(STRSXP, ncol));
-            SET_VECTOR_ELT(dimnms, 0, rownms);
-            SET_VECTOR_ELT(dimnms, 1, colnms);
+            // PROTECT(rownms = Rf_allocVector(STRSXP, 0));
+            // PROTECT(colnms = Rf_allocVector(STRSXP, 0));
+            // SET_VECTOR_ELT(dimnms, 0, rownms);
+            // SET_VECTOR_ELT(dimnms, 1, colnms);
+            //  NilValue:  https://colinfay.me/r-internals/r-internal-structures.html
+            SET_VECTOR_ELT(dimnms, 0, R_NilValue);
+            SET_VECTOR_ELT(dimnms, 1, R_NilValue);
 
             Rf_setAttrib(mat, R_DimNamesSymbol, dimnms);
-            proc_count = 4;
+            proc_count = 2;
         }
         ~SEXP_Mat() { 
             if (proc_count > 0) UNPROTECT(proc_count);
@@ -225,10 +186,12 @@ class SEXP_Mat {
         inline SEXP get_rownames() { return VECTOR_ELT(Rf_getAttrib(mat, R_DimNamesSymbol), 0); };
         inline SEXP get_colnames() { return VECTOR_ELT(Rf_getAttrib(mat, R_DimNamesSymbol), 1); };
         inline void set_rownames(SEXP src) { 
-            copy_str_vec(src, get_rownames(), get_nrow());
+            SEXP des = copy_str_vec(src, get_rownames(), get_nrow());
+            SET_VECTOR_ELT(Rf_getAttrib(mat, R_DimNamesSymbol), 0, des);
         };
         inline void set_colnames(SEXP src) { 
-            copy_str_vec(src, get_colnames(), get_ncol());
+            SEXP des = copy_str_vec(src, get_colnames(), get_ncol());
+            SET_VECTOR_ELT(Rf_getAttrib(mat, R_DimNamesSymbol), 1, des);
         };
         inline double* get_data() { return REAL(mat); }
         inline SEXP get_sexp() { return mat; };
@@ -254,12 +217,18 @@ class S4_SpMat<Rcpp::dgCMatrix> {
         int proc_count;
         using IDX = typename Rcpp::dgCMatrix::INDEX;
 
-        void copy_str_vec(SEXP src, SEXP dest, IDX const & count) {
+        SEXP copy_str_vec(SEXP src, SEXP dest, IDX const & count) {
             // deep copy the strings
+            if (TYPEOF(src) == NILSXP) return R_NilValue;
+            if (TYPEOF(dest) == NILSXP) {
+                PROTECT(dest = Rf_allocVector(STRSXP, count));
+                ++proc_count;
+            }
             SEXP * in_name_ptr = STRING_PTR(src);
             for (IDX i = 0; i < count; ++i, ++in_name_ptr) {
                 SET_STRING_ELT(dest, i, Rf_duplicate(*in_name_ptr));
             }
+            return dest;
         }
 
     public:
@@ -286,11 +255,14 @@ class S4_SpMat<Rcpp::dgCMatrix> {
 
 // https://stackoverflow.com/questions/5709940/r-extension-in-c-setting-matrix-row-column-names
             PROTECT(dimnms = Rf_allocVector(VECSXP, 2));
-            PROTECT(rownms = Rf_allocVector(STRSXP, nrow));
-            PROTECT(colnms = Rf_allocVector(STRSXP, ncol));
-            SET_VECTOR_ELT(dimnms, 0, rownms);
-            SET_VECTOR_ELT(dimnms, 1, colnms);
-            proc_count = 7;
+            // PROTECT(rownms = Rf_allocVector(STRSXP, 0));
+            // PROTECT(colnms = Rf_allocVector(STRSXP, 0));
+            // SET_VECTOR_ELT(dimnms, 0, rownms);
+            // SET_VECTOR_ELT(dimnms, 1, colnms);
+            //  NilValue:  https://colinfay.me/r-internals/r-internal-structures.html
+            SET_VECTOR_ELT(dimnms, 0, R_NilValue);
+            SET_VECTOR_ELT(dimnms, 1, R_NilValue);
+            proc_count = 5;
 
             obj.slot("x") = x;
             obj.slot("i") = i;
@@ -311,10 +283,12 @@ class S4_SpMat<Rcpp::dgCMatrix> {
         inline SEXP get_rownames() { return VECTOR_ELT(obj.slot("Dimnames"), 0); };
         inline SEXP get_colnames() { return VECTOR_ELT(obj.slot("Dimnames"), 1); };
         inline void set_rownames(SEXP src) { 
-            copy_str_vec(src, get_rownames(), get_nrow());
+            SEXP des = copy_str_vec(src, get_rownames(), get_nrow());
+            SET_VECTOR_ELT(obj.slot("Dimnames"), 0, des);
         };
         inline void set_colnames(SEXP src) { 
-            copy_str_vec(src, get_colnames(), get_ncol());
+            SEXP des = copy_str_vec(src, get_colnames(), get_ncol());
+            SET_VECTOR_ELT(obj.slot("Dimnames"), 1, des);
         };
         inline double* get_entries() { return REAL(obj.slot("x")); }
         inline IDX* get_colindices() { return INTEGER(obj.slot("i")); }
@@ -322,25 +296,33 @@ class S4_SpMat<Rcpp::dgCMatrix> {
         inline Rcpp::S4 get_s4() { return obj; };
 };
 
+
 template <>
-class S4_SpMat<Rcpp::spamx32> {
+class S4_SpMat<Rcpp::dgCMatrix64> {
+
     protected:
         Rcpp::S4 obj;
         int proc_count;
-        using IDX = typename Rcpp::spamx32::INDEX;
+        using IDX = typename Rcpp::dgCMatrix64::INDEX;
 
-        void copy_str_vec(SEXP src, SEXP dest, IDX const & count) {
+        SEXP copy_str_vec(SEXP src, SEXP dest, IDX const & count) {
             // deep copy the strings
+            if (TYPEOF(src) == NILSXP) return R_NilValue;
+            if (TYPEOF(dest) == NILSXP) {
+                PROTECT(dest = Rf_allocVector(STRSXP, count));
+                ++proc_count;
+            }
             SEXP * in_name_ptr = STRING_PTR(src);
             for (IDX i = 0; i < count; ++i, ++in_name_ptr) {
                 SET_STRING_ELT(dest, i, Rf_duplicate(*in_name_ptr));
             }
+            return dest;
         }
 
     public:
         S4_SpMat(Rcpp::S4 const & _obj) : obj(_obj), proc_count(0) {};
         S4_SpMat(IDX const & nrow, IDX const & ncol, IDX const & nelem) :
-            obj("spamx"), proc_count(0) {
+            obj("dgCMatrix64"), proc_count(0) {
             // https://www.r-bloggers.com/2021/04/constructing-a-sparse-matrix-class-in-rcpp/
             // create a new S4 object that matches dgCMatrix
             //  ---- create i: same size as x.
@@ -348,106 +330,36 @@ class S4_SpMat<Rcpp::spamx32> {
             //  ---- p: nrow+1
             //  ---- dim:  swap original
             //  ---- dimnames: deepcopy and swap original row/col.
-            SEXP i, p, x, dim, dimnms, rownms, colnms;
-            PROTECT(x = Rf_allocVector(REALSXP, nelem));
-            PROTECT(i = Rf_allocVector(INTSXP, nelem));
-            PROTECT(p = Rf_allocVector(INTSXP, ncol + 1));
-            PROTECT(dim = Rf_allocVector(INTSXP, 2));
-            INTEGER(dim)[0] = nrow;
-            INTEGER(dim)[1] = ncol;
-
-            memset(INTEGER(p), 0, ncol * sizeof(int));
-            INTEGER(p)[ncol] = nelem;
-
-    // https://stackoverflow.com/questions/5709940/r-extension-in-c-setting-matrix-row-column-names
-            PROTECT(dimnms = Rf_allocVector(VECSXP, 2));
-            PROTECT(rownms = Rf_allocVector(STRSXP, nrow));
-            PROTECT(colnms = Rf_allocVector(STRSXP, ncol));
-            SET_VECTOR_ELT(dimnms, 0, rownms);
-            SET_VECTOR_ELT(dimnms, 1, colnms);
-            proc_count = 7;
-
-            obj.slot("entries") = x;
-            obj.slot("colindices") = i;
-            obj.slot("rowpointers") = p;
-            obj.slot("dimension") = dim;
-            obj.slot("Dimnames") = dimnms;
-        }
-        ~S4_SpMat() { 
-            if (proc_count > 0) UNPROTECT(proc_count);
-            proc_count = 0;
-        }
-
-        // accessors
-        // extract https://stackoverflow.com/questions/29477621/iterate-over-s4-object-slots-rcpp
-        inline IDX get_nelem() { return get_rowpointers()[get_ncol()]; };
-        inline IDX get_nrow() { return INTEGER(obj.slot("dimension"))[0]; };
-        inline IDX get_ncol() { return INTEGER(obj.slot("dimension"))[1]; };
-        inline SEXP get_rownames() { return VECTOR_ELT(obj.slot("Dimnames"), 0); };
-        inline SEXP get_colnames() { return VECTOR_ELT(obj.slot("Dimnames"), 1); };
-        inline void set_rownames(SEXP src) { 
-            copy_str_vec(src, get_rownames(), get_nrow());
-        };
-        inline void set_colnames(SEXP src) { 
-            copy_str_vec(src, get_colnames(), get_ncol());
-        };
-        inline double* get_entries() { return REAL(obj.slot("entries")); }
-        inline IDX* get_colindices() { return INTEGER(obj.slot("colindices")); }
-        inline IDX* get_rowpointers() { return INTEGER(obj.slot("rowpointers")); }
-        inline Rcpp::S4 get_s4() { return obj; };
-};
-
-
-template <>
-class S4_SpMat<Rcpp::spamx64> {
-
-    protected:
-        Rcpp::S4 obj;
-        int proc_count;
-        using IDX = typename Rcpp::spamx64::INDEX;
-
-        void copy_str_vec(SEXP src, SEXP dest, IDX const & count) {
-            // deep copy the strings
-            SEXP * in_name_ptr = STRING_PTR(src);
-            for (IDX i = 0; i < count; ++i, ++in_name_ptr) {
-                SET_STRING_ELT(dest, i, Rf_duplicate(*in_name_ptr));
-            }
-        }
-
-    public:
-        S4_SpMat(Rcpp::S4 const & _obj) : obj(_obj), proc_count(0) {};
-        S4_SpMat(IDX const & nrow, IDX const & ncol, IDX const & nelem) :
-            obj("spamx"), proc_count(0) {
-            // https://www.r-bloggers.com/2021/04/constructing-a-sparse-matrix-class-in-rcpp/
-            // create a new S4 object that matches dgCMatrix
-            //  ---- create i: same size as x.
-            //  ---- create x
-            //  ---- p: nrow+1
-            //  ---- dim:  swap original
-            //  ---- dimnames: deepcopy and swap original row/col.
-            SEXP i, p, x, dim, dimnms, rownms, colnms;
+            SEXP i, p, x, dimension, dim, dimnms, rownms, colnms;
             PROTECT(x = Rf_allocVector(REALSXP, nelem));
             PROTECT(i = Rf_allocVector(REALSXP, nelem));
             PROTECT(p = Rf_allocVector(REALSXP, ncol + 1));
-            PROTECT(dim = Rf_allocVector(REALSXP, 2));
-            REAL(dim)[0] = nrow;
-            REAL(dim)[1] = ncol;
+            PROTECT(dimension = Rf_allocVector(REALSXP, 2));
+            REAL(dimension)[0] = nrow;
+            REAL(dimension)[1] = ncol;
+            PROTECT(dim = Rf_allocVector(INTSXP, 2));
+            INTEGER(dim)[0] = (nrow > 2147483647) ? -1 : nrow;
+            INTEGER(dim)[1] = (ncol > 2147483647) ? -1 : ncol;
 
             memset(REAL(p), 0, ncol * sizeof(double));
             REAL(p)[ncol] = nelem;
 
     // https://stackoverflow.com/questions/5709940/r-extension-in-c-setting-matrix-row-column-names
             PROTECT(dimnms = Rf_allocVector(VECSXP, 2));
-            PROTECT(rownms = Rf_allocVector(STRSXP, nrow));
-            PROTECT(colnms = Rf_allocVector(STRSXP, ncol));
-            SET_VECTOR_ELT(dimnms, 0, rownms);
-            SET_VECTOR_ELT(dimnms, 1, colnms);
-            proc_count = 7;
+            // PROTECT(rownms = Rf_allocVector(STRSXP, 0));
+            // PROTECT(colnms = Rf_allocVector(STRSXP, 0));
+            // SET_VECTOR_ELT(dimnms, 0, rownms);
+            // SET_VECTOR_ELT(dimnms, 1, colnms);
+            //  NilValue:  https://colinfay.me/r-internals/r-internal-structures.html
+            SET_VECTOR_ELT(dimnms, 0, R_NilValue);
+            SET_VECTOR_ELT(dimnms, 1, R_NilValue);
+            proc_count = 6;
 
-            obj.slot("entries") = x;
-            obj.slot("colindices") = i;
-            obj.slot("rowpointers") = p;
-            obj.slot("dimension") = dim;
+            obj.slot("x") = x;
+            obj.slot("i") = i;
+            obj.slot("p") = p;
+            obj.slot("dimension") = dimension;
+            obj.slot("Dim") = dim;
             obj.slot("Dimnames") = dimnms;
         }
         ~S4_SpMat() { 
@@ -463,13 +375,15 @@ class S4_SpMat<Rcpp::spamx64> {
         inline SEXP get_rownames() { return VECTOR_ELT(obj.slot("Dimnames"), 0); };
         inline SEXP get_colnames() { return VECTOR_ELT(obj.slot("Dimnames"), 1); };
         inline void set_rownames(SEXP src) { 
-            copy_str_vec(src, get_rownames(), get_nrow());
+            SEXP des = copy_str_vec(src, get_rownames(), get_nrow());
+            SET_VECTOR_ELT(obj.slot("Dimnames"), 0, des);
         };
         inline void set_colnames(SEXP src) { 
-            copy_str_vec(src, get_colnames(), get_ncol());
+            SEXP des = copy_str_vec(src, get_colnames(), get_ncol());
+            SET_VECTOR_ELT(obj.slot("Dimnames"), 1, des);
         };
-        inline double* get_entries() { return REAL(obj.slot("entries")); }
-        inline double* get_colindices() { return REAL(obj.slot("colindices")); }
-        inline double* get_rowpointers() { return REAL(obj.slot("rowpointers")); }
+        inline double* get_entries() { return REAL(obj.slot("x")); }
+        inline double* get_colindices() { return REAL(obj.slot("i")); }
+        inline double* get_rowpointers() { return REAL(obj.slot("p")); }
         inline Rcpp::S4 get_s4() { return obj; };
 };

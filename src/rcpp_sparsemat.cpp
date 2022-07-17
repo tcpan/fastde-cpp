@@ -127,29 +127,14 @@ extern Rcpp::S4 rc_sp_transpose(Rcpp::S4 sp_matrix) {
 //' This implementation directly constructs the new sparse matrix.  
 //'     Output is also column-major, so there is random memory writes.
 //' 
-//' @rdname rc_spamx32_transpose
+//' @rdname rc_sp64_transpose
 //' @param obj a sparse matrix, of the form dgCMatrix
 //' @return sp_matrix, transposed.
-//' @name rc_spamx32_transpose
+//' @name rc_sp64_transpose
 //' @export
 // [[Rcpp::export]]
-extern Rcpp::S4 rc_spamx32_transpose(Rcpp::S4 obj) {
-    return _sp_transpose<Rcpp::spamx32>(obj);
-}
-
-//' R Sparse Matrix Transpose
-//'
-//' This implementation directly constructs the new sparse matrix.  
-//'     Output is also column-major, so there is random memory writes.
-//' 
-//' @rdname rc_spamx64_transpose
-//' @param obj a sparse matrix, of the form dgCMatrix
-//' @return sp_matrix, transposed.
-//' @name rc_spamx64_transpose
-//' @export
-// [[Rcpp::export]]
-extern Rcpp::S4 rc_spamx64_transpose(Rcpp::S4 obj) {
-    return _sp_transpose<Rcpp::spamx64>(obj);
+extern Rcpp::S4 rc_sp64_transpose(Rcpp::S4 obj) {
+    return _sp_transpose<Rcpp::dgCMatrix64>(obj);
 
 }
 
@@ -169,7 +154,7 @@ extern SEXP _sp_to_dense(Rcpp::S4 obj) {
     // extract https://stackoverflow.com/questions/29477621/iterate-over-s4-object-slots-rcpp
     S4_SpMat<MAT> in(obj);
 
-    Rprintf("Sparse DIM: samples %lu x features %lu, non-zeros %lu\n", in.get_ncol(), in.get_nrow(), in.get_nelem()); 
+    // Rprintf("Sparse DIM: samples %lu x features %lu, non-zeros %lu\n", in.get_ncol(), in.get_nrow(), in.get_nelem()); 
 
     // ======= create new output and initialize
     SEXP_Mat out(in.get_nrow(), in.get_ncol());
@@ -235,29 +220,14 @@ extern SEXP rc_sp_to_dense(S4 obj) {
 //' This implementation directly constructs the new dense matrix.  
 //'     There is random memory writes.
 //' 
-//' @rdname rc_spamx32_to_dense
+//' @rdname rc_sp64_to_dense
 //' @param obj a sparse matrix, of the form dgCMatrix
 //' @return matrix dense matrix.
-//' @name rc_spamx32_to_dense
+//' @name rc_sp64_to_dense
 //' @export
 // [[Rcpp::export]]
-extern SEXP rc_spamx32_to_dense(S4 obj) {
-    return _sp_to_dense<Rcpp::spamx32>(obj);
-}
-
-//' R Sparse To Dense Matrix
-//'
-//' This implementation directly constructs the new dense matrix.  
-//'     There is random memory writes.
-//' 
-//' @rdname rc_spamx64_to_dense
-//' @param obj a sparse matrix, of the form dgCMatrix
-//' @return matrix dense matrix.
-//' @name rc_spamx64_to_dense
-//' @export
-// [[Rcpp::export]]
-extern SEXP rc_spamx64_to_dense(S4 obj) {
-    return _sp_to_dense<Rcpp::spamx64>(obj);
+extern SEXP rc_sp64_to_dense(S4 obj) {
+    return _sp_to_dense<Rcpp::dgCMatrix64>(obj);
 }
 
 
@@ -276,7 +246,7 @@ extern SEXP _sp_to_dense_transposed(Rcpp::S4 obj) {
     // extract https://stackoverflow.com/questions/29477621/iterate-over-s4-object-slots-rcpp
     S4_SpMat<MAT> in(obj);
 
-    Rprintf("Sparse DIM: samples %lu x features %lu, non-zeros %lu\n", in.get_ncol(), in.get_nrow(), in.get_nelem()); 
+    // Rprintf("Sparse DIM: samples %lu x features %lu, non-zeros %lu\n", in.get_ncol(), in.get_nrow(), in.get_nelem()); 
 
     // ======= create new output and initialize
     SEXP_Mat out(in.get_ncol(), in.get_nrow());
@@ -339,27 +309,12 @@ extern SEXP rc_sp_to_dense_transposed(S4 obj) {
 //' This implementation directly constructs the new dense matrix.  
 //'     There is random memory writes.
 //' 
-//' @rdname rc_spamx32_to_dense_transposed
+//' @rdname rc_sp64_to_dense_transposed
 //' @param obj a sparse matrix, of the form dgCMatrix
 //' @return matrix dense matrix.
-//' @name rc_spamx32_to_dense_transposed
+//' @name rc_sp64_to_dense_transposed
 //' @export
 // [[Rcpp::export]]
-extern SEXP rc_spamx32_to_dense_transposed(S4 obj) {
-    return _sp_to_dense_transposed<Rcpp::spamx32>(obj);
-}
-
-//' R Sparse To Dense Matrix
-//'
-//' This implementation directly constructs the new dense matrix.  
-//'     There is random memory writes.
-//' 
-//' @rdname rc_spamx64_to_dense_transposed
-//' @param obj a sparse matrix, of the form dgCMatrix
-//' @return matrix dense matrix.
-//' @name rc_spamx64_to_dense_transposed
-//' @export
-// [[Rcpp::export]]
-extern SEXP rc_spamx64_to_dense_transposed(S4 obj) {
-    return _sp_to_dense_transposed<Rcpp::spamx64>(obj);
+extern SEXP rc_sp64_to_dense_transposed(S4 obj) {
+    return _sp_to_dense_transposed<Rcpp::dgCMatrix64>(obj);
 }

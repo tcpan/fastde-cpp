@@ -34,17 +34,11 @@ Write10X_h5 <- function(data, filename, use.names = TRUE) {
   }
   # create group
   genome <- outfile$create_group("rna")
-  if (class(data) == "spamx") {
-    genome[["data"]] <- data@entries
-    if (class(data@dimenson) == "integer") {
-      genome[["indices"]] <- as.integer(data@colindices)
-      genome[["indptr"]] <- as.integer(data@rowpointers)
-      genome[["shape"]] <- as.integer(data@dimension)
-    } else {
-      genome[["indices"]] <- as.numeric(data@colindices)
-      genome[["indptr"]] <- as.numeric(data@rowpointers)
-      genome[["shape"]] <- as.numeric(data@dimension)
-    }
+  if (class(data) == 'dgCMatrix64') {
+    genome[["data"]] <- data@x
+    genome[["indices"]] <- as.numeric(data@i)
+    genome[["indptr"]] <- as.numeric(data@p)
+    genome[["shape"]] <- as.numeric(data@dimension)
   } else {
     genome[["data"]] <- data@x
     genome[["indices"]] <- as.integer(data@i)
@@ -106,28 +100,22 @@ Read10X_h5_big <- function(filename, use.names = TRUE, unique.features = TRUE) {
     indptr <- infile[[paste0(genome, '/indptr')]]
     shp <- infile[[paste0(genome, '/shape')]]
     features <- infile[[paste0(genome, '/', feature_slot)]][]
-    barcodes <- infile[[paste0(genome, '/barcodes')]]
-    # TCP: using spam for sparse matrix.
+    barcodes <- infile[[paste0(genome, '/barcodes')]][]
+    # TCP: using dgCMatrix64 for sparse matrix.
     print(shp)
-    sparse.mat <- spamx(0, shp[1], shp[2])
-    sparse.mat@entries <- as.numeric(x = counts[])
-    if (class(sparse.mat@dimension) == "integer") {
-      sparse.mat@colindices <- as.integer(x = indices[] + 1)
-      sparse.mat@rowpointers <- as.integer(x = indptr[])
-    } else {
-      sparse.mat@colindices <- as.numeric(x = indices[] + 1)
-      sparse.mat@rowpointers <- as.numeric(x = indptr[])
-    }
-    # TCP: end spam...
+    sparse.mat <- new("dgCMatrix64", x = as.numeric(x = counts[]),
+      i = as.numeric(x = indices[]), p = as.numeric(x = indptr[]),
+      dimension = as.numeric(x = shp[]))
+    # TCP: end dgCMatrix64...
 
     if (unique.features) {
       features <- make.unique(names = features)
     }
-    # TCP: spam has no support for col and row name (dimanmes for non arrays.)
+    # TCP: dgCMatrix64 has no support for col and row name (dimanmes for non arrays.)
     rownames(x = sparse.mat) <- features
-    colnames(x = sparse.mat) <- barcodes[]
+    colnames(x = sparse.mat) <- barcodes
     # below is not needed?
-    sparse.mat <- as(object = sparse.mat, Class = 'spamx')
+    sparse.mat <- as(object = sparse.mat, Class = 'dgCMatrix64')
 
     # TCP:  this is not yet tested, but should be okay...
     # Split v3 multimodal

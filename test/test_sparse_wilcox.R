@@ -13,15 +13,15 @@ comparemat <- function(name, A, B) {
     stdevdiff <- sd(diff * diff)
     cat(sprintf("%s : diff range [%.17g, %.17g], median %.17g, mean %.17g, sd %.17g\n", 
         name, mindiff, maxdiff, mediandiff, meandiff, stdevdiff))
-    mxpos = which(diff == maxdiff, arr.ind = TRUE)
-    mnpos = which(diff == mindiff, arr.ind = TRUE)
+    # mxpos = which(diff == maxdiff, arr.ind = TRUE)
+    # mnpos = which(diff == mindiff, arr.ind = TRUE)
 
-    if ( abs(maxdiff) > .Machine$double.eps)
-       cat(sprintf("%s : max diff at pos %d:  A %.17g - B %.17g = DIFF %.17g.\n", 
-            name, mxpos, A[mxpos], B[mxpos], diff[mxpos]))
-    if  ( abs(mindiff) > .Machine$double.eps)
-        cat(sprintf("%s : min diff at pos %d:  A %.17g - B %.17g = DIFF %.17g.\n", 
-            name, mnpos, A[mnpos], B[mnpos], diff[mnpos]))
+    # if ( abs(maxdiff) > .Machine$double.eps)
+    #    cat(sprintf("%s : max diff at pos %d:  A %.17g - B %.17g = DIFF %.17g.\n", 
+    #         name, mxpos, A[mxpos], B[mxpos], diff[mxpos]))
+    # if  ( abs(mindiff) > .Machine$double.eps)
+    #     cat(sprintf("%s : min diff at pos %d:  A %.17g - B %.17g = DIFF %.17g.\n", 
+    #         name, mnpos, A[mnpos], B[mnpos], diff[mnpos]))
     
 }
 
@@ -271,6 +271,33 @@ toc()
 comparemat("R vs sparse fastde", Rwilcox, fastdewilcox)
 # comparemat("bioqc vs sparse fastde", BioQCwilcox2, fastdewilcox)
 comparemat("limma vs sparse fastde", Limmawilcox, fastdewilcox)
+
+
+
+print("CONVERT To 64bit")
+input64 <- as.dgCMatrix64(input)
+
+tic("fastde sparse64")
+# time and run BioQC
+cat(sprintf("input64 %d X %d\n", nrow(input64), ncol(input64)))
+fastdewilcox <- fastde::sparse64_wmw_fast(input64, labels, rtype=as.integer(2), 
+    continuity_correction=TRUE, as_dataframe = FALSE, threads = as.integer(4))
+toc()
+
+
+tic("fastde_df sparse")
+# time and run BioQC
+cat(sprintf("input64 %d X %d\n", nrow(input64), ncol(input64)))
+fastdewilcox_df <- fastde::sparse64_wmw_fast(input64, labels, rtype=as.integer(2), 
+    continuity_correction=TRUE, as_dataframe = TRUE, threads = as.integer(4))
+toc()
+
+
+## compare by calculating the residuals.
+comparemat("R vs sparse64 fastde", Rwilcox, fastdewilcox)
+# comparemat("bioqc vs sparse fastde", BioQCwilcox2, fastdewilcox)
+comparemat("limma vs sparse64 fastde", Limmawilcox, fastdewilcox)
+
 
 
 

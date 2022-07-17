@@ -510,7 +510,7 @@ FastFindMarkers.default <- function(
   return(de.results)
 }
 
-## FastFindMarkers.default should be okay for spamx.
+## FastFindMarkers.default should be okay for dgCMatrix64.
 
 
 #' @rdname FastFindMarkers
@@ -655,7 +655,7 @@ FastFindMarkers.DimReduc <- function(
   # Calculate avg difference.  This is just rowMeans.
   tic("FastFindMarkers.DimReduc FastPerformFC")
   
-  PerformFCFunc <- if (is(data, 'dgCMatrix') | is(data, 'spamx') )  {
+  PerformFCFunc <- if (is(data, 'dgCMatrix') | is(data, 'dgCMatrix64') )  {
     FastPerformSparseFC
   } else {
     FastPerformFC
@@ -977,7 +977,7 @@ FastFoldChange.default <- function(
   
   tic("FastFoldChange.default FastPerformFC")
   
-  PerformFCFunc <- if (is(data, 'dgCMatrix') | is(data, 'spamx') )  {
+  PerformFCFunc <- if (is(data, 'dgCMatrix') | is(data, 'dgCMatrix64') )  {
     FastPerformSparseFC
   } else {
     FastPerformFC
@@ -1114,7 +1114,7 @@ FastFoldChange.DimReduc <- function(
   tic("FastFoldChange.DimReduc FastPerformFC")
   # Calculate avg difference.  This is just rowMeans.
   
-  PerformFCFunc <- if (is(data, 'dgCMatrix') | is(data, 'spamx') )  {
+  PerformFCFunc <- if (is(data, 'dgCMatrix') | is(data, 'dgCMatrix64') )  {
     FastPerformSparseFC
   } else {
     FastPerformFC
@@ -1279,8 +1279,8 @@ FastPerformSparseFC <- function(data, clusters,
   # need to put features into columns.
   if (features_as_rows == TRUE) {
     # slice and transpose
-    if (is(data, 'spamx') )  {
-      dd <- fastde::spamx_transpose(data)
+    if (is(data, 'dgCMatrix64') )  {
+      dd <- fastde::sp_transpose(data)
     } else {
       dd <- fastde::sp_transpose(data)
     }
@@ -1292,12 +1292,8 @@ FastPerformSparseFC <- function(data, clusters,
   print('IN FC')
   str(dd)
 
-  PerformFCFunc <- if (is(dd, 'spamx') )  {
-    if (class(dd@dimension) == "integer") {
-      ComputeFoldChangeSpamx32
-    } else {
-      ComputeFoldChangeSpamx64
-    }
+  PerformFCFunc <- if (is(dd, 'dgCMatrix64') )  {
+    ComputeFoldChangeSparse64
   } else {
     ComputeFoldChangeSparse
   }
@@ -1511,12 +1507,12 @@ FastPerformDE <- function(
   }
   DEFunc <- switch(
     EXPR = test.use,
-    'fastwmw' = if (is(data, 'dgCMatrix') | is(data, 'spamx') )  {
+    'fastwmw' = if (is(data, 'dgCMatrix') | is(data, 'dgCMatrix64') )  {
       FastSparseWilcoxDETest
     } else {
       FastWilcoxDETest
     },
-    'fast_t' = if (is (data, 'dgCMatrix') | is(data, 'spamx') ) {
+    'fast_t' = if (is (data, 'dgCMatrix') | is(data, 'dgCMatrix64') ) {
       FastSparseDiffTTest
     } else {
       FastDiffTTest
@@ -1606,8 +1602,8 @@ FastSparseWilcoxDETest <- function(
   # need to put features into columns.
   if (features.as.rows == TRUE) {
     # slice and transpose
-    if (is(data.use, 'spamx') )  {
-      dd <- fastde::spamx_transpose(data.use)
+    if (is(data.use, 'dgCMatrix64') )  {
+      dd <- fastde::sp_transpose(data.use)
     } else {
       dd <- fastde::sp_transpose(data.use)
     }
@@ -1616,12 +1612,8 @@ FastSparseWilcoxDETest <- function(
     dd <- data
   }
 
-  PerformDEFunc <- if (is(dd, 'spamx') )  {
-    if (class(dd@dimension) == "integer") {
-      spamx32_wmw_fast
-    } else {
-      spamx64_wmw_fast
-    }
+  PerformDEFunc <- if (is(dd, 'dgCMatrix64') )  {
+    sparse64_wmw_fast
   } else {
     sparse_wmw_fast
   }
@@ -1916,8 +1908,8 @@ FastSparseDiffTTest <- function(
   # need to put features into columns.
   if (features.as.rows == TRUE) {
     # slice and transpose
-    if (is(data.use, 'spamx') )  {
-      dd <- fastde::spamx_transpose(data.use)
+    if (is(data.use, 'dgCMatrix64') )  {
+      dd <- fastde::sp_transpose(data.use)
     } else {
       dd <- fastde::sp_transpose(data.use)
     }
@@ -1926,12 +1918,8 @@ FastSparseDiffTTest <- function(
     dd <- data.use
   }
 
-  PerformDEFunc <- if (is(dd, 'spamx') )  {
-    if (class(dd@dimension) == "integer") {
-      spamx32_ttest_fast
-    } else {
-      spamx64_ttest_fast
-    }
+  PerformDEFunc <- if (is(dd, 'dgCMatrix64') )  {
+    sparse64_ttest_fast
   } else {
     sparse_ttest_fast
   }
@@ -2252,14 +2240,14 @@ BioQCDETest <- function(
         # slice the data
         dd <- fastde::sp_to_dense(data.use[, 1:block_size])
       }
-    } else if (is(data.use, 'spamx') ) {
+    } else if (is(data.use, 'dgCMatrix64') ) {
 
       if (features.as.rows == TRUE) {
         # slice and transpose
-        dd <- fastde::spamx_to_dense_transposed(data.use[1:block_size, ])
+        dd <- fastde::sp_to_dense_transposed(data.use[1:block_size, ])
       } else {
         # slice the data
-        dd <- fastde::spamx_to_dense(data.use[, 1:block_size])
+        dd <- fastde::sp_to_dense(data.use[, 1:block_size])
       }
     } else {
       if (features.as.rows == TRUE) {
@@ -2293,14 +2281,14 @@ BioQCDETest <- function(
             # slice the data
             dd <- fastde::sp_to_dense(data.use[, start:end])
           }
-        } else if (is(data.use, 'spamx') )  {
+        } else if (is(data.use, 'dgCMatrix64') )  {
 
           if (features.as.rows == TRUE) {
             # slice and transpose
-            dd <- fastde::spamx_to_dense_transposed(data.use[start:end, ])
+            dd <- fastde::sp_to_dense_transposed(data.use[start:end, ])
           } else {
             # slice the data
-            dd <- fastde::spamx_to_dense(data.use[, start:end])
+            dd <- fastde::sp_to_dense(data.use[, start:end])
           }
         } else { # dense matrix
           if (features.as.rows == TRUE) {

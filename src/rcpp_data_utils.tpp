@@ -13,7 +13,7 @@ namespace Rcpp {
         Dim = mat.slot("Dim");
         Dimnames = mat.slot("Dimnames");
     };
-    dgCMatrix::dgCMatrix(int nrow, int ncol, int nelem) {
+    dgCMatrix::dgCMatrix(int const & nrow, int const & ncol, int const & nelem) {
         i = Rcpp::IntegerVector(nelem);  // row id
         p = Rcpp::IntegerVector(ncol + 1);  // offsets for starts of columns
         x = Rcpp::NumericVector(nelem);
@@ -38,111 +38,37 @@ namespace Rcpp {
         return s;
     };
 
-    spam32::spam32(Rcpp::S4 mat) {
-        i = mat.slot("colindices");
-        p = mat.slot("rowpointers");
-        x = mat.slot("entries");
-        Dim = mat.slot("dimension");
+    dgCMatrix64::dgCMatrix64(Rcpp::S4 mat) {
+        i = mat.slot("i");
+        p = mat.slot("p");
+        x = mat.slot("x");
+        dimension = mat.slot("dimension");
+        Dim = mat.slot("Dim");
+        Dimnames = mat.slot("Dimnames");
     };
-    spam32::spam32(int nrow, int ncol, int nelem) {
-        i = Rcpp::IntegerVector(nelem);  // row id
-        p = Rcpp::IntegerVector(ncol + 1);  // offsets for starts of columns
-        x = Rcpp::NumericVector(nelem);
-        Dim = Rcpp::IntegerVector(2);
-        Dim[0] = nrow;
-        Dim[1] = ncol;
-    };
-    spam64::spam64(Rcpp::S4 mat) {
-        i = mat.slot("colindices");
-        p = mat.slot("rowpointers");
-        x = mat.slot("entries");
-        Dim = mat.slot("dimension");
-    };
-    spam64::spam64(long nrow, long ncol, long nelem) {
+    dgCMatrix64::dgCMatrix64(long const & nrow, long const & ncol, long const & nelem) {
         i = Rcpp::NumericVector(nelem);  // row id
         p = Rcpp::NumericVector(ncol + 1);  // offsets for starts of columns
         x = Rcpp::NumericVector(nelem);
-        Dim = Rcpp::NumericVector(2);
-        Dim[0] = nrow;
-        Dim[1] = ncol;
-    };
-
-    // specialization of Rcpp::as 
-    template <> spam32 as(SEXP mat) { return spam32(mat); };
-    template <> spam64 as(SEXP mat) { return spam64(mat); };
-
-    // specialization of Rcpp::wrap
-    template <> SEXP wrap(const spam32& sm) {
-        S4 s(std::string("spam"));
-        s.slot("colindices") = sm.i;
-        s.slot("rowpointers") = sm.p;
-        s.slot("entries") = sm.x;
-        s.slot("dimension") = sm.Dim;
-        return s;
-    };
-    template <> SEXP wrap(const spam64& sm) {
-        S4 s(std::string("spam"));
-        s.slot("colindices") = sm.i;
-        s.slot("rowpointers") = sm.p;
-        s.slot("entries") = sm.x;
-        s.slot("dimension") = sm.Dim;
-        return s;
-    };
-
-
-    spamx32::spamx32(Rcpp::S4 mat) {
-        i = mat.slot("colindices");
-        p = mat.slot("rowpointers");
-        x = mat.slot("entries");
-        Dim = mat.slot("dimension");
-        Dimnames = mat.slot("Dimnames");
-    };
-    spamx32::spamx32(int nrow, int ncol, int nelem) {
-        i = Rcpp::IntegerVector(nelem);  // row id
-        p = Rcpp::IntegerVector(ncol + 1);  // offsets for starts of columns
-        x = Rcpp::NumericVector(nelem);
+        dimension = Rcpp::NumericVector(2);
+        dimension[0] = nrow;
+        dimension[1] = ncol;
         Dim = Rcpp::IntegerVector(2);
-        Dim[0] = nrow;
-        Dim[1] = ncol;
-        Dimnames = Rcpp::List();
-    };
-    spamx64::spamx64(Rcpp::S4 mat) {
-        i = mat.slot("colindices");
-        p = mat.slot("rowpointers");
-        x = mat.slot("entries");
-        Dim = mat.slot("dimension");
-        Dimnames = mat.slot("Dimnames");
-    };
-    spamx64::spamx64(long nrow, long ncol, long nelem) {
-        i = Rcpp::NumericVector(nelem);  // row id
-        p = Rcpp::NumericVector(ncol + 1);  // offsets for starts of columns
-        x = Rcpp::NumericVector(nelem);
-        Dim = Rcpp::NumericVector(2);
-        Dim[0] = nrow;
-        Dim[1] = ncol;
+        Dim[0] = (nrow > 2147483647) ? -1 : nrow;
+        Dim[1] = (ncol > 2147483647) ? -1 : ncol;
         Dimnames = Rcpp::List();
     };
 
     // specialization of Rcpp::as 
-    template <> spamx32 as(SEXP mat) { return spamx32(mat); };
-    template <> spamx64 as(SEXP mat) { return spamx64(mat); };
+    template <> dgCMatrix64 as(SEXP mat) { return dgCMatrix64(mat); };
 
-    // specialization of Rcpp::wrap
-    template <> SEXP wrap(const spamx32& sm) {
-        S4 s(std::string("spamx"));
-        s.slot("colindices") = sm.i;
-        s.slot("rowpointers") = sm.p;
-        s.slot("entries") = sm.x;
-        s.slot("dimension") = sm.Dim;
-        s.slot("Dimnames") = sm.Dimnames;
-        return s;
-    };
-    template <> SEXP wrap(const spamx64& sm) {
-        S4 s(std::string("spamx"));
-        s.slot("colindices") = sm.i;
-        s.slot("rowpointers") = sm.p;
-        s.slot("entries") = sm.x;
-        s.slot("dimension") = sm.Dim;
+    template <> SEXP wrap(const dgCMatrix64& sm) {
+        S4 s(std::string("dgCMatrix64"));
+        s.slot("i") = sm.i;
+        s.slot("p") = sm.p;
+        s.slot("x") = sm.x;
+        s.slot("dimension") = sm.dimension;
+        s.slot("Dim") = sm.Dim;
         s.slot("Dimnames") = sm.Dimnames;
         return s;
     };
@@ -153,16 +79,8 @@ namespace Rcpp {
 Rcpp::dgCMatrix rttest_dgCMatrix(Rcpp::dgCMatrix const & mat){
     return mat;
 }
-Rcpp::spam32 rttest_spam32(Rcpp::spam32 const & mat){
-    return mat;
-}
-Rcpp::spam64 rttest_spam64(Rcpp::spam64 const & mat){
-    return mat;
-}
-Rcpp::spamx32 rttest_spamx32(Rcpp::spamx32 const & mat){
-    return mat;
-}
-Rcpp::spamx64 rttest_spamx64(Rcpp::spamx64 const & mat){
+
+Rcpp::dgCMatrix64 rttest_dgCMatrix64(Rcpp::dgCMatrix64 const & mat){
     return mat;
 }
 
@@ -280,7 +198,9 @@ void copy_rsparsematrix_to_cppvectors(
 }
 
 
-Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spam64 const & obj, 
+
+
+Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::dgCMatrix64 const & obj, 
     std::vector<double> & x,
     std::vector<long> & i,
     std::vector<long> & p,
@@ -291,79 +211,7 @@ Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spam64 const & obj,
         x, i, p
     );
 
-    Rcpp::NumericVector dim = obj.Dim;
-    nrow = dim[0];   // sample count,  nrow
-    ncol = dim[1];   // feature/gene count,  ncol
-    nelem = p[ncol];   // since p is offsets, the ncol+1 entry has the total count
-
-    // get the column names == features.
-    // SEXP rownms = VECTOR_ELT(dimnms, 0);    // samples
-    // Rcpp::StringVector features = dimnms[1];   // features_names = columnames
-    // GET features.
-    return "NoName";  // 
-
-}
-
-Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spam32 const & obj, 
-    std::vector<double> & x,
-    std::vector<int> & i,
-    std::vector<int> & p,
-    size_t & nrow, size_t & ncol, size_t & nelem) {
-
-    copy_rsparsematrix_to_cppvectors(
-        obj.x, obj.i, obj.p, 
-        x, i, p
-    );
-
-    Rcpp::IntegerVector dim = obj.Dim;
-    nrow = dim[0];   // sample count,  nrow
-    ncol = dim[1];   // feature/gene count,  ncol
-    nelem = p[ncol];   // since p is offsets, the ncol+1 entry has the total count
-
-    // get the column names == features.
-    // SEXP rownms = VECTOR_ELT(dimnms, 0);    // samples
-    // Rcpp::StringVector features = dimnms[1];   // features_names = columnames
-    // GET features.
-    return "NoName";  // 
-
-}
-
-
-Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spamx64 const & obj, 
-    std::vector<double> & x,
-    std::vector<long> & i,
-    std::vector<long> & p,
-    size_t & nrow, size_t & ncol, size_t & nelem) {
-
-    copy_rsparsematrix_to_cppvectors(
-        obj.x, obj.i, obj.p, 
-        x, i, p
-    );
-
-    Rcpp::NumericVector dim = obj.Dim;
-    nrow = dim[0];   // sample count,  nrow
-    ncol = dim[1];   // feature/gene count,  ncol
-    nelem = p[ncol];   // since p is offsets, the ncol+1 entry has the total count
-
-    Rcpp::List dimnms = obj.Dimnames;
-    // SEXP rownms = VECTOR_ELT(dimnms, 0);    // samples
-    // Rcpp::StringVector features = dimnms[1];   // features_names = columnames
-    // GET features.
-    return dimnms[1];  // 
-}
-
-Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spamx32 const & obj, 
-    std::vector<double> & x,
-    std::vector<int> & i,
-    std::vector<int> & p,
-    size_t & nrow, size_t & ncol, size_t & nelem) {
-
-    copy_rsparsematrix_to_cppvectors(
-        obj.x, obj.i, obj.p, 
-        x, i, p
-    );
-
-    Rcpp::IntegerVector dim = obj.Dim;
+    Rcpp::NumericVector dim = obj.dimension;
     nrow = dim[0];   // sample count,  nrow
     ncol = dim[1];   // feature/gene count,  ncol
     nelem = p[ncol];   // since p is offsets, the ncol+1 entry has the total count

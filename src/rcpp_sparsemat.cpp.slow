@@ -132,28 +132,13 @@ extern Rcpp::dgCMatrix rcpp_sp_transpose(Rcpp::dgCMatrix const & sp_matrix) {
 //' This implementation directly constructs the new sparse matrix.  
 //'     Output is also column-major, so there is random memory writes.
 //' 
-//' @rdname rcpp_spamx32_transpose
+//' @rdname rcpp_sp64_transpose
 //' @param sp_matrix a sparse matrix, of the form dgCMatrix
 //' @return sp_matrix, transposed.
-//' @name rcpp_spamx32_transpose
+//' @name rcpp_sp64_transpose
 //' @export
 // [[Rcpp::export]]
-extern Rcpp::spamx32 rcpp_spamx32_transpose(Rcpp::spamx32 const & sp_matrix) {
-    return _sp_transpose(sp_matrix);
-}
-
-//' R Sparse Matrix Transpose
-//'
-//' This implementation directly constructs the new sparse matrix.  
-//'     Output is also column-major, so there is random memory writes.
-//' 
-//' @rdname rcpp_spamx64_transpose
-//' @param sp_matrix a sparse matrix, of the form dgCMatrix
-//' @return sp_matrix, transposed.
-//' @name rcpp_spamx64_transpose
-//' @export
-// [[Rcpp::export]]
-extern Rcpp::spamx64 rcpp_spamx64_transpose(Rcpp::spamx64 const & sp_matrix) {
+extern Rcpp::dgCMatrix64 rcpp_sp64_transpose(Rcpp::dgCMatrix64 const & sp_matrix) {
     return _sp_transpose(sp_matrix);
 }
 
@@ -175,7 +160,7 @@ Rcpp::NumericMatrix _sp_to_dense(MAT const & sp_matrix) {
     INDEX ncol = sp_matrix.Dim[1];
     INDEX nelem = sp_matrix.p[ncol];  // since p is offsets, the ncol+1 entry has the total count.
 
-    Rprintf("Sparse DIM: samples (c) %lu x features (r) %lu, non-zeros %lu\n", ncol, nrow, nelem); 
+    // Rprintf("Sparse DIM: samples (c) %lu x features (r) %lu, non-zeros %lu\n", ncol, nrow, nelem); 
 
     // ======= create new output and set row and col names.
     Rcpp::NumericMatrix dense(nrow, ncol);
@@ -216,34 +201,19 @@ extern Rcpp::NumericMatrix rcpp_sp_to_dense(Rcpp::dgCMatrix const & sp_matrix) {
 
 
 
-//' R Sparse To Dense Matrix
-//'
-//' This implementation directly constructs the new dense matrix.  
-//'     There is random memory writes.
-//' 
-//' @rdname rcpp_spamx32_to_dense
-//' @param sp_matrix a sparse matrix, of the form dgCMatrix
-//' @return matrix dense matrix.
-//' @name rcpp_spamx32_to_dense
-//' @export
-// [[Rcpp::export]]
-extern Rcpp::NumericMatrix rcpp_spamx32_to_dense(Rcpp::spamx32 const & sp_matrix) {
-    return _sp_to_dense(sp_matrix);
-}
-
 
 //' R Sparse To Dense Matrix
 //'
 //' This implementation directly constructs the new dense matrix.  
 //'     There is random memory writes.
 //' 
-//' @rdname rcpp_spamx64_to_dense
+//' @rdname rcpp_sp64_to_dense
 //' @param sp_matrix a sparse matrix, of the form dgCMatrix
 //' @return matrix dense matrix.
-//' @name rcpp_spamx64_to_dense
+//' @name rcpp_sp64_to_dense
 //' @export
 // [[Rcpp::export]]
-extern Rcpp::NumericMatrix rcpp_spamx64_to_dense(Rcpp::spamx64 const & sp_matrix) {
+extern Rcpp::NumericMatrix rcpp_sp64_to_dense(Rcpp::dgCMatrix64 const & sp_matrix) {
     return _sp_to_dense(sp_matrix);
 }
 
@@ -265,7 +235,7 @@ Rcpp::NumericMatrix _sp_to_dense_transposed(MAT const & sp_matrix) {
     INDEX ncol = sp_matrix.Dim[1];
     INDEX nelem = sp_matrix.p[ncol];  // since p is offsets, the ncol+1 entry has the total count.
 
-    Rprintf("Sparse DIM: samples (c) %lu x features (r) %lu, non-zeros %lu\n", ncol, nrow, nelem); 
+    // Rprintf("Sparse DIM: samples (c) %lu x features (r) %lu, non-zeros %lu\n", ncol, nrow, nelem); 
 
     // ======= create new output and set row and col names.
 
@@ -307,34 +277,19 @@ extern Rcpp::NumericMatrix rcpp_sp_to_dense_transposed(Rcpp::dgCMatrix const & s
 
 
 
-//' R Sparse To Dense Matrix
-//'
-//' This implementation directly constructs the new dense matrix.  
-//'     There is random memory writes.
-//' 
-//' @rdname rcpp_spamx32_to_dense_transposed
-//' @param sp_matrix a sparse matrix, of the form dgCMatrix
-//' @return matrix dense matrix.
-//' @name rcpp_spamx32_to_dense_transposed
-//' @export
-// [[Rcpp::export]]
-extern Rcpp::NumericMatrix rcpp_spamx32_to_dense_transposed(Rcpp::spamx32 const & sp_matrix) {
-    return _sp_to_dense_transposed(sp_matrix);
-}
-
 
 //' R Sparse To Dense Matrix
 //'
 //' This implementation directly constructs the new dense matrix.  
 //'     There is random memory writes.
 //' 
-//' @rdname rcpp_spamx64_to_dense_transposed
+//' @rdname rcpp_sp64_to_dense_transposed
 //' @param sp_matrix a sparse matrix, of the form dgCMatrix
 //' @return matrix dense matrix.
-//' @name rcpp_spamx64_to_dense_transposed
+//' @name rcpp_sp64_to_dense_transposed
 //' @export
 // [[Rcpp::export]]
-extern Rcpp::NumericMatrix rcpp_spamx64_to_dense_transposed(Rcpp::spamx64 const & sp_matrix) {
+extern Rcpp::NumericMatrix rcpp_sp64_to_dense_transposed(Rcpp::dgCMatrix64 const & sp_matrix) {
     return _sp_to_dense_transposed(sp_matrix);
 }
 
