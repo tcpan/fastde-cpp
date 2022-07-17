@@ -41,7 +41,7 @@ comparemat <- function(name, A, B) {
 tic("generate")
 # max is 2B.
 ncols = 100  # features  - test with a small number. this is totally parallel
-nrows = 40000  # samples
+nrows = 10000  # samples
 nclusters = 30
 
 clusters = 1:nclusters

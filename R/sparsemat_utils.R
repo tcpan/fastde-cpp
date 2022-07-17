@@ -26,7 +26,11 @@ sp_transpose <- function(x) {
 #' @name spamx_transpose
 #' @export
 spamx_transpose <- function(x) {
-    out <- rcpp_spamx_transpose(x)
+    if (class(x@dimension) == "integer") {
+        out <- rc_spamx32_transpose(x)
+    } else {
+        out <- rc_spamx64_transpose(x)
+    }
     # rownames(out) <- rownames(x)
     # colnames(out) <- colnames(x)
     return(out)
@@ -61,7 +65,11 @@ sp_to_dense <- function(x) {
 #' @name spamx_to_dense
 #' @export
 spamx_to_dense <- function(x) {
-    out <- rc_spamx_to_dense(x)
+    if (class(x@dimension) == "integer") {
+        out <- rc_spamx32_to_dense(x)
+    } else {
+        out <- rc_spamx64_to_dense(x)
+    }
     # rownames(out) <- rownames(x)
     # colnames(out) <- colnames(x)
     return(out)
@@ -95,7 +103,11 @@ sp_to_dense_transposed <- function(x) {
 #' @name spamx_to_dense_transposed
 #' @export
 spamx_to_dense_transposed <- function(x) {
-    out <- rc_spamx_to_dense_transposed(x)
+     if (class(x@dimension) == "integer") {
+        out <- rc_spamx32_to_dense_transposed(x)
+    } else {
+        out <- rc_spamx64_to_dense_transposed(x)
+    }
     # rownames(out) <- colnames(x)
     # colnames(out) <- rownames(x)
     return(out)

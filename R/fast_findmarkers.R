@@ -977,7 +977,7 @@ FastFoldChange.default <- function(
   
   tic("FastFoldChange.default FastPerformFC")
   
-  PerformFCFunc <- if (is(data, 'dgCMatrix')| is(data, 'spamx') )  {
+  PerformFCFunc <- if (is(data, 'dgCMatrix') | is(data, 'spamx') )  {
     FastPerformSparseFC
   } else {
     FastPerformFC
@@ -1114,7 +1114,7 @@ FastFoldChange.DimReduc <- function(
   tic("FastFoldChange.DimReduc FastPerformFC")
   # Calculate avg difference.  This is just rowMeans.
   
-  PerformFCFunc <- if (is(data, 'dgCMatrix')| is(data, 'spamx') )  {
+  PerformFCFunc <- if (is(data, 'dgCMatrix') | is(data, 'spamx') )  {
     FastPerformSparseFC
   } else {
     FastPerformFC
@@ -1289,10 +1289,17 @@ FastPerformSparseFC <- function(data, clusters,
     dd <- data
   }
 
-  PerformFCFunc <- if (is(data, 'spamx') )  {
-    ComputeSpamxFoldChange
+  print('IN FC')
+  str(dd)
+
+  PerformFCFunc <- if (is(dd, 'spamx') )  {
+    if (class(dd@dimension) == "integer") {
+      ComputeFoldChangeSpamx32
+    } else {
+      ComputeFoldChangeSpamx64
+    }
   } else {
-    ComputeSparseFoldChange
+    ComputeFoldChangeSparse
   }
 
   # output has features in columns, and clusters in rows
@@ -1504,12 +1511,12 @@ FastPerformDE <- function(
   }
   DEFunc <- switch(
     EXPR = test.use,
-    'fastwmw' = if (is(data, 'dgCMatrix')| is(data, 'spamx') )  {
+    'fastwmw' = if (is(data, 'dgCMatrix') | is(data, 'spamx') )  {
       FastSparseWilcoxDETest
     } else {
       FastWilcoxDETest
     },
-    'fast_t' = if (is (data, 'dgCMatrix')| is(data, 'spamx') ) {
+    'fast_t' = if (is (data, 'dgCMatrix') | is(data, 'spamx') ) {
       FastSparseDiffTTest
     } else {
       FastDiffTTest
@@ -1599,7 +1606,7 @@ FastSparseWilcoxDETest <- function(
   # need to put features into columns.
   if (features.as.rows == TRUE) {
     # slice and transpose
-    if (is(data, 'spamx') )  {
+    if (is(data.use, 'spamx') )  {
       dd <- fastde::spamx_transpose(data.use)
     } else {
       dd <- fastde::sp_transpose(data.use)
@@ -1609,8 +1616,12 @@ FastSparseWilcoxDETest <- function(
     dd <- data
   }
 
-  PerformDEFunc <- if (is(data, 'spamx') )  {
-    spamx_wmw_fast
+  PerformDEFunc <- if (is(dd, 'spamx') )  {
+    if (class(dd@dimension) == "integer") {
+      spamx32_wmw_fast
+    } else {
+      spamx64_wmw_fast
+    }
   } else {
     sparse_wmw_fast
   }
@@ -1915,8 +1926,12 @@ FastSparseDiffTTest <- function(
     dd <- data.use
   }
 
-  PerformDEFunc <- if (is(data.use, 'spamx') )  {
-    spamx_ttest_fast
+  PerformDEFunc <- if (is(dd, 'spamx') )  {
+    if (class(dd@dimension) == "integer") {
+      spamx32_ttest_fast
+    } else {
+      spamx64_ttest_fast
+    }
   } else {
     sparse_ttest_fast
   }

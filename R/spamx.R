@@ -93,7 +93,8 @@ rep_len64 <- function(x, length.out, NAOK = getOption("spam.NAOK")){
 .newSpamx <- function(entries=0,
                      colindices=1,
                      rowpointers=NULL,
-                     dimension=c(1,1),
+                     dimension=c(0, 0),
+                     Dim=c(0, 0),
                      dimnames=c(NULL, NULL),
                      force64=getOption("spam.force64")
                      )
@@ -112,6 +113,7 @@ rep_len64 <- function(x, length.out, NAOK = getOption("spam.NAOK")){
         slot(newx,"rowpointers",check=FALSE) <- as.numeric(rowpointers)
         rowpointers <- NULL
         slot(newx,"dimension",check=FALSE) <- as.numeric(dimension)
+        slot(newx,"Dim",check=FALSE) <- as.integer(c(-1, -1))
     } else {
         newx <- new("spamx")
         slot(newx,"entries",check=FALSE) <- entries
@@ -121,6 +123,7 @@ rep_len64 <- function(x, length.out, NAOK = getOption("spam.NAOK")){
         slot(newx,"rowpointers",check=FALSE) <- as.integer(rowpointers)
         rowpointers <- NULL
         slot(newx,"dimension",check=FALSE) <- as.integer(dimension)
+        slot(newx,"Dim",check=FALSE) <- as.integer(dimension)
     }
 
     slot(newx, "Dimnames", check=FALSE) <- dimnames

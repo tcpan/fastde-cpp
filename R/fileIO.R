@@ -3,6 +3,61 @@ library(rhdf5)
 
 
 
+#' Write 10X hdf5 file
+#'
+#' Read count matrix from 10X CellRanger hdf5 file.
+#' This can be used to read both scATAC-seq and scRNA-seq matrices.
+#' modified from Seurat's version to allow for very large sparse matrix
+#'
+#' @rdname Write10X_h5
+#' @param filename Path to h5 file
+#' @param use.names Label row names with feature names rather than ID numbers.
+#' @param unique.features Make feature names unique (default TRUE)
+#'
+#' @return Returns a sparse matrix with rows and columns labeled. If multiple
+#' genomes are present, returns a list of sparse matrices (one per genome).
+#'
+#' @name Write10X_h5
+#' @export
+#' @concept preprocessing
+#'
+Write10X_h5 <- function(data, filename, use.names = TRUE) {
+  if (!requireNamespace('hdf5r', quietly = TRUE)) {
+    stop("Please install hdf5r to read HDF5 files")
+  }
+  message("filename ", filename)
+  outfile <- hdf5r::H5File$new(filename = filename, mode = 'w')
+  if (use.names) {
+    feature_slot <- 'gene_names'
+  } else {
+    feature_slot <- 'genes'
+  }
+  # create group
+  genome <- outfile$create_group("rna")
+  if (class(data) == "spamx") {
+    genome[["data"]] <- data@entries
+    if (class(data@dimenson) == "integer") {
+      genome[["indices"]] <- as.integer(data@colindices)
+      genome[["indptr"]] <- as.integer(data@rowpointers)
+      genome[["shape"]] <- as.integer(data@dimension)
+    } else {
+      genome[["indices"]] <- as.numeric(data@colindices)
+      genome[["indptr"]] <- as.numeric(data@rowpointers)
+      genome[["shape"]] <- as.numeric(data@dimension)
+    }
+  } else {
+    genome[["data"]] <- data@x
+    genome[["indices"]] <- as.integer(data@i)
+    genome[["indptr"]] <- as.integer(data@p)
+    genome[["shape"]] <- as.integer(data@Dim)
+  }
+  genome[[feature_slot]] <- rownames(x = data)
+  genome[["barcodes"]] <- colnames(x = data)
+
+  outfile$close_all()
+}
+
+
 #' Read 10X hdf5 file
 #'
 #' Read count matrix from 10X CellRanger hdf5 file.
@@ -56,8 +111,13 @@ Read10X_h5_big <- function(filename, use.names = TRUE, unique.features = TRUE) {
     print(shp)
     sparse.mat <- spamx(0, shp[1], shp[2])
     sparse.mat@entries <- as.numeric(x = counts[])
-    sparse.mat@colindices <- as.numeric(x = indices[] + 1)
-    sparse.mat@rowpointers <- as.numeric(x = indptr[])
+    if (class(sparse.mat@dimension) == "integer") {
+      sparse.mat@colindices <- as.integer(x = indices[] + 1)
+      sparse.mat@rowpointers <- as.integer(x = indptr[])
+    } else {
+      sparse.mat@colindices <- as.numeric(x = indices[] + 1)
+      sparse.mat@rowpointers <- as.numeric(x = indptr[])
+    }
     # TCP: end spam...
 
     if (unique.features) {

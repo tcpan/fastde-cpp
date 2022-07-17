@@ -178,3 +178,298 @@ Rcpp::List export_fc_to_r_matrix(
     std::vector<std::pair<int, size_t> > const & sorted_labels,
     Rcpp::StringVector const & features
 );
+
+
+class SEXP_Mat {
+    protected:
+        SEXP mat;
+        long nrow;
+        long ncol;
+        int proc_count;
+
+        void copy_str_vec(SEXP src, SEXP dest, long const & count) {
+            // deep copy the strings
+            SEXP * in_name_ptr = STRING_PTR(src);
+            for (long i = 0; i < count; ++i, ++in_name_ptr) {
+                SET_STRING_ELT(dest, i, Rf_duplicate(*in_name_ptr));
+            }
+        }
+
+    public:
+        SEXP_Mat(long const & _nrow, long const & _ncol) :
+            nrow(_nrow), ncol(_ncol), proc_count(0) {
+            // https://www.r-bloggers.com/2021/04/constructing-a-sparse-matrix-class-in-rcpp/
+
+            PROTECT(mat = Rf_allocMatrix(REALSXP, nrow, ncol));
+
+            // https://stackoverflow.com/questions/5709940/r-extension-in-c-setting-matrix-row-column-names
+            SEXP dimnms, rownms, colnms;
+            PROTECT(dimnms = Rf_allocVector(VECSXP, 2));
+            PROTECT(rownms = Rf_allocVector(STRSXP, nrow));
+            PROTECT(colnms = Rf_allocVector(STRSXP, ncol));
+            SET_VECTOR_ELT(dimnms, 0, rownms);
+            SET_VECTOR_ELT(dimnms, 1, colnms);
+
+            Rf_setAttrib(mat, R_DimNamesSymbol, dimnms);
+            proc_count = 4;
+        }
+        ~SEXP_Mat() { 
+            if (proc_count > 0) UNPROTECT(proc_count);
+            proc_count = 0;
+        }
+
+        // accessors
+        // extract https://stackoverflow.com/questions/29477621/iterate-over-s4-object-slots-rcpp
+        inline long get_nrow() { return nrow; };
+        inline long get_ncol() { return ncol; };
+        inline SEXP get_rownames() { return VECTOR_ELT(Rf_getAttrib(mat, R_DimNamesSymbol), 0); };
+        inline SEXP get_colnames() { return VECTOR_ELT(Rf_getAttrib(mat, R_DimNamesSymbol), 1); };
+        inline void set_rownames(SEXP src) { 
+            copy_str_vec(src, get_rownames(), get_nrow());
+        };
+        inline void set_colnames(SEXP src) { 
+            copy_str_vec(src, get_colnames(), get_ncol());
+        };
+        inline double* get_data() { return REAL(mat); }
+        inline SEXP get_sexp() { return mat; };
+};
+
+
+template <typename SpMAT>
+class S4_SpMat;
+
+// https://www.r-bloggers.com/2020/03/what-is-a-dgcmatrix-object-made-of-sparse-matrix-format-in-r/
+// ======= decompose the input matrix in CSC format, S4 object with slots:
+// i :  int, row numbers, 0-based.
+// p :  int, p[i] is the position offset in x for row i.  i has range [0-r] inclusive.
+// x :  numeric, values
+// Dim:  int, 2D, sizes of full matrix
+// Dimnames:  2D, names.
+// factors:  ignore.
+
+template <>
+class S4_SpMat<Rcpp::dgCMatrix> {
+    protected:
+        Rcpp::S4 obj;
+        int proc_count;
+        using IDX = typename Rcpp::dgCMatrix::INDEX;
+
+        void copy_str_vec(SEXP src, SEXP dest, IDX const & count) {
+            // deep copy the strings
+            SEXP * in_name_ptr = STRING_PTR(src);
+            for (IDX i = 0; i < count; ++i, ++in_name_ptr) {
+                SET_STRING_ELT(dest, i, Rf_duplicate(*in_name_ptr));
+            }
+        }
+
+    public:
+        S4_SpMat(Rcpp::S4 const & _obj) : obj(_obj), proc_count(0) {};
+        S4_SpMat(IDX const & nrow, IDX const & ncol, IDX const & nelem) :
+            obj("dgCMatrix"), proc_count(0) {
+            // https://www.r-bloggers.com/2021/04/constructing-a-sparse-matrix-class-in-rcpp/
+            // create a new S4 object that matches dgCMatrix
+            //  ---- create i: same size as x.
+            //  ---- create x
+            //  ---- p: nrow+1
+            //  ---- dim:  swap original
+            //  ---- dimnames: deepcopy and swap original row/col.
+            SEXP i, p, x, dim, dimnms, rownms, colnms;
+            PROTECT(x = Rf_allocVector(REALSXP, nelem));
+            PROTECT(i = Rf_allocVector(INTSXP, nelem));
+            PROTECT(p = Rf_allocVector(INTSXP, ncol + 1));
+            PROTECT(dim = Rf_allocVector(INTSXP, 2));
+            INTEGER(dim)[0] = nrow;
+            INTEGER(dim)[1] = ncol;
+
+            memset(INTEGER(p), 0, ncol * sizeof(int));
+            INTEGER(p)[ncol] = nelem;
+
+// https://stackoverflow.com/questions/5709940/r-extension-in-c-setting-matrix-row-column-names
+            PROTECT(dimnms = Rf_allocVector(VECSXP, 2));
+            PROTECT(rownms = Rf_allocVector(STRSXP, nrow));
+            PROTECT(colnms = Rf_allocVector(STRSXP, ncol));
+            SET_VECTOR_ELT(dimnms, 0, rownms);
+            SET_VECTOR_ELT(dimnms, 1, colnms);
+            proc_count = 7;
+
+            obj.slot("x") = x;
+            obj.slot("i") = i;
+            obj.slot("p") = p;
+            obj.slot("Dim") = dim;
+            obj.slot("Dimnames") = dimnms;
+        }
+        ~S4_SpMat() { 
+            if (proc_count > 0) UNPROTECT(proc_count);
+            proc_count = 0;
+        }
+
+        // accessors
+        // extract https://stackoverflow.com/questions/29477621/iterate-over-s4-object-slots-rcpp
+        inline IDX get_nelem() { return get_rowpointers()[get_ncol()]; };
+        inline IDX get_nrow() { return INTEGER(obj.slot("Dim"))[0]; };
+        inline IDX get_ncol() { return INTEGER(obj.slot("Dim"))[1]; };
+        inline SEXP get_rownames() { return VECTOR_ELT(obj.slot("Dimnames"), 0); };
+        inline SEXP get_colnames() { return VECTOR_ELT(obj.slot("Dimnames"), 1); };
+        inline void set_rownames(SEXP src) { 
+            copy_str_vec(src, get_rownames(), get_nrow());
+        };
+        inline void set_colnames(SEXP src) { 
+            copy_str_vec(src, get_colnames(), get_ncol());
+        };
+        inline double* get_entries() { return REAL(obj.slot("x")); }
+        inline IDX* get_colindices() { return INTEGER(obj.slot("i")); }
+        inline IDX* get_rowpointers() { return INTEGER(obj.slot("p")); }
+        inline Rcpp::S4 get_s4() { return obj; };
+};
+
+template <>
+class S4_SpMat<Rcpp::spamx32> {
+    protected:
+        Rcpp::S4 obj;
+        int proc_count;
+        using IDX = typename Rcpp::spamx32::INDEX;
+
+        void copy_str_vec(SEXP src, SEXP dest, IDX const & count) {
+            // deep copy the strings
+            SEXP * in_name_ptr = STRING_PTR(src);
+            for (IDX i = 0; i < count; ++i, ++in_name_ptr) {
+                SET_STRING_ELT(dest, i, Rf_duplicate(*in_name_ptr));
+            }
+        }
+
+    public:
+        S4_SpMat(Rcpp::S4 const & _obj) : obj(_obj), proc_count(0) {};
+        S4_SpMat(IDX const & nrow, IDX const & ncol, IDX const & nelem) :
+            obj("spamx"), proc_count(0) {
+            // https://www.r-bloggers.com/2021/04/constructing-a-sparse-matrix-class-in-rcpp/
+            // create a new S4 object that matches dgCMatrix
+            //  ---- create i: same size as x.
+            //  ---- create x
+            //  ---- p: nrow+1
+            //  ---- dim:  swap original
+            //  ---- dimnames: deepcopy and swap original row/col.
+            SEXP i, p, x, dim, dimnms, rownms, colnms;
+            PROTECT(x = Rf_allocVector(REALSXP, nelem));
+            PROTECT(i = Rf_allocVector(INTSXP, nelem));
+            PROTECT(p = Rf_allocVector(INTSXP, ncol + 1));
+            PROTECT(dim = Rf_allocVector(INTSXP, 2));
+            INTEGER(dim)[0] = nrow;
+            INTEGER(dim)[1] = ncol;
+
+            memset(INTEGER(p), 0, ncol * sizeof(int));
+            INTEGER(p)[ncol] = nelem;
+
+    // https://stackoverflow.com/questions/5709940/r-extension-in-c-setting-matrix-row-column-names
+            PROTECT(dimnms = Rf_allocVector(VECSXP, 2));
+            PROTECT(rownms = Rf_allocVector(STRSXP, nrow));
+            PROTECT(colnms = Rf_allocVector(STRSXP, ncol));
+            SET_VECTOR_ELT(dimnms, 0, rownms);
+            SET_VECTOR_ELT(dimnms, 1, colnms);
+            proc_count = 7;
+
+            obj.slot("entries") = x;
+            obj.slot("colindices") = i;
+            obj.slot("rowpointers") = p;
+            obj.slot("dimension") = dim;
+            obj.slot("Dimnames") = dimnms;
+        }
+        ~S4_SpMat() { 
+            if (proc_count > 0) UNPROTECT(proc_count);
+            proc_count = 0;
+        }
+
+        // accessors
+        // extract https://stackoverflow.com/questions/29477621/iterate-over-s4-object-slots-rcpp
+        inline IDX get_nelem() { return get_rowpointers()[get_ncol()]; };
+        inline IDX get_nrow() { return INTEGER(obj.slot("dimension"))[0]; };
+        inline IDX get_ncol() { return INTEGER(obj.slot("dimension"))[1]; };
+        inline SEXP get_rownames() { return VECTOR_ELT(obj.slot("Dimnames"), 0); };
+        inline SEXP get_colnames() { return VECTOR_ELT(obj.slot("Dimnames"), 1); };
+        inline void set_rownames(SEXP src) { 
+            copy_str_vec(src, get_rownames(), get_nrow());
+        };
+        inline void set_colnames(SEXP src) { 
+            copy_str_vec(src, get_colnames(), get_ncol());
+        };
+        inline double* get_entries() { return REAL(obj.slot("entries")); }
+        inline IDX* get_colindices() { return INTEGER(obj.slot("colindices")); }
+        inline IDX* get_rowpointers() { return INTEGER(obj.slot("rowpointers")); }
+        inline Rcpp::S4 get_s4() { return obj; };
+};
+
+
+template <>
+class S4_SpMat<Rcpp::spamx64> {
+
+    protected:
+        Rcpp::S4 obj;
+        int proc_count;
+        using IDX = typename Rcpp::spamx64::INDEX;
+
+        void copy_str_vec(SEXP src, SEXP dest, IDX const & count) {
+            // deep copy the strings
+            SEXP * in_name_ptr = STRING_PTR(src);
+            for (IDX i = 0; i < count; ++i, ++in_name_ptr) {
+                SET_STRING_ELT(dest, i, Rf_duplicate(*in_name_ptr));
+            }
+        }
+
+    public:
+        S4_SpMat(Rcpp::S4 const & _obj) : obj(_obj), proc_count(0) {};
+        S4_SpMat(IDX const & nrow, IDX const & ncol, IDX const & nelem) :
+            obj("spamx"), proc_count(0) {
+            // https://www.r-bloggers.com/2021/04/constructing-a-sparse-matrix-class-in-rcpp/
+            // create a new S4 object that matches dgCMatrix
+            //  ---- create i: same size as x.
+            //  ---- create x
+            //  ---- p: nrow+1
+            //  ---- dim:  swap original
+            //  ---- dimnames: deepcopy and swap original row/col.
+            SEXP i, p, x, dim, dimnms, rownms, colnms;
+            PROTECT(x = Rf_allocVector(REALSXP, nelem));
+            PROTECT(i = Rf_allocVector(REALSXP, nelem));
+            PROTECT(p = Rf_allocVector(REALSXP, ncol + 1));
+            PROTECT(dim = Rf_allocVector(REALSXP, 2));
+            REAL(dim)[0] = nrow;
+            REAL(dim)[1] = ncol;
+
+            memset(REAL(p), 0, ncol * sizeof(double));
+            REAL(p)[ncol] = nelem;
+
+    // https://stackoverflow.com/questions/5709940/r-extension-in-c-setting-matrix-row-column-names
+            PROTECT(dimnms = Rf_allocVector(VECSXP, 2));
+            PROTECT(rownms = Rf_allocVector(STRSXP, nrow));
+            PROTECT(colnms = Rf_allocVector(STRSXP, ncol));
+            SET_VECTOR_ELT(dimnms, 0, rownms);
+            SET_VECTOR_ELT(dimnms, 1, colnms);
+            proc_count = 7;
+
+            obj.slot("entries") = x;
+            obj.slot("colindices") = i;
+            obj.slot("rowpointers") = p;
+            obj.slot("dimension") = dim;
+            obj.slot("Dimnames") = dimnms;
+        }
+        ~S4_SpMat() { 
+            if (proc_count > 0) UNPROTECT(proc_count);
+            proc_count = 0;
+        }
+
+        // accessors
+        // extract https://stackoverflow.com/questions/29477621/iterate-over-s4-object-slots-rcpp
+        inline IDX get_nelem() { return static_cast<IDX>(get_rowpointers()[get_ncol()]); };
+        inline IDX get_nrow() { return static_cast<IDX>(REAL(obj.slot("dimension"))[0]); };
+        inline IDX get_ncol() { return static_cast<IDX>(REAL(obj.slot("dimension"))[1]); };
+        inline SEXP get_rownames() { return VECTOR_ELT(obj.slot("Dimnames"), 0); };
+        inline SEXP get_colnames() { return VECTOR_ELT(obj.slot("Dimnames"), 1); };
+        inline void set_rownames(SEXP src) { 
+            copy_str_vec(src, get_rownames(), get_nrow());
+        };
+        inline void set_colnames(SEXP src) { 
+            copy_str_vec(src, get_colnames(), get_ncol());
+        };
+        inline double* get_entries() { return REAL(obj.slot("entries")); }
+        inline double* get_colindices() { return REAL(obj.slot("colindices")); }
+        inline double* get_rowpointers() { return REAL(obj.slot("rowpointers")); }
+        inline Rcpp::S4 get_s4() { return obj; };
+};

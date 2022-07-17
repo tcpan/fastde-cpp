@@ -269,7 +269,7 @@ void copy_rsparsematrix_to_cppvectors(
 }
 
 void copy_rsparsematrix_to_cppvectors(
-    Rcpp::NumericVector _x, Rcpp::IntegerVector _i, Rcpp::IntegerVector _p, 
+    Rcpp::NumericVector const & _x, Rcpp::IntegerVector const & _i, Rcpp::IntegerVector const & _p, 
     std::vector<double> & x,
     std::vector<int> & i,
     std::vector<int> & p) {
@@ -345,12 +345,11 @@ Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spamx64 const & obj,
     ncol = dim[1];   // feature/gene count,  ncol
     nelem = p[ncol];   // since p is offsets, the ncol+1 entry has the total count
 
-    // get the column names == features.
+    Rcpp::List dimnms = obj.Dimnames;
     // SEXP rownms = VECTOR_ELT(dimnms, 0);    // samples
     // Rcpp::StringVector features = dimnms[1];   // features_names = columnames
     // GET features.
-    return "NoName";  // 
-
+    return dimnms[1];  // 
 }
 
 Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spamx32 const & obj, 
@@ -369,12 +368,11 @@ Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::spamx32 const & obj,
     ncol = dim[1];   // feature/gene count,  ncol
     nelem = p[ncol];   // since p is offsets, the ncol+1 entry has the total count
 
-    // get the column names == features.
+    Rcpp::List dimnms = obj.Dimnames;
     // SEXP rownms = VECTOR_ELT(dimnms, 0);    // samples
     // Rcpp::StringVector features = dimnms[1];   // features_names = columnames
     // GET features.
-    return "NoName";  // 
-
+    return dimnms[1];  // 
 }
 
 

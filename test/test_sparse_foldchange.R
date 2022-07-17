@@ -170,7 +170,7 @@ cat(sprintf("different 3: seurat %f, fastde %f \n", seuratperc1[diff[3]], fastde
 tic("sparse fastde df")
 # time and run BioQC
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
-fastdesfc_df <- fastde::ComputeSparseFoldChange(input, labels, calc_percents = TRUE, fc_name = "fc", 
+fastdesfc_df <- fastde::ComputeFoldChangeSparse(input, labels, calc_percents = TRUE, fc_name = "fc", 
     use_expm1 = FALSE, min_threshold = 0.0, use_log = FALSE, log_base = 2.0, 
     use_pseudocount = FALSE, as_dataframe = TRUE, threads = as.integer(4))
 toc()
@@ -179,7 +179,7 @@ toc()
 tic("sparse fastde")
 # time and run BioQC
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
-fastdesfc <- fastde::ComputeSparseFoldChange(input, labels, calc_percents = TRUE, fc_name = "fc", 
+fastdesfc <- fastde::ComputeFoldChangeSparse(input, labels, calc_percents = TRUE, fc_name = "fc", 
     use_expm1 = FALSE, min_threshold = 0.0, use_log = FALSE, log_base = 2.0, 
     use_pseudocount = FALSE, as_dataframe = FALSE, threads = as.integer(4))
 toc()

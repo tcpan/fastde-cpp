@@ -5,27 +5,36 @@
 
 // from https://gallery.rcpp.org/articles/sparse-matrix-class/
 namespace Rcpp {
-    class dgCMatrix {
-    public:
-        Rcpp::IntegerVector i, p, Dim;
-        Rcpp::NumericVector x;
-        Rcpp::List Dimnames;
+    class dgCMatrix {  // column major
+        public:
+            using INDEX = int;
 
-        // constructor
-        dgCMatrix(Rcpp::S4 mat);
-        dgCMatrix(int nrows, int ncols, int nelem);
+            Rcpp::IntegerVector i;   // zero-based, row id
+            Rcpp::IntegerVector p;   // zero-based, column pointers.
+            Rcpp::IntegerVector Dim;
+            Rcpp::NumericVector x;
+            Rcpp::List Dimnames;
 
-        // column iterator -- see https://gallery.rcpp.org/articles/sparse-matrix-class/
+            // constructor
+            dgCMatrix(Rcpp::S4 mat);
+            dgCMatrix(int nrows, int ncols, int nelem);
+
+            // column iterator -- see https://gallery.rcpp.org/articles/sparse-matrix-class/
         
     };
 
 
 
     // NOTE : spam is row major. here we are column major, so it's a transpose of original.
+    // NOTE : spam has 1-based index, and dgCMatrix has 0-based index.
 
-    class spamx32 {
+    class spamx32 {  // row major
         public:
-            Rcpp::IntegerVector i, p, Dim;
+            using INDEX = int;
+        
+            Rcpp::IntegerVector i;   // one-based? col id
+            Rcpp::IntegerVector p;   // one-based, row pointers
+            Rcpp::IntegerVector Dim;
             Rcpp::NumericVector x;
             Rcpp::List Dimnames;
 
@@ -34,9 +43,13 @@ namespace Rcpp {
             spamx32(int nrows, int ncols, int nelem);
     };
 
-    class spamx64 {
+    class spamx64 {   // row major
         public:
-            Rcpp::NumericVector i, p, Dim;
+            using INDEX = long;
+        
+            Rcpp::NumericVector i;   // one-based? col id
+            Rcpp::NumericVector p;   // one-based, row pointer
+            Rcpp::NumericVector Dim;
             Rcpp::NumericVector x;
             Rcpp::List Dimnames;
 
@@ -46,9 +59,13 @@ namespace Rcpp {
     };
 
 
-    class spam32 {
+    class spam32 {  // row major
         public:
-            Rcpp::IntegerVector i, p, Dim;
+            using INDEX = int;
+
+            Rcpp::IntegerVector i;   // one-based? col id
+            Rcpp::IntegerVector p;   // one-based, row pointer
+            Rcpp::IntegerVector Dim;
             Rcpp::NumericVector x;
 
             // constructor
@@ -56,9 +73,13 @@ namespace Rcpp {
             spam32(int nrows, int ncols, int nelem);
     };
 
-    class spam64 {
+    class spam64 {  // row major
         public:
-            Rcpp::NumericVector i, p, Dim;
+            using INDEX = long;
+            
+            Rcpp::NumericVector i;   // one-based? col id
+            Rcpp::NumericVector p;   // one-based, row pointer.
+            Rcpp::NumericVector Dim;
             Rcpp::NumericVector x;
 
             // constructor
