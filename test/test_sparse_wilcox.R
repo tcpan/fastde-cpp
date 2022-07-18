@@ -88,9 +88,9 @@ for ( gene in 1:ncol(input) ) {
     for ( c in L ) {
         lab <- labels %in% c
 
-        v <- wilcox.test(x ~ lab, alternative="two.sided", correct=TRUE)$p.value
+        v <- wilcox.test(x = x[which(labels == c)], y= x[which(labels != c)], alternative="two.sided", correct=TRUE)
         # cat(sprintf("R wilcox %f\n", v))
-        Rwilcox[i, gene] <- v
+        Rwilcox[i, gene] <- v$p.value
         i <- i + 1
     }
 }

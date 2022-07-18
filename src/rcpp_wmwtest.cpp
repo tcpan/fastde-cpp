@@ -37,8 +37,6 @@
 #include "rcpp_benchmark_utils.hpp"
 
 
-
-
 template <typename IT, typename LABEL>
 void sparse_sum_rank(std::vector<std::pair<IT, LABEL> > const & temp, 
   size_t const & count, IT const & zero_val,
@@ -50,6 +48,7 @@ void sparse_sum_rank(std::vector<std::pair<IT, LABEL> > const & temp,
   tie_sum = 0.0;
 
   size_t nzc = temp.size();
+  double tiesum_scale = 1.0 / (static_cast<double>(count) * static_cast<double>(count - 1));
 
   // initialize
   LABEL key;
@@ -79,7 +78,9 @@ void sparse_sum_rank(std::vector<std::pair<IT, LABEL> > const & temp,
     // rank update
     if (last_val < start->first) {  // ties are dealt with only when exiting ties.
         tie = i - rank;  // rank is of the first element in the tie.
-        if (tie > 1) tie_sum += tie * tie * tie - tie;
+        if (i > rank + 1) {
+          tie_sum += tiesum_scale * (tie * tie - 1.0) * tie;
+        }
         rank = i;  // not tie, so advance to new rank
     } // ELSE tie, so don't change the rank  (note :  this is the lower of the range for median)
     // add rank to sum
@@ -88,16 +89,19 @@ void sparse_sum_rank(std::vector<std::pair<IT, LABEL> > const & temp,
   }
 
   // ----- at zeros.  here start is at y.  
-  //               (s)----------->s
-  // in:    x x x x 0 0 0 0 0 0 0 y y y y
-  // label: c a b b d a f a d c e e a d f
-  // rank:  1 1 2 2 3 3 3 3 3 3 3 4 5 5 7
-  //                i----------->(i)
+  //                       (s)--------------------->s
+  // in:    w   w   x   x   0   0   0   0   0   0   0   y    z    z   v
+  // label: c   a   b   b   d   a   f   a   d   c   e   e    a    d   f
+  // r:     1   2   3   4   5   6   7   8   9  10  11  12   13   14  15
+  // rank:1.5 1.5 3.5 3.5   8   8   8   8   8   8   8  12 13.5 13.5  15
+  //                        i--------------------->(i)
   // compute last tie sum before zero, and new rank.
   // this part is only called on transition to and from zero ties.
   tie = i - rank;
-  if (tie > 1) tie_sum += tie * tie * tie - tie;
-  rank = i;
+  if (i > rank + 1) {
+    tie_sum += tiesum_scale * (tie * tie - 1.0) * tie;
+  }
+  rank = i;  // pointing at first zero.
   // add to rank_sum - all the "missing" elements are zeros.
   // this is called many times.   last_val during this stretch will all be 0.
   for (auto item : z_cl_counts) {
@@ -113,12 +117,19 @@ void sparse_sum_rank(std::vector<std::pair<IT, LABEL> > const & temp,
     // rank update
     if (last_val < start->first) {  // ties are dealt with only when exiting ties.
         tie = i - rank;  // rank is of the first element in the tie.
-        if (tie > 1) tie_sum += tie * tie * tie - tie;
+        if (i > rank + 1) {
+          tie_sum += tiesum_scale * (tie * tie - 1.0) * tie;
+        }
         rank = i;  // not tie, so advance to new rank
     } // ELSE tie, so don't change the rank  (note :  this is the lower of the range for median)
     // add rank to sum
     rank_sums[start->second] += rank;
     last_val = start->first;
+  }
+  // last part.
+  tie = i - rank;
+  if (i > rank + 1) {
+    tie_sum += tiesum_scale * (tie * tie - 1.0) * tie;
   }
     
   // =====  reverse walk
@@ -315,6 +326,8 @@ void dense_wmw_summary(
 
   // tuplize in and labels.
   rank_sums.clear();
+  double tiesum_scale = 1.0 / (static_cast<double>(count) * static_cast<double>(count - 1));
+
   tie_sum = 0.0;
   if (count == 0) return;
   assert((count < 20) && "ERROR: count is too small (< 20) for a normal approximation\n");
@@ -342,7 +355,6 @@ void dense_wmw_summary(
 
   size_t rank = 1;
   double tie;
-  tie_sum = 0.0;
   LABEL key = temp[0].second;
   // insert first
   if (rank_sums.count(key) == 0) rank_sums[key] = rank;
@@ -350,11 +362,12 @@ void dense_wmw_summary(
       rank_sums[key] += rank;
   }
   // forward walk
+  size_t i = 1;
   for (size_t i = 1; i < count; ++i) {
       // rank update
       if (temp[i-1].first < temp[i].first) {  // ties are dealt with only when exiting ties.
           tie = i + 1 - rank;  // rank is of the first element in the tie.
-          tie_sum += tie * tie * tie - tie;
+          tie_sum += tiesum_scale * (tie * tie - 1.0) * tie;
           rank = i + 1;  // not tie, so advance to new rank
       } // ELSE tie, so don't change the rank  (note :  this is the lower of the range for median)
       key = temp[i].second;
@@ -364,10 +377,15 @@ void dense_wmw_summary(
           rank_sums[key] += rank;
       }
   }
+  if (i > rank + 1) {
+    tie = i + 1 - rank;
+    tie_sum += tiesum_scale * (tie * tie - 1.0) * tie;
+  }
     
   // reverse walk
   rank = count;
-  for (size_t i = count - 1; i > 0; --i) {
+  i = count - 1;
+  for (; i > 0; --i) {
       // add rank to sum
       rank_sums[temp[i].second] += rank;
 
@@ -381,7 +399,7 @@ void dense_wmw_summary(
 }
 
 
-// types:  0 = less, 1 = greater, 2 = twosided (default), 3 = U
+// types:  0 = less, 1 = greater, 2 = twosided (default), 3 = U2
 template <typename LABEL, typename OT_ITER,
   typename OT = typename std::iterator_traits<OT_ITER>::value_type>
 void wmw(
@@ -405,7 +423,7 @@ void wmw(
   double R, U1, U2, U, prod, mu, sigma, z;
   size_t n1;
   double c1 = static_cast<double>(count + 1);
-  double tie_mean = tie_sum / static_cast<double>(count * (count - 1));
+  double tie_mean = tie_sum; // / static_cast<double>(count * (count - 1));
   constexpr double inv12 = 1.0 / 12.0;
   size_t i = 0;
   LABEL key;
@@ -414,35 +432,49 @@ void wmw(
       key = item.first;
       n1 = item.second;
       val = rank_sums.at(key);
-      R = static_cast<double>(val) * 0.5;
+      R = static_cast<double>(val) * 0.5;  // since val was computed from both forward and reverse walk, we need to half it.
 
       // compute U stats
       prod = static_cast<double>(n1 * (count - n1));
-      U1 = R - static_cast<double>((n1 * (n1 + 1)) >> 1);
+      U1 = R - static_cast<double>((n1 * (n1 + 1)) >> 1);  // same as STATISTIC in 
+      //  https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/wilcox.test.R
       U2 = prod - U1; 
-      if (test_type == PVAL_GREATER)  // greater
+      if (test_type == PVAL_GREATER) { // greater
           U = U1;
-      else if (test_type == PVAL_LESS)   // less
+      } else if (test_type == PVAL_LESS) {  // less
           U = U2;
-      else   // two sided
+      } else if (test_type == PVAL_TWO_SIDED) {  // two sided
           U = std::max(U1, U2);
-
+      }
       // normal approximation
       mu = prod * 0.5;
       // sigma = sqrt((prod / 12.0) * ((count + 1) - tie_sum / (count * (count - 1))));
       sigma = sqrt(prod * inv12 * (c1 - tie_mean));
-      z = U - mu - (continuity ? 0.5 : 0.0);
+      z = U1 - mu;
+      if (continuity) {
+        if (test_type == PVAL_GREATER) { // greater
+            z -= 0.5;
+        } else if (test_type == PVAL_LESS) {  // less
+            z += 0.5;
+        } else if (test_type == PVAL_TWO_SIDED) {  // two sided
+            z -= (z > 0) ? 0.5 : ((z < 0) ? -0.5 : 0.0);
+        }
+      } 
       z /= sigma;
 
       // convert to p-value
       // https://stackoverflow.com/questions/2328258/cumulative-normal-distribution-function-in-c-c
       // use erfc function  This is 2-tailed.
       if (test_type == PVAL_TWO_SIDED)  // 2 sided
-          out[i] = erfc( z * M_SQRT1_2 );   // this is correct.  erf is has stdev of 1/sqrt(2), and return prob(-x < X < x). 
-      else if ((test_type == PVAL_LESS) || (test_type == PVAL_GREATER))  // greater or less - U is changed (either U1 or U2), thus z is changed.  still calculating 1-CDF = survival
-          out[i] = 1.0 - 0.5 * erfc( -z * M_SQRT1_2 );
+        out[i] = erfc( fabs(z) * M_SQRT1_2 );   // this is correct.  erf is has stdev of 1/sqrt(2), and return prob(-x < X < x).   erfc = 1- erf(x)
+      else if (test_type == PVAL_LESS)
+        out[i] = 0.5 * erfc( -z * M_SQRT1_2 );
+      else if (test_type == PVAL_GREATER)  // greater or less - U is changed (either U1 or U2), thus z is changed.  still calculating 1-CDF = survival
+        out[i] = 1.0 - 0.5 * erfc( -z * M_SQRT1_2 );
+      else if (test_type == TEST_VAL)
+        out[i] = U1;
       else
-          out[i] = std::min(U1, U2);
+        out[i] = z;
       ++i;
 
   }

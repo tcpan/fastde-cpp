@@ -12,15 +12,16 @@ comparemat <- function(name, A, B) {
     stdevdiff <- sd(diff * diff)
     cat(sprintf("%s : diff range [%.17g, %.17g], median %.17g, mean %.17g, sd %.17g\n", 
         name, mindiff, maxdiff, mediandiff, meandiff, stdevdiff))
-    mxpos = which(diff == maxdiff, arr.ind = TRUE)
-    mnpos = which(diff == mindiff, arr.ind = TRUE)
 
-    if ( abs(maxdiff) > .Machine$double.eps)
-       cat(sprintf("%s : max diff at pos %d:  A %.17g - B %.17g = DIFF %.17g.\n", 
-            name, mxpos, A[mxpos], B[mxpos], diff[mxpos]))
-    if  ( abs(mindiff) > .Machine$double.eps)
-        cat(sprintf("%s : min diff at pos %d:  A %.17g - B %.17g = DIFF %.17g.\n", 
-            name, mnpos, A[mnpos], B[mnpos], diff[mnpos]))
+        # mxpos = which(diff == maxdiff, arr.ind = TRUE)
+    # mnpos = which(diff == mindiff, arr.ind = TRUE)
+
+    # if ( abs(maxdiff) > .Machine$double.eps)
+    #    cat(sprintf("%s : max diff at pos %d:  A %.17g - B %.17g = DIFF %.17g.\n", 
+    #         name, mxpos, A[mxpos], B[mxpos], diff[mxpos]))
+    # if  ( abs(mindiff) > .Machine$double.eps)
+    #     cat(sprintf("%s : min diff at pos %d:  A %.17g - B %.17g = DIFF %.17g.\n", 
+    #         name, mnpos, A[mnpos], B[mnpos], diff[mnpos]))
     
 }
 
@@ -36,6 +37,8 @@ samplenames <- h5read("/home/tpan/data/gnw2000/gnw2000.h5", "array/axis0")
 colnames(input) <- genenames
 rownames(input) <- samplenames
 
+input <- input[, 1:100]
+
 
 # count number of labels
 #num_labels = nlevels(labels)
@@ -43,7 +46,7 @@ rownames(input) <- samplenames
 # cat(sprintf("test size:  r %d X c %d.\n", nrow(wilcox), ncol(wilcox)))
 cat(sprintf("input size:  r %d X c %d\n", nrow(input), ncol(input)))
 
-labels <- labels_all[1:nrow(input)]
+labels <- 1 - labels_all[1:nrow(input)]  # inputs are 0 an 1.   wilcox treat class 0 as other in a formula.   fastde treat 0 as first class.   We need to flip this...
 cat(sprintf("Labels: %d \n", length(labels)))
 
 L <- unique(sort(labels))
@@ -57,9 +60,6 @@ cat(sprintf("Labels unique: %d \n", length(L)))
 # cat(sprintf("\n"))
 
 # time and run BioQC
-cat(sprintf("warm up\n"));
-fastdewilcox <- fastde::wmw_fast(input, labels, rtype=as.integer(2), 
-    continuity_correction=TRUE, as_dataframe = FALSE, threads = as.integer(1))
 
 # # print(fastdewilcox_df)
 # # fastdewilcox_df$p_val
@@ -75,6 +75,19 @@ fastdewilcox <- fastde::wmw_fast(input, labels, rtype=as.integer(2),
     continuity_correction=TRUE, as_dataframe = FALSE, threads = as.integer(1))
 toc()
 
+tic("fastde stat")
+# time and run BioQC
+cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
+fastdewilcox_stat <- fastde::wmw_fast(input, labels, rtype=as.integer(3), 
+    continuity_correction=TRUE, as_dataframe = FALSE, threads = as.integer(1))
+toc()
+
+tic("fastde stat")
+# time and run BioQC
+cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
+fastdewilcox_z <- fastde::wmw_fast(input, labels, rtype=as.integer(4), 
+    continuity_correction=TRUE, as_dataframe = FALSE, threads = as.integer(1))
+toc()
 
 tic("fastde_df")
 # time and run BioQC
@@ -119,31 +132,31 @@ toc()
 
 
 
-tic("Limma")
-# time and run LIMMA
-Limmawilcox <- matrix(, ncol = ncol(input), nrow = length(L) )
-for ( gene in 1:ncol(input) ) {
-    x <- matrix(as.vector(input[, gene]), ncol=1)
-    # cat(sprintf("gene %d \n", gene))
-    # cat(sprintf("x size:  r %d X c %d.\n", nrow(x), ncol(x)))
+# tic("Limma")
+# # time and run LIMMA
+# Limmawilcox <- matrix(, ncol = ncol(input), nrow = length(L) )
+# for ( gene in 1:ncol(input) ) {
+#     x <- matrix(as.vector(input[, gene]), ncol=1)
+#     # cat(sprintf("gene %d \n", gene))
+#     # cat(sprintf("x size:  r %d X c %d.\n", nrow(x), ncol(x)))
     
-    i <- 1
-    for ( c in L ) {
-        ind <- which(labels %in% c)
+#     i <- 1
+#     for ( c in L ) {
+#         ind <- which(labels %in% c)
         
-        ## two sided
-        v <- min(2 * min(limma::rankSumTestWithCorrelation(index = ind, statistics = x)), 1)  # two sides.
+#         ## two sided
+#         v <- min(2 * min(limma::rankSumTestWithCorrelation(index = ind, statistics = x)), 1)  # two sides.
         
-        ## less
-        # v <- limma::rankSumTestWithCorrelation(index = ind, statistics = x)[1]  # less, left tail
-        ## greater
-        # v <- limma::rankSumTestWithCorrelation(index = ind, statistics = x)[2]    # greater, right tail
-        # cat(sprintf("limma %f\n", v))
-        Limmawilcox[i, gene] <- v
-        i <- i + 1
-    }
-}
-toc()
+#         ## less
+#         # v <- limma::rankSumTestWithCorrelation(index = ind, statistics = x)[1]  # less, left tail
+#         ## greater
+#         # v <- limma::rankSumTestWithCorrelation(index = ind, statistics = x)[2]    # greater, right tail
+#         # cat(sprintf("limma %f\n", v))
+#         Limmawilcox[i, gene] <- v
+#         i <- i + 1
+#     }
+# }
+# toc()
 # warnings()
 
 
@@ -174,6 +187,8 @@ toc()
 # time and run wilcox.test
 tic("R builtin")
 Rwilcox <- matrix(, ncol = ncol(input), nrow = length(L) )
+Rwilcox_stat <- matrix(, ncol = ncol(input), nrow = length(L) )
+Rwilcox_z <- matrix(, ncol = ncol(input), nrow = length(L) )
 for ( gene in 1:ncol(input) ) {
     x <- matrix(as.vector(input[, gene]), ncol=1)
     # cat(sprintf("gene %d \n", gene))
@@ -182,9 +197,30 @@ for ( gene in 1:ncol(input) ) {
     for ( c in L ) {
         lab <- labels %in% c
 
-        v <- wilcox.test(x ~ lab, alternative="two.sided", correct=TRUE)$p.value
+        xx <- x[which(labels == c)]
+        yy <- x[which(labels != c)]
+
+        # v <- wilcox.test(x ~ lab, alternative="two.sided", correct=TRUE)
+        v <- wilcox.test(x = xx, y= yy, alternative="two.sided", correct=TRUE)
         # cat(sprintf("R wilcox %f\n", v))
-        Rwilcox[i, gene] <- v
+        Rwilcox[i, gene] <- v$p.value
+        # cat(sprintf("R wilcox %f\n", v))
+        Rwilcox_stat[i, gene] <- v$statistic
+
+        nx = length(xx)
+        ny = length(yy)
+        z <- v$statistic - nx * ny * 0.5
+        r <- rank(c(xx, yy))
+        NTIES <- table(r)
+        NTIES2 <- NTIES[which(NTIES > 1)]
+        SIGMA <- sqrt((nx * ny / 12) *
+                          ((nx + ny + 1)
+                           - sum(NTIES^3 - NTIES)
+                           / ((nx + ny) * (nx + ny - 1))))
+            CORRECTION <- 0 # sign(z) * 0.5
+	    z <- (z - CORRECTION) / SIGMA
+        Rwilcox_z[i, gene] <- z
+
         i <- i + 1
     }
 }
@@ -201,16 +237,33 @@ toc()
 # Limmawilcox[1, ]
 # Rwilcox[1, ]
 
-head(Rwilcox[, 1:10])
-head(fastdewilcox[ , 1:10])
+# head(Rwilcox[, 11:20])
+# head(fastdewilcox[ , 11:20])
 
 # comparemat("c++ vs R wilcox", wilcox, Rwilcox)
 # comparemat("c++ vs fastde wilcox", wilcox, fastdewilcox)
 comparemat("R vs fastde wilcox2", Rwilcox, fastdewilcox)
 # comparemat("c++ vs BioQC wilcox", Rwilcox, BioQCwilcox2)
-comparemat("R vs Limma wilcox", Rwilcox, Limmawilcox)
+# comparemat("R vs Limma wilcox", Rwilcox, Limmawilcox)
 
 
+# head(Rwilcox_stat[, 11:20])
+# head(fastdewilcox_stat[ , 11:20])
+
+# comparemat("c++ vs R wilcox", wilcox, Rwilcox)
+# comparemat("c++ vs fastde wilcox", wilcox, fastdewilcox)
+comparemat("R vs fastde wilcox stat", Rwilcox_stat, fastdewilcox_stat)
+
+# head(Rwilcox_z[, 11:20])
+# head(fastdewilcox_z[ , 11:20])
+
+# comparemat("c++ vs R wilcox", wilcox, Rwilcox)
+# comparemat("c++ vs fastde wilcox", wilcox, fastdewilcox)
+comparemat("R vs fastde wilcox z", Rwilcox_z, fastdewilcox_z)
+
+# pos <- which((Rwilcox_z[1, ] - fastdewilcox_z[1, ]) != 0)
+# Rwilcox_z[1, pos[1:10]]
+# fastdewilcox_z[1, pos[1:10]]
 # # time and run wilcox.test
 # tic("R builtin 2sided")
 # Rwilcox2 <- matrix(, ncol = ncol(input), nrow = length(L) )
