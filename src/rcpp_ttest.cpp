@@ -155,7 +155,8 @@ void dense_ttest_summary(
 
 // TODO:
 // [x]  test that t val is same as R's.  yes.
-// [ ]  output not identical from tstat to pval.  could it be because of the (v/2, 1/2) vs (v/2, v/2) used in the codeplea method?
+// [x]  output not identical from tstat to pval.  could it be because of the (v/2, 1/2) vs (v/2, v/2) used in the codeplea method?
+//      fixed: 1-x reaching EPS limit, or 1-x with x at EPS limit.  fixed by reorg code to avoid 1-(1-x) = 0.
 // [ ]  erfc-like function for t-distribution.
 
 
