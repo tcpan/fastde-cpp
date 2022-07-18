@@ -590,6 +590,9 @@ extern SEXP ComputeFoldChangeSparse64(
   bool as_dataframe,
   int threads) {
 
+  std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start;
+
+  start = std::chrono::steady_clock::now();
   // ----------- copy to local
   // ---- input matrix
   std::vector<double> x;
@@ -609,6 +612,10 @@ extern SEXP ComputeFoldChangeSparse64(
   count_clusters(lab, sorted_cluster_counts);
   size_t label_count = sorted_cluster_counts.size();
 
+  Rprintf("[TIME] FC 64 in copy Elapsed(ms)= %f\n", since(start).count());
+
+  start = std::chrono::steady_clock::now();
+
   // ---- output pval matrix
   std::vector<double> fc(nfeatures * label_count);
   std::vector<double> p1(nfeatures * label_count);
@@ -625,13 +632,14 @@ extern SEXP ComputeFoldChangeSparse64(
   //   as_dataframe, threads);
   // std::string fc_name = Rcpp::as<std::string>(fc_name);
 
+  Rprintf("[TIME] FC 64 out init Elapsed(ms)= %f\n", since(start).count());
 
   // ======= compute.
   
   omp_set_num_threads(threads);
   Rprintf("THREADING: using %d threads\n", threads);
   
-  std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start = std::chrono::steady_clock::now();
+  start = std::chrono::steady_clock::now();
 
 #pragma omp parallel num_threads(threads)
   {
@@ -668,6 +676,7 @@ extern SEXP ComputeFoldChangeSparse64(
     }
   }
   Rprintf("[TIME] FC 64 Elapsed(ms)= %f\n", since(start).count());
+  start = std::chrono::steady_clock::now();
 
   // ------------------------ generate output
   // GET features.
@@ -695,6 +704,7 @@ extern SEXP ComputeFoldChangeSparse64(
       return (Rcpp::wrap(export_fc_to_r_matrix(fc, fc_name,
         sorted_cluster_counts, new_features)));
   }
+  Rprintf("[TIME] FC 64 out wrap Elapsed(ms)= %f\n", since(start).count());
 
 }
 
