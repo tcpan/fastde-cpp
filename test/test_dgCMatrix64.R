@@ -9,8 +9,8 @@ library(tictoc)
 
 tic("READ pbmc3k")
 
-f <- "~/data/SingleCell/pbmc3k/filtered_gene_bc_matrices/hg19/"
-#f <- "~/scgc/data/pbmc3k/filtered_gene_bc_matrices/hg19/"
+#f <- "~/data/SingleCell/pbmc3k/filtered_gene_bc_matrices/hg19/"
+f <- "~/scgc/data/pbmc3k/filtered_gene_bc_matrices/hg19/"
 sobject <- Seurat::Read10X(f)
 message("PBMC3K:  x size ", length(sobject@x), " i size ", length(sobject@i), " p size", length(sobject@p))
 head(sobject@x)
@@ -43,6 +43,7 @@ fastdefc <- fastde::ComputeFoldChangeSparse(sobject, labels, calc_percents = TRU
     use_expm1 = FALSE, min_threshold = 0.0, use_log = FALSE, log_base = 2.0, 
     use_pseudocount = FALSE, as_dataframe = FALSE, threads = as.integer(1))
 toc()
+str(fastdefc)
 
 
 
@@ -66,29 +67,6 @@ message("FINISHED 1")
 tic("convert to 64bit")
 so64 <- as.dgCMatrix64(sobject)
 
-# tic("WRITE pbm3k h5")
-# f <- "~/data/SingleCell/pbmc3k.h5"
-# #f <- "~/scgc/data/pbmc3k.h5"
-# fastde::Write10X_h5(sobject, f)
-# toc()
-
-
-# tic("READ pbmc3k h5")
-# sobject <- fastde::Read10X_h5_big(f)
-# message("PBMC3K H5:  x size ", length(sobject@x), " i size ", length(sobject@i), " p size", length(sobject@p))
-# head(sobject@x)
-# head(sobject@i)
-# head(sobject@p)
-# head(sobject@Dimnames[[1]][1:10])
-# head(sobject@Dimnames[[2]][1:10])
-# message("PBMC3K dim")
-# sobject@dimension
-# class(sobject@dimension)
-# class(sobject@i)
-# class(sobject@p)
-
-# str(sobject)
-
 nrows <- so64@dimension[1]
 toc()
 
@@ -100,8 +78,6 @@ fastdefc2 <- fastde::ComputeFoldChangeSparse64(so64, labels, calc_percents = TRU
     use_expm1 = FALSE, min_threshold = 0.0, use_log = FALSE, log_base = 2.0, 
     use_pseudocount = FALSE, as_dataframe = FALSE, threads = as.integer(1))
 toc()
-str(fastdefc)
-# str(fastdefc3)
 str(fastdefc2)
 
 tic("wilcox pbmc3k 64")
@@ -114,48 +90,69 @@ tic("ttest pbmc3k 64")
 ttest_de <- fastde::FastFindAllMarkers64(so64, idents.clusters = labels, test.use = 'fast_t')
 toc()
 
+message("FINISHED 2")
 
 
+print("======write to h5 and read in as dgCMatrix64")
 
-# tic("READ brain 1.3M")
-# # f2 <- "~/data/SingleCell/1M_neurons_filtered_gene_bc_matrices_h5.h5"
-# f2 <- "~/scgc/data/1M_neurons_filtered_gene_bc_matrices_h5.h5"
+tic("WRITE pbm3k h5")
+#f <- "~/data/SingleCell/pbmc3k.h5"
+f <- "~/scgc/data/pbmc3k.h5"
+fastde::Write10X_h5(sobject, f)
+toc()
 
-# sobject2 <- fastde::Read10X_h5_big(f2)
-# message("Brain 1M:  x size ", length(sobject2@x), " i size ", length(sobject2@i), " p size", length(sobject2@p))
-# head(sobject2@x)
-# head(sobject2@i)
-# head(sobject2@p)
-# head(sobject2@Dimnames)
-# message("Brain 1M dim")
-# sobject2@dimension
-# #sobject2
-# toc()
+tic("READ pbmc3k h5")
+sobject4 <- Seurat::Read10X_h5(f)
+str(sobject4)
+toc()
 
-# nrows <- sobject@dimension[1]
+tic("READ pbmc3k h5")
+sobject3 <- fastde::Read10X_h5_big(f)
+str(sobject3)
+toc()
 
-# nclusters = 30
+message("FINISHED 3")
 
-# tic("GEN clusters")
-# # generate fake class labels.
-# clusters = 1:nclusters
-# labels <- sample(clusters, nrows, replace = TRUE)
-# toc()
+print("==========READING Big H5")
 
-# # run wilcox
-# tic("wilcox 1.3M")
-# wilcox_de <- fastde::FastFindAllMarkers64(sobject, idents.clusters = labels, test.use = 'fastwmw')
-# toc()
+tic("READ brain 1.3M")
+# f2 <- "~/data/SingleCell/1M_neurons_filtered_gene_bc_matrices_h5.h5"
+f2 <- "~/scgc/data/1M_neurons_filtered_gene_bc_matrices_h5.h5"
 
-# # run ttest
-# tic("ttest 1.3M")
-# wilcox_de <- fastde::FastFindAllMarkers64(sobject, idents.clusters = labels, test.use = 'fast_t')
-# toc()
+sobject2 <- fastde::Read10X_h5_big(f2)
+#sobject2
+toc()
 
-# # res <- PCA_big(sobject2)
-# # res
+nrows <- sobject2@dimension[1]
+str(sobject2)
+
+nclusters = 30
+
+tic("GEN clusters")
+# generate fake class labels.
+clusters = 1:nclusters
+labels2 <- sample(clusters, nrows, replace = TRUE)
+toc()
 
 
-# # fid <- H5Fopen(f)
-# ## open up the dataset to add attributes to, as a class
-# # did <- H5Dopen(fid, "aNEONSite/temperature")
+tic("sparse fastde 64 FC")
+# time and run BioQC
+fastdefc3 <- fastde::ComputeFoldChangeSparse64(sobject2, labels2, calc_percents = TRUE, fc_name = "fc", 
+    use_expm1 = FALSE, min_threshold = 0.0, use_log = FALSE, log_base = 2.0, 
+    use_pseudocount = FALSE, as_dataframe = FALSE, threads = as.integer(1))
+toc()
+str(fastdefc3)
+
+# run wilcox
+tic("wilcox 1.3M")
+wilcox_de2 <- fastde::FastFindAllMarkers64(sobject2, idents.clusters = labels2, test.use = 'fastwmw')
+toc()
+str(wilcox_de2)
+
+# run ttest
+tic("ttest 1.3M")
+wilcox_de2 <- fastde::FastFindAllMarkers64(sobject2, idents.clusters = labels2, test.use = 'fast_t')
+toc()
+str(wilcox_de2)
+
+message("FINISHED 4")

@@ -1,4 +1,5 @@
 #pragma once
+// TODO: [] limit row and col dimensions to int.   need for long per axis?
 
 // from https://gallery.rcpp.org/articles/sparse-matrix-class/
 namespace Rcpp {

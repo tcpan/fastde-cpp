@@ -21,7 +21,7 @@ using namespace Rcpp;
 #include <omp.h>
 #include "rcpp_data_utils.hpp"
 
-
+// TODO:  [ ] add function to sparsify dense matrix.
 
 template <typename MAT>
 extern Rcpp::S4 _sp_transpose(Rcpp::S4 obj) {

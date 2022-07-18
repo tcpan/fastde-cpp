@@ -103,9 +103,12 @@ Read10X_h5_big <- function(filename, use.names = TRUE, unique.features = TRUE) {
     barcodes <- infile[[paste0(genome, '/barcodes')]][]
     # TCP: using dgCMatrix64 for sparse matrix.
     print(shp)
-    sparse.mat <- new("dgCMatrix64", x = as.numeric(x = counts[]),
-      i = as.numeric(x = indices[]), p = as.numeric(x = indptr[]),
-      dimension = as.numeric(x = shp[]))
+    sparse.mat <- new("dgCMatrix64", 
+      x = as.numeric(x = counts[]),
+      i = as.numeric(x = indices[]), 
+      p = as.numeric(x = indptr[]),
+      dimension = as.numeric(x = shp[]), 
+      Dim = as.integer(x = shp[]))   # must have Dim to be able to set row/col names.
     # TCP: end dgCMatrix64...
 
     if (unique.features) {
@@ -115,7 +118,7 @@ Read10X_h5_big <- function(filename, use.names = TRUE, unique.features = TRUE) {
     rownames(x = sparse.mat) <- features
     colnames(x = sparse.mat) <- barcodes
     # below is not needed?
-    sparse.mat <- as(object = sparse.mat, Class = 'dgCMatrix64')
+    #sparse.mat <- as(object = sparse.mat, Class = 'dgCMatrix64')
 
     # TCP:  this is not yet tested, but should be okay...
     # Split v3 multimodal

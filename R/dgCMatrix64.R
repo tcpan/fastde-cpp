@@ -1,5 +1,7 @@
 library(Matrix)
 
+# TODO: [] limit row and col dimensions to int.     need for long per axis?
+
 #' modified dgCMatrix class (definitions.R) to support dimnames
 #' 
 #' added Dimnames, list of 2 char arrays.
