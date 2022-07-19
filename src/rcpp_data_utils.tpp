@@ -6,21 +6,19 @@
 
 // ------- class def
 namespace Rcpp {
-    dgCMatrix::dgCMatrix(Rcpp::S4 mat) {
-        i = mat.slot("i");  // row id
-        p = mat.slot("p");  // offsets for starts of columns
-        x = mat.slot("x");
-        Dim = mat.slot("Dim");
-        Dimnames = mat.slot("Dimnames");
-    };
-    dgCMatrix::dgCMatrix(int const & nrow, int const & ncol, int const & nelem) {
-        i = Rcpp::IntegerVector(nelem);  // row id
-        p = Rcpp::IntegerVector(ncol + 1);  // offsets for starts of columns
-        x = Rcpp::NumericVector(nelem);
-        Dim = Rcpp::IntegerVector(2);
+    dgCMatrix::dgCMatrix(Rcpp::S4 const & mat) :
+        i(mat.slot("i")),   // row id
+        p(mat.slot("p")),   // offsets for starts of columns
+        x(mat.slot("x")),
+        Dim(mat.slot("Dim")),
+        Dimnames(mat.slot("Dimnames")) {};
+    dgCMatrix::dgCMatrix(int const & nrow, int const & ncol, int const & nelem) :
+        i(nelem),  // row id
+        p(ncol + 1),  // offsets for starts of columns
+        x(nelem),
+        Dim(2) {
         Dim[0] = nrow;
         Dim[1] = ncol;
-        Dimnames = Rcpp::List();
     };
 
 
@@ -38,25 +36,24 @@ namespace Rcpp {
         return s;
     };
 
-    dgCMatrix64::dgCMatrix64(Rcpp::S4 mat) {
-        i = mat.slot("i");
-        p = mat.slot("p");
-        x = mat.slot("x");
-        dimension = mat.slot("dimension");
-        Dim = mat.slot("Dim");
-        Dimnames = mat.slot("Dimnames");
-    };
-    dgCMatrix64::dgCMatrix64(long const & nrow, long const & ncol, long const & nelem) {
-        i = Rcpp::NumericVector(nelem);  // row id
-        p = Rcpp::NumericVector(ncol + 1);  // offsets for starts of columns
-        x = Rcpp::NumericVector(nelem);
-        dimension = Rcpp::NumericVector(2);
+    dgCMatrix64::dgCMatrix64(Rcpp::S4 const & mat) :
+        i(mat.slot("i")),
+        p(mat.slot("p")),
+        x(mat.slot("x")),
+        dimension(mat.slot("dimension")),
+        Dim(mat.slot("Dim")),
+        Dimnames(mat.slot("Dimnames"))
+    {};
+    dgCMatrix64::dgCMatrix64(long const & nrow, long const & ncol, long const & nelem) :
+        i(nelem),  // row id
+        p(ncol + 1),  // offsets for starts of columns
+        x(nelem),
+        dimension(2),
+        Dim(2) {
         dimension[0] = nrow;
         dimension[1] = ncol;
-        Dim = Rcpp::IntegerVector(2);
         Dim[0] = (nrow > 2147483647) ? -1 : nrow;
         Dim[1] = (ncol > 2147483647) ? -1 : ncol;
-        Dimnames = Rcpp::List();
     };
 
     // specialization of Rcpp::as 
@@ -88,7 +85,7 @@ Rcpp::dgCMatrix64 rttest_dgCMatrix64(Rcpp::dgCMatrix64 const & mat){
 // ------- function def
 
 
-Rcpp::StringVector copy_rmatrix_to_cppvector(Rcpp::NumericMatrix const &  _matrix, std::vector<double> & mat,
+Rcpp::StringVector copy_rmatrix_to_cppvector(Rcpp::NumericMatrix const & _matrix, std::vector<double> & mat,
     size_t & nrow, size_t & ncol, size_t & nelem) {
     nrow=_matrix.nrow(); // n
     ncol=_matrix.ncol(); // m

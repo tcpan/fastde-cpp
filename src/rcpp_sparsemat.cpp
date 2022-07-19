@@ -24,7 +24,7 @@ using namespace Rcpp;
 // TODO:  [ ] add function to sparsify dense matrix.
 
 template <typename MAT>
-extern Rcpp::S4 _sp_transpose(Rcpp::S4 obj) {
+extern Rcpp::S4 _sp_transpose(Rcpp::S4 const & obj) {
 
     // https://www.r-bloggers.com/2020/03/what-is-a-dgcmatrix-object-made-of-sparse-matrix-format-in-r/
     // ======= decompose the input matrix in CSC format, S4 object with slots:
@@ -117,7 +117,7 @@ extern Rcpp::S4 _sp_transpose(Rcpp::S4 obj) {
 //' @name rc_sp_transpose
 //' @export
 // [[Rcpp::export]]
-extern Rcpp::S4 rc_sp_transpose(Rcpp::S4 sp_matrix) {
+extern Rcpp::S4 rc_sp_transpose(Rcpp::S4 const & sp_matrix) {
     return _sp_transpose<Rcpp::dgCMatrix>(sp_matrix);
 }
 
@@ -133,14 +133,14 @@ extern Rcpp::S4 rc_sp_transpose(Rcpp::S4 sp_matrix) {
 //' @name rc_sp64_transpose
 //' @export
 // [[Rcpp::export]]
-extern Rcpp::S4 rc_sp64_transpose(Rcpp::S4 obj) {
+extern Rcpp::S4 rc_sp64_transpose(Rcpp::S4 const & obj) {
     return _sp_transpose<Rcpp::dgCMatrix64>(obj);
 
 }
 
 
 template <typename MAT>
-extern SEXP _sp_to_dense(Rcpp::S4 obj) {
+extern SEXP _sp_to_dense(Rcpp::S4 const & obj) {
 
     // https://www.r-bloggers.com/2020/03/what-is-a-dgcmatrix-object-made-of-sparse-matrix-format-in-r/
     // ======= decompose the input matrix in CSC format, S4 object with slots:
@@ -209,7 +209,7 @@ extern SEXP _sp_to_dense(Rcpp::S4 obj) {
 //' @name rc_sp_to_dense
 //' @export
 // [[Rcpp::export]]
-extern SEXP rc_sp_to_dense(S4 obj) {
+extern SEXP rc_sp_to_dense(S4 const & obj) {
     return _sp_to_dense<Rcpp::dgCMatrix>(obj);
 }
 
@@ -226,13 +226,13 @@ extern SEXP rc_sp_to_dense(S4 obj) {
 //' @name rc_sp64_to_dense
 //' @export
 // [[Rcpp::export]]
-extern SEXP rc_sp64_to_dense(S4 obj) {
+extern SEXP rc_sp64_to_dense(S4 const & obj) {
     return _sp_to_dense<Rcpp::dgCMatrix64>(obj);
 }
 
 
 template <typename MAT>
-extern SEXP _sp_to_dense_transposed(Rcpp::S4 obj) {
+extern SEXP _sp_to_dense_transposed(Rcpp::S4 const & obj) {
 
     // https://www.r-bloggers.com/2020/03/what-is-a-dgcmatrix-object-made-of-sparse-matrix-format-in-r/
     // ======= decompose the input matrix in CSC format, S4 object with slots:
@@ -300,7 +300,7 @@ extern SEXP _sp_to_dense_transposed(Rcpp::S4 obj) {
 //' @name rc_sp_to_dense_transposed
 //' @export
 // [[Rcpp::export]]
-extern SEXP rc_sp_to_dense_transposed(S4 obj) {
+extern SEXP rc_sp_to_dense_transposed(S4 const & obj) {
     return _sp_to_dense_transposed<Rcpp::dgCMatrix>(obj);
 }
 
@@ -315,6 +315,6 @@ extern SEXP rc_sp_to_dense_transposed(S4 obj) {
 //' @name rc_sp64_to_dense_transposed
 //' @export
 // [[Rcpp::export]]
-extern SEXP rc_sp64_to_dense_transposed(S4 obj) {
+extern SEXP rc_sp64_to_dense_transposed(S4 const & obj) {
     return _sp_to_dense_transposed<Rcpp::dgCMatrix64>(obj);
 }

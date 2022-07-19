@@ -117,67 +117,67 @@ BEGIN_RCPP
 END_RCPP
 }
 // rc_sp_transpose
-extern Rcpp::S4 rc_sp_transpose(Rcpp::S4 sp_matrix);
+extern Rcpp::S4 rc_sp_transpose(Rcpp::S4 const& sp_matrix);
 RcppExport SEXP _fastde_rc_sp_transpose(SEXP sp_matrixSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::S4 >::type sp_matrix(sp_matrixSEXP);
+    Rcpp::traits::input_parameter< Rcpp::S4 const& >::type sp_matrix(sp_matrixSEXP);
     rcpp_result_gen = Rcpp::wrap(rc_sp_transpose(sp_matrix));
     return rcpp_result_gen;
 END_RCPP
 }
 // rc_sp64_transpose
-extern Rcpp::S4 rc_sp64_transpose(Rcpp::S4 obj);
+extern Rcpp::S4 rc_sp64_transpose(Rcpp::S4 const& obj);
 RcppExport SEXP _fastde_rc_sp64_transpose(SEXP objSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::S4 >::type obj(objSEXP);
+    Rcpp::traits::input_parameter< Rcpp::S4 const& >::type obj(objSEXP);
     rcpp_result_gen = Rcpp::wrap(rc_sp64_transpose(obj));
     return rcpp_result_gen;
 END_RCPP
 }
 // rc_sp_to_dense
-extern SEXP rc_sp_to_dense(S4 obj);
+extern SEXP rc_sp_to_dense(S4 const& obj);
 RcppExport SEXP _fastde_rc_sp_to_dense(SEXP objSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< S4 >::type obj(objSEXP);
+    Rcpp::traits::input_parameter< S4 const& >::type obj(objSEXP);
     rcpp_result_gen = Rcpp::wrap(rc_sp_to_dense(obj));
     return rcpp_result_gen;
 END_RCPP
 }
 // rc_sp64_to_dense
-extern SEXP rc_sp64_to_dense(S4 obj);
+extern SEXP rc_sp64_to_dense(S4 const& obj);
 RcppExport SEXP _fastde_rc_sp64_to_dense(SEXP objSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< S4 >::type obj(objSEXP);
+    Rcpp::traits::input_parameter< S4 const& >::type obj(objSEXP);
     rcpp_result_gen = Rcpp::wrap(rc_sp64_to_dense(obj));
     return rcpp_result_gen;
 END_RCPP
 }
 // rc_sp_to_dense_transposed
-extern SEXP rc_sp_to_dense_transposed(S4 obj);
+extern SEXP rc_sp_to_dense_transposed(S4 const& obj);
 RcppExport SEXP _fastde_rc_sp_to_dense_transposed(SEXP objSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< S4 >::type obj(objSEXP);
+    Rcpp::traits::input_parameter< S4 const& >::type obj(objSEXP);
     rcpp_result_gen = Rcpp::wrap(rc_sp_to_dense_transposed(obj));
     return rcpp_result_gen;
 END_RCPP
 }
 // rc_sp64_to_dense_transposed
-extern SEXP rc_sp64_to_dense_transposed(S4 obj);
+extern SEXP rc_sp64_to_dense_transposed(S4 const& obj);
 RcppExport SEXP _fastde_rc_sp64_to_dense_transposed(SEXP objSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< S4 >::type obj(objSEXP);
+    Rcpp::traits::input_parameter< S4 const& >::type obj(objSEXP);
     rcpp_result_gen = Rcpp::wrap(rc_sp64_to_dense_transposed(obj));
     return rcpp_result_gen;
 END_RCPP

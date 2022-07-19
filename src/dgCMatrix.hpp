@@ -13,7 +13,7 @@ namespace Rcpp {
             Rcpp::List Dimnames;
 
             // constructor
-            dgCMatrix(Rcpp::S4 mat);
+            dgCMatrix(Rcpp::S4 const & mat);
             dgCMatrix(int const & nrows, int const & ncols, int const & nelem);
 
             // column iterator -- see https://gallery.rcpp.org/articles/sparse-matrix-class/

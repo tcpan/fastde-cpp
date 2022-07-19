@@ -1,6 +1,6 @@
 Package: fastde
 Type: Package
-Title: performs differential expression fast
+Title: performs differential expression
 Version: 0.2
 Date: 2022-04-22
 Author: Tony Pan

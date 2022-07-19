@@ -15,7 +15,7 @@ namespace Rcpp {
             Rcpp::List Dimnames;
 
             // constructor
-            dgCMatrix64(Rcpp::S4 mat);
+            dgCMatrix64(Rcpp::S4 const & mat);
             dgCMatrix64(long const & nrows, long const & ncols, long const & nelem);
 
             // column iterator -- see https://gallery.rcpp.org/articles/sparse-matrix-class/        
@@ -25,6 +25,6 @@ namespace Rcpp {
     template <> dgCMatrix64 as(SEXP mat);
 
     // specialization of Rcpp::wrap
-    template <> SEXP wrap(const dgCMatrix64& sm);
+    template <> SEXP wrap(const dgCMatrix64 & sm);
 
 }
