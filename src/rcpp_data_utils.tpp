@@ -6,68 +6,28 @@
 
 // ------- class def
 namespace Rcpp {
-    dgCMatrix::dgCMatrix(Rcpp::S4 const & mat) :
-        i(mat.slot("i")),   // row id
-        p(mat.slot("p")),   // offsets for starts of columns
-        x(mat.slot("x")),
-        Dim(mat.slot("Dim")),
-        Dimnames(mat.slot("Dimnames")) {};
-    dgCMatrix::dgCMatrix(int const & nrow, int const & ncol, int const & nelem) :
-        i(nelem),  // row id
-        p(ncol + 1),  // offsets for starts of columns
-        x(nelem),
-        Dim(2) {
-        Dim[0] = nrow;
-        Dim[1] = ncol;
-    };
-
 
     // specialization of Rcpp::as
     template <> dgCMatrix as(SEXP mat) { return dgCMatrix(mat); };
 
     // specialization of Rcpp::wrap
     template <> SEXP wrap(const dgCMatrix& sm) {
-        S4 s(std::string("dgCMatrix"));
-        s.slot("i") = sm.i;
-        s.slot("p") = sm.p;
-        s.slot("x") = sm.x;
-        s.slot("Dim") = sm.Dim;
-        s.slot("Dimnames") = sm.Dimnames;
-        return s;
-    };
-
-    dgCMatrix64::dgCMatrix64(Rcpp::S4 const & mat) :
-        i(mat.slot("i")),
-        p(mat.slot("p")),
-        x(mat.slot("x")),
-        dimension(mat.slot("dimension")),
-        Dim(mat.slot("Dim")),
-        Dimnames(mat.slot("Dimnames"))
-    {};
-    dgCMatrix64::dgCMatrix64(long const & nrow, long const & ncol, long const & nelem) :
-        i(nelem),  // row id
-        p(ncol + 1),  // offsets for starts of columns
-        x(nelem),
-        dimension(2),
-        Dim(2) {
-        dimension[0] = nrow;
-        dimension[1] = ncol;
-        Dim[0] = (nrow > 2147483647) ? -1 : nrow;
-        Dim[1] = (ncol > 2147483647) ? -1 : ncol;
+        return sm.get_S4();
     };
 
     // specialization of Rcpp::as 
     template <> dgCMatrix64 as(SEXP mat) { return dgCMatrix64(mat); };
 
     template <> SEXP wrap(const dgCMatrix64& sm) {
-        S4 s(std::string("dgCMatrix64"));
-        s.slot("i") = sm.i;
-        s.slot("p") = sm.p;
-        s.slot("x") = sm.x;
-        s.slot("dimension") = sm.dimension;
-        s.slot("Dim") = sm.Dim;
-        s.slot("Dimnames") = sm.Dimnames;
-        return s;
+        return sm.get_S4();
+    };
+
+    // specialization of Rcpp::as
+    template <> dgMatrix as(SEXP mat) { return dgMatrix(mat); };
+
+    // specialization of Rcpp::wrap
+    template <> SEXP wrap(const dgMatrix& sm) {
+        return sm.get_SEXP();
     };
 
 
@@ -155,21 +115,20 @@ Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::dgCMatrix const & obj,
     std::vector<int> & p,
     size_t & nrow, size_t & ncol, size_t & nelem) {
 
-    copy_rvector_to_cppvector(obj.i, i);
-    copy_rvector_to_cppvector(obj.p, p);
-    copy_rvector_to_cppvector(obj.x, x);
+    copy_rvector_to_cppvector(obj.get_colindices_SEXP(), i);
+    copy_rvector_to_cppvector(obj.get_rowpointers_SEXP(), p);
+    copy_rvector_to_cppvector(obj.get_entries_SEXP(), x);
     
-    Rcpp::IntegerVector dim = obj.Dim;
-    nrow = dim[0];   // sample count,  nrow
-    ncol = dim[1];   // feature/gene count,  ncol
+    nrow = obj.get_nrow();   // sample count,  nrow
+    ncol = obj.get_ncol();   // feature/gene count,  ncol
     nelem = p[ncol];   // since p is offsets, the ncol+1 entry has the total count
 
     // get the column names == features.
-    Rcpp::List dimnms = obj.Dimnames;
+    // Rcpp::List dimnms = obj.Dimnames;
     // SEXP rownms = VECTOR_ELT(dimnms, 0);    // samples
     // Rcpp::StringVector features = dimnms[1];   // features_names = columnames
     // GET features.
-    return dimnms[1];  // 
+    return Rcpp::as<Rcpp::StringVector>(obj.get_colnames());  // 
 }
 
 void copy_rsparsematrix_to_cppvectors(
@@ -204,20 +163,19 @@ Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::dgCMatrix64 const & ob
     size_t & nrow, size_t & ncol, size_t & nelem) {
 
     copy_rsparsematrix_to_cppvectors(
-        obj.x, obj.i, obj.p, 
+        obj.get_entries_SEXP(), obj.get_colindices_SEXP(), obj.get_rowpointers_SEXP(), 
         x, i, p
     );
 
-    Rcpp::NumericVector dim = obj.dimension;
-    nrow = dim[0];   // sample count,  nrow
-    ncol = dim[1];   // feature/gene count,  ncol
+    nrow = obj.get_nrow();   // sample count,  nrow
+    ncol = obj.get_ncol();   // feature/gene count,  ncol
     nelem = p[ncol];   // since p is offsets, the ncol+1 entry has the total count
 
-    Rcpp::List dimnms = obj.Dimnames;
+    // Rcpp::List dimnms = obj.Dimnames;
     // SEXP rownms = VECTOR_ELT(dimnms, 0);    // samples
     // Rcpp::StringVector features = dimnms[1];   // features_names = columnames
     // GET features.
-    return dimnms[1];  // 
+    return Rcpp::as<Rcpp::StringVector>(obj.get_colnames());  // 
 }
 
 

@@ -11,10 +11,10 @@ library(Matrix)
 #' @export dgCMatrix64
 #' @exportClass dgCMatrix64
 dgCMatrix64 <- setClass("dgCMatrix64", contains = c("dsparseMatrix"),
-	 slots = c(i = "numeric", p = "numeric", dimension = "numeric"),
-	 prototype = prototype(p = 0, dimension=c(0, 0))
+	 slots = c(i = "numeric", p = "numeric"),
+	 prototype = prototype(p = 0)
      )
-# no validation.  use dimension instead of Dim.
+# no validation.  use Dim - assume dimensions are at most 2B..
 
 # Internal function to create new dgCMatrix64 or dgCMatrix64 object, depending on the size.
 .newdgCMatrix64 <- function(x=NULL,
@@ -31,12 +31,7 @@ dgCMatrix64 <- setClass("dgCMatrix64", contains = c("dsparseMatrix"),
     i <- NULL
     slot(newx,"p",check=FALSE) <- as.numeric(p)
     p <- NULL
-    slot(newx,"dimension",check=FALSE) <- as.numeric(dim)
-    if ((dim[1] > 2147483647) | (dim[2] > 2147483647)) {
-        slot(newx,"Dim",check=FALSE) <- c(-1, -1)
-    } else {
-        slot(newx,"Dim",check=FALSE) <- as.integer(dim)
-    }
+    slot(newx,"Dim",check=FALSE) <- as.integer(dim)
     dim <- NULL
     slot(newx,"Dimnames", check=FALSE) <- dimnames
     dimnames <- NULL
@@ -58,7 +53,6 @@ as.dgCMatrix64.dgCMatrix64 <- function(x, eps = .Machine$double.eps)  {
     slot(newx, "x", check=FALSE) <- x@x
     slot(newx, "i", check=FALSE) <- x@i
     slot(newx, "p", check=FALSE) <- x@p
-    slot(newx, "dimension", check=FALSE) <- x@dimension
     slot(newx, "Dim", check=FALSE) <- x@Dim
     slot(newx, "Dimnames", check=FALSE) <- x@Dimnames
     return(newx)
@@ -70,7 +64,6 @@ as.dgCMatrix64.dgCMatrix <- function(x, eps = .Machine$double.eps)  {
     slot(newx, "x", check=FALSE) <- x@x
     slot(newx, "i", check=FALSE) <- as.numeric(x@i)
     slot(newx, "p", check=FALSE) <- as.numeric(x@p)
-    slot(newx, "dimension", check=FALSE) <- as.numeric(x@Dim)
     slot(newx, "Dim", check=FALSE) <- x@Dim
     slot(newx, "Dimnames", check=FALSE) <- x@Dimnames
     return(newx)

@@ -12,23 +12,10 @@ tic("READ pbmc3k")
 f <- "~/data/SingleCell/pbmc3k/filtered_gene_bc_matrices/hg19/"
 #f <- "~/scgc/data/pbmc3k/filtered_gene_bc_matrices/hg19/"
 sobject <- Seurat::Read10X(f)
-message("PBMC3K:  x size ", length(sobject@x), " i size ", length(sobject@i), " p size", length(sobject@p))
-head(sobject@x)
-head(sobject@i)
-head(sobject@p)
-head(sobject@Dimnames[[1]][1:10])
-head(sobject@Dimnames[[2]][1:10])
-message("PBMC3K dim")
-sobject@Dim
-class(sobject@Dim)
+str(sobject)
 nrows <- sobject@Dim[1]
 toc()
 
-message("i = 0")
-print(which(sobject@i == 0))
-message("end")
-
-str(sobject)
 nclusters = 30
 
 # generate fake class labels.
@@ -59,7 +46,7 @@ toc()
 
 message("FINISHED 1")
 
-# so2 <- new('dgCMatrix64', x = sobject@x, i = sobject@i, p = sobject@p, dimension = sobject@Dim, 
+# so2 <- new('dgCMatrix64', x = sobject@x, i = sobject@i, p = sobject@p, 
 #     Dim = sobject@Dim, Dimnames = sobject@Dimnames)
 
 
@@ -67,7 +54,7 @@ message("FINISHED 1")
 tic("convert to 64bit")
 so64 <- as.dgCMatrix64(sobject)
 
-nrows <- so64@dimension[1]
+nrows <- so64@Dim[1]
 toc()
 
 
@@ -123,7 +110,7 @@ message("FINISHED 3")
 # #sobject2
 # toc()
 
-# nrows <- sobject2@dimension[1]
+# nrows <- sobject2@Dim[1]
 # str(sobject2)
 
 # nclusters = 30

@@ -36,10 +36,10 @@ extern Rcpp::S4 _sp_transpose(Rcpp::S4 const & obj) {
     // factors:  ignore.
     
     // input
-    S4_SpMat<MAT> in(obj);
+    MAT in(obj);
     
     // empty output 
-    S4_SpMat<MAT> out(in.get_ncol(), in.get_nrow(), in.get_nelem());
+    MAT out(in.get_ncol(), in.get_nrow(), in.get_nelem());
     // deep copy dimnames
     out.set_colnames(in.get_rownames());
     out.set_rownames(in.get_colnames());
@@ -102,7 +102,7 @@ extern Rcpp::S4 _sp_transpose(Rcpp::S4 const & obj) {
     *tp_ptr = 0;
 
     // ======= return
-    return out.get_s4();
+    return out.get_S4();
 }
 
 
@@ -152,12 +152,12 @@ extern SEXP _sp_to_dense(Rcpp::S4 const & obj) {
     // factors:  ignore.
     
     // extract https://stackoverflow.com/questions/29477621/iterate-over-s4-object-slots-rcpp
-    S4_SpMat<MAT> in(obj);
+    MAT in(obj);
 
     // Rprintf("Sparse DIM: samples %lu x features %lu, non-zeros %lu\n", in.get_ncol(), in.get_nrow(), in.get_nelem()); 
 
     // ======= create new output and initialize
-    SEXP_Mat out(in.get_nrow(), in.get_ncol());
+    dgMatrix out(in.get_nrow(), in.get_ncol());
     out.set_rownames(in.get_rownames());
     out.set_colnames(in.get_colnames());
 
@@ -194,7 +194,7 @@ extern SEXP _sp_to_dense(Rcpp::S4 const & obj) {
         }
     }
 
-    return out.get_sexp();
+    return out.get_SEXP();
 }
 
 
@@ -244,12 +244,12 @@ extern SEXP _sp_to_dense_transposed(Rcpp::S4 const & obj) {
     // factors:  ignore.
     
     // extract https://stackoverflow.com/questions/29477621/iterate-over-s4-object-slots-rcpp
-    S4_SpMat<MAT> in(obj);
+    MAT in(obj);
 
     // Rprintf("Sparse DIM: samples %lu x features %lu, non-zeros %lu\n", in.get_ncol(), in.get_nrow(), in.get_nelem()); 
 
     // ======= create new output and initialize
-    SEXP_Mat out(in.get_ncol(), in.get_nrow());
+    dgMatrix out(in.get_ncol(), in.get_nrow());
     out.set_rownames(in.get_colnames());
     out.set_colnames(in.get_rownames());
 
@@ -285,7 +285,7 @@ extern SEXP _sp_to_dense_transposed(Rcpp::S4 const & obj) {
         }
     }
 
-    return out.get_sexp();
+    return out.get_SEXP();
 }
 
 
