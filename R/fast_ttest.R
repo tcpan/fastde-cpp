@@ -1,4 +1,4 @@
-library(tictoc)
+
 
 #' Differential expression using t-test, Sparse matrix.
 #'
@@ -59,7 +59,7 @@ FastSparseDiffTTest <- function(
 
   # two sided : 2
   # print(head(data.use))
-  tic("FasTTestDETest fast_t")
+  tictoc::tic("FasTTestDETest fast_t")
 
 
   # need to put features into columns.
@@ -95,7 +95,7 @@ FastSparseDiffTTest <- function(
   # print("dims p_val 1")
   # print(dim(p_val))
 
-  toc()
+  tictoc::toc()
   # print("dims pval final")
   # print(dim(p_val))
 
@@ -193,7 +193,7 @@ FastDiffTTest <- function(
 
   # two sided : 2
   # print(head(data.use))
-  tic("FastTTestDETest fast_t")
+  tictoc::tic("FastTTestDETest fast_t")
   if (features.as.rows == TRUE) {
     # features in rows
     nfeatures = nrow(data.use)
@@ -270,7 +270,7 @@ FastDiffTTest <- function(
       # print(dim(p_val))
     }
   }
-  toc()
+  tictoc::toc()
   # print("dims pval final")
   # print(dim(p_val))
 

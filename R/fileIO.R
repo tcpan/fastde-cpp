@@ -1,8 +1,3 @@
-
-library(rhdf5)
-
-
-
 #' Write 10X hdf5 file
 #'
 #' Read count matrix from 10X CellRanger hdf5 file.

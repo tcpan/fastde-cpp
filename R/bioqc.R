@@ -1,5 +1,3 @@
-library(tictoc)
-library(BioQC)
 
 
 #' Differential expression using Wilcoxon Rank Sum
@@ -57,7 +55,7 @@ BioQCDETest <- function(
   }
   if ( bioqc.check[1] ) {
 
-    tic("BioQCDETest BioQC::wmwTest")
+    tictoc::tic("BioQCDETest BioQC::wmwTest")
     labels = list()
     for (i in 1:length(LL)) {
       labels[[i]] <- as.integer(cells.clusters) %in% i
@@ -80,7 +78,7 @@ BioQCDETest <- function(
     nblocks <- (nfeatures + block_size - 1) %/% block_size
 
     # need to put features into columns.
-    tic("BioQC sparse to dense")
+    tictoc::tic("BioQC sparse to dense")
     if (is(data.use, 'dgCMatrix')) {
       if (features.as.rows == TRUE) {
         # slice and transpose
@@ -107,7 +105,7 @@ BioQCDETest <- function(
         dd <- data.use[, 1:block_size]
       }
     }
-    toc()
+    tictoc::toc()
 
     pv <- BioQC::wmwTest(dd, labels, valType = "p.two.sided")
     # return data the same way we got it
@@ -121,7 +119,7 @@ BioQCDETest <- function(
         start <- i * block_size + 1
         end <- pmin(nfeatures, (i + 1) * block_size )
         # slice the data
-        tic("BioQC sparse to dense")
+        tictoc::tic("BioQC sparse to dense")
         if (is(data.use, 'dgCMatrix')) {
           if (features.as.rows == TRUE) {
             # slice and transpose
@@ -148,7 +146,7 @@ BioQCDETest <- function(
             dd <- data.use[, start:end]
           }
         }
-        toc()
+        tictoc::toc()
         pvi <- BioQC::wmwTest(dd, labels, valType = "p.two.sided")
 
         # return data the same way we got it
@@ -160,7 +158,7 @@ BioQCDETest <- function(
       }
     }
     # p_val HERE has clusters in rows and features/genes in columns
-    toc()
+    tictoc::toc()
 
     if (return.dataframe  == TRUE ) {
       # NOTE that bioqc is iterating the cluster labels in numeric order, so no need for factor here.

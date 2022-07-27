@@ -1,4 +1,4 @@
-library(tictoc)
+
 
 
 #' Differential expression using Wilcoxon Rank Sum, Sparse matrix.
@@ -60,7 +60,7 @@ FastSparseWilcoxDETest <- function(
 
   # two sided : 2
   # print(head(data.use))
-  tic("FastWilcoxDETest wmwfast")
+  tictoc::tic("FastWilcoxDETest wmwfast")
 
   # need to put features into columns.
   if (features.as.rows == TRUE) {
@@ -94,7 +94,7 @@ FastSparseWilcoxDETest <- function(
   # print("dims p_val 1")
   # print(dim(p_val))
 
-  toc()
+  tictoc::toc()
   # print("dims pval final")
   # print(dim(p_val))
 
@@ -191,7 +191,7 @@ FastWilcoxDETest <- function(
 
   # two sided : 2
   # print(head(data.use))
-  tic("FastWilcoxDETest wmwfast")
+  tictoc::tic("FastWilcoxDETest wmwfast")
   if (features.as.rows == TRUE) {
     # features in rows
     nfeatures = nrow(data.use)
@@ -267,7 +267,7 @@ FastWilcoxDETest <- function(
       # print(dim(p_val))
     }
   }
-  toc()
+  tictoc::toc()
   # print("dims pval final")
   # print(dim(p_val))
 

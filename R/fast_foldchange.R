@@ -1,6 +1,3 @@
-library(tictoc)
-library(Seurat)
-
 
 #' @rdname FastFoldChange
 #' @param object Any object that's not a seurat
@@ -40,7 +37,7 @@ FastFoldChange.default <- function(
   ...
 ) {
   if (verbose) { print("TCP FASTDE: FastFoldChange.default") }
-  if (verbose) { tic("FastFoldChange.default setup") }
+  if (verbose) { tictoc::tic("FastFoldChange.default setup") }
 
   log.use <- ifelse(
     test = slot == "scale.data",
@@ -90,9 +87,9 @@ FastFoldChange.default <- function(
   } else {
     data <- object
   }
-  if (verbose) { toc() }
+  if (verbose) { tictoc::toc() }
   
-  tic("FastFoldChange.default FastPerformFC")
+  tictoc::tic("FastFoldChange.default FastPerformFC")
   
   PerformFCFunc <- if (is(data, 'dgCMatrix') | is(data, 'dgCMatrix64') )  {
     FastPerformSparseFC
@@ -107,7 +104,7 @@ FastFoldChange.default <- function(
     use_log = log.use, log_base = base, use_pseudocount = pseudocount.use, 
     as_dataframe = return.dataframe,
     threads = get_num_threads())
-  toc()
+  tictoc::toc()
 
   if (verbose) { print("TCP FASTDE: FastFoldChange.default DONE") }
   return(fc.results)
@@ -149,7 +146,7 @@ FastFoldChange.Assay <- function(
   ...
 ) {
   if (verbose) { print("TCP FASTDE: FastFoldChange.Assay") }
-  if (verbose) { tic("FastFoldChange.Assay setup") }
+  if (verbose) { tictoc::tic("FastFoldChange.Assay setup") }
   data <- Seurat::GetAssayData(object = object, slot = slot)
 
   # using the passed in seurat object to get cluster ids.
@@ -160,8 +157,8 @@ FastFoldChange.Assay <- function(
   }
   # clusters <- cells.clusters %||% Seurat::Idents(object = object)
   
-  if (verbose) { toc() }
-  if (verbose) { tic("FastFoldChange.Assay dispatch FastFoldChange") }
+  if (verbose) { tictoc::toc() }
+  if (verbose) { tictoc::tic("FastFoldChange.Assay dispatch FastFoldChange") }
   fc.results <- FastFoldChange(
     object = data,
     cells.clusters = clusters,
@@ -174,7 +171,7 @@ FastFoldChange.Assay <- function(
     verbose = verbose,
     ...
   )
-  if (verbose) { toc() }
+  if (verbose) { tictoc::toc() }
   if (verbose) { print("TCP FASTDE: FastFoldChange.Assay DONE") }
   return(fc.results)
 }
@@ -208,7 +205,7 @@ FastFoldChange.DimReduc <- function(
   ...
 ) {
   if (verbose) { print("TCP FASTDE: FastFoldChange.DimReduc") }
-  if (verbose) { tic("FastFoldChange.DimReduc init") }
+  if (verbose) { tictoc::tic("FastFoldChange.DimReduc init") }
 
   if ( is.null(fc.name) ) {
     fc.name <- "avg_diff"
@@ -227,8 +224,8 @@ FastFoldChange.DimReduc <- function(
   }
   # clusters <- cells.clusters %||% Seurat::Idents(object = object)
 
-  if (verbose) { toc() }
-  tic("FastFoldChange.DimReduc FastPerformFC")
+  if (verbose) { tictoc::toc() }
+  tictoc::tic("FastFoldChange.DimReduc FastPerformFC")
   # Calculate avg difference.  This is just rowMeans.
   
   PerformFCFunc <- if (is(data, 'dgCMatrix') | is(data, 'dgCMatrix64') )  {
@@ -244,7 +241,7 @@ FastFoldChange.DimReduc <- function(
     use_log = FALSE, log_base = 2, use_pseudocount = FALSE, 
     as_dataframe = return.dataframe,
     threads = get_num_threads())
-  toc()
+  tictoc::toc()
   if (verbose) { print("TCP FASTDE: FastFoldChange.DimReduc DONE") }
   return(fc.results)
 }
@@ -297,7 +294,7 @@ FastFoldChange.Seurat <- function(
   ...
 ) {
   if (verbose) { print("TCP FASTDE: FastFoldChange.Seurat") }
-  if (verbose) { tic("FastFoldChange.Seurat init") }
+  if (verbose) { tictoc::tic("FastFoldChange.Seurat init") }
   if (!is.null(x = group.by)) {
     if (!is.null(x = subset.ident)) {
       object <- subset(x = object, idents = subset.ident)
@@ -327,8 +324,8 @@ FastFoldChange.Seurat <- function(
   }
   # clusters <- cells.clusters %||% Seurat::Idents(object = object)
 
-  if (verbose) { toc() }
-  if (verbose) { tic("FastFoldChange.Seurat dispatch FastFoldChange") }
+  if (verbose) { tictoc::toc() }
+  if (verbose) { tictoc::tic("FastFoldChange.Seurat dispatch FastFoldChange") }
 
   fc.results <- FastFoldChange(
     object = data.use,
@@ -342,7 +339,7 @@ FastFoldChange.Seurat <- function(
     verbose = verbose,
     ...
   )
-  if (verbose) { toc() }
+  if (verbose) { tictoc::toc() }
   if (verbose) { print("TCP FASTDE: FastFoldChange.Seurat DONE") }
   return(fc.results)
 }

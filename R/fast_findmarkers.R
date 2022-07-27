@@ -1,5 +1,3 @@
-library(tictoc)
-library(Seurat)
 
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 # Functions
@@ -79,7 +77,7 @@ FastFindAllMarkers64 <- function(
   # call ours if possible.  conditiions:
   #   node is null
   #   test.use = "fastwmw"
-  tic("FastFindAllMarkers64")
+  tictoc::tic("FastFindAllMarkers64")
   # what does this do?
   if ((test.use == "fastwmw") || (test.use == 'fast_t') ) {
   
@@ -138,7 +136,7 @@ FastFindAllMarkers64 <- function(
       }
     }
   }
-  toc()
+  tictoc::toc()
   return(gde.all)
 
 }
@@ -211,7 +209,7 @@ FastFindAllMarkers <- function(
   #   test.use = "fastwmw"
   # what does this do?
   if ((test.use == "fastwmw") || (test.use == "bioqc") || (test.use == 'fast_t') ) {
-    tic("FindAllMarkers")
+    tictoc::tic("FindAllMarkers")
   
     # Idents get the cell identity (not name), which correspond to cluster ids? 
     idents.clusters = Seurat::Idents(object = object)
@@ -269,7 +267,7 @@ FastFindAllMarkers <- function(
         }
       }
     }
-    toc()
+    tictoc::toc()
     return(gde.all)
 
   } else {
@@ -366,7 +364,7 @@ FastFindMarkers.default <- function(
 ) {
   if (verbose) { print("TCP FASTDE: FastFindMarkers.default") }
 
-  if (verbose) { tic("FastFindMarkers.default FastFoldChange")  }
+  if (verbose) { tictoc::tic("FastFindMarkers.default FastFoldChange")  }
 
   if (! is.null(features)) {
     data <- object[features, , drop=FALSE]
@@ -389,11 +387,11 @@ FastFindMarkers.default <- function(
   colidx <- which(! colnames(fc.results) %in% c("cluster", "gene", "pct.1", "pct.2"))[1]
   fc.name <- colnames(fc.results)[colidx]
 
-  if (verbose) { toc() }
+  if (verbose) { tictoc::toc() }
   if (verbose) { print(fc.results[[fc.name]][1:20]) }
 
 
-  if (verbose) { tic("FinMarkers.default load") }
+  if (verbose) { tictoc::tic("FinMarkers.default load") }
   # reform to data frame.
 
   # reset parameters so no feature filtering is performed
@@ -409,7 +407,7 @@ FastFindMarkers.default <- function(
   }
 
   # message("FASTFindMarkers.default min_pct ", min.pct, " diff pct ", min.diff.pct, " log tr ", logfc.threshold, " pos ", only.pos)
-  tic("FastFindMarkers.default FilterFoldChange")
+  tictoc::tic("FastFindMarkers.default FilterFoldChange")
   fc_mask <- FilterFoldChange(
     fc.results[[colidx]], fc.results$pct.1, fc.results$pct.2,   
     init_mask = imask,
@@ -418,7 +416,7 @@ FastFindMarkers.default <- function(
     not_count = (slot != "scale.data"), 
     threads = get_num_threads())
   # mask the dataframe or matrix.
-  toc()
+  tictoc::toc()
   if (verbose) { print(fc_mask[1:20]) }
 
 
@@ -464,10 +462,10 @@ FastFindMarkers.default <- function(
 
   # NO subsample cell groups if they are too large
 
-  if (verbose) { toc() }
+  if (verbose) { tictoc::toc() }
 
   # because fc_mask is 2D, we compute the DE for all specified features.
-  if (verbose) { tic("FastFindMarkers.default performDE") }
+  if (verbose) { tictoc::tic("FastFindMarkers.default performDE") }
   de.results <- FastPerformDE(
     object = data,
     cells.clusters = cells.clusters,
@@ -477,9 +475,9 @@ FastFindMarkers.default <- function(
     return.dataframe = return.dataframe,
     ...
   )
-  if (verbose) { toc() }
+  if (verbose) { tictoc::toc() }
 
-  if (verbose) { tic("FastFindMarkers.default post DE") }
+  if (verbose) { tictoc::tic("FastFindMarkers.default post DE") }
 
   #append avg_diff to de.results.  both should have same row assignments.
   de.results <- cbind(de.results, fc.results[, c(fc.name, "pct.1", "pct.2")])
@@ -504,7 +502,7 @@ FastFindMarkers.default <- function(
     # )
   }
 
-  if (verbose) { toc() }
+  if (verbose) { tictoc::toc() }
   if (verbose) { print("TCP FASTDE: FastFindMarkers.default DONE") }
   return(de.results)
 }
@@ -555,7 +553,7 @@ FastFindMarkers.Assay <- function(
 ) {
   if (verbose) { print("TCP FASTDE: FastFindMarkers.assay") }
 
-  if (verbose) { tic("FastFindMarkers.assay load") }
+  if (verbose) { tictoc::tic("FastFindMarkers.assay load") }
   data.use <- Seurat::GetAssayData(object = object, slot = slot)
   counts <- switch(
     EXPR = slot,
@@ -570,9 +568,9 @@ FastFindMarkers.Assay <- function(
     clusters <- cells.clusters
   }
   # clusters <- cells.clusters %||% Seurat::Idents(object = object)
-  if (verbose) { toc() }
+  if (verbose) { tictoc::toc() }
 
-  if (verbose) { tic("FastFindMarkers.assay dispatch FastFindMarkers") }
+  if (verbose) { tictoc::tic("FastFindMarkers.assay dispatch FastFindMarkers") }
   de.results <- FastFindMarkers(
     object = data.use,
     cells.clusters = clusters,
@@ -591,7 +589,7 @@ FastFindMarkers.Assay <- function(
     return.dataframe = return.dataframe,
     ...
   )
-  if (verbose) { toc() }
+  if (verbose) { tictoc::toc() }
   if (verbose) { print("TCP FASTDE: FastFindMarkers.assay DONE") }
   return(de.results)
 }
@@ -630,7 +628,7 @@ FastFindMarkers.DimReduc <- function(
   if (verbose) { print("TCP FASTDE: FastFindMarkers.DimReduc") }
 
 
-  if (verbose) { tic("FastFindMarkers.DimReduc load") }
+  if (verbose) { tictoc::tic("FastFindMarkers.DimReduc load") }
   if ( is.null(x = fc.name) ) {
     fc.name <- "avg_diff"
   }
@@ -647,12 +645,12 @@ FastFindMarkers.DimReduc <- function(
   }
   # clusters <- cells.clusters %||% Seurat::Idents(object = object)  
 
-  if (verbose) { toc() }
+  if (verbose) { tictoc::toc() }
 
   # NOT subsample cell groups if they are too large
 
   # Calculate avg difference.  This is just rowMeans.
-  tic("FastFindMarkers.DimReduc FastPerformFC")
+  tictoc::tic("FastFindMarkers.DimReduc FastPerformFC")
   
   PerformFCFunc <- if (is(data, 'dgCMatrix') | is(data, 'dgCMatrix64') )  {
     FastPerformSparseFC
@@ -667,9 +665,9 @@ FastFindMarkers.DimReduc <- function(
     use_log = FALSE, log_base = 2, use_pseudocount = FALSE, 
     as_dataframe = return.dataframe,
     threads = get_num_threads())
-  toc()
+  tictoc::toc()
 
-  if (verbose) { tic("FastFindMarkers.DimReduc PerformDE") }
+  if (verbose) { tictoc::tic("FastFindMarkers.DimReduc PerformDE") }
 
   de.results <- FastPerformDE(
     object = data,
@@ -680,9 +678,9 @@ FastFindMarkers.DimReduc <- function(
     return.dataframe = return.dataframe,
     ...
   )
-  if (verbose) { toc() }
+  if (verbose) { tictoc::toc() }
 
-  if (verbose) { tic("FastFindMarkers.DimReduc Post DE") }
+  if (verbose) { tictoc::tic("FastFindMarkers.DimReduc Post DE") }
 
 
   #append avg_diff to de.results.  both should have same row assignments.
@@ -702,7 +700,7 @@ FastFindMarkers.DimReduc <- function(
   #   method = "bonferroni",
   #   n = nrow(x = object)
   # )
-  if (verbose) { toc() }
+  if (verbose) { tictoc::toc() }
   if (verbose) { print("TCP FASTDE: FastFindMarkers.DimReduc DONE") }
   return(de.results)
 }
@@ -761,7 +759,7 @@ FastFindMarkers.Seurat <- function(
   ...
 ) {
   if (verbose) { print("TCP FASTDE: FastFindMarkers.Seurat") }
-  if (verbose) { tic("FastFindMarkers.Seurat setup") }
+  if (verbose) { tictoc::tic("FastFindMarkers.Seurat setup") }
 
   if (!is.null(x = group.by)) {
     if (!is.null(x = subset.ident)) {
@@ -791,8 +789,8 @@ FastFindMarkers.Seurat <- function(
     clusters = cells.clusters
   }
 
-  if (verbose) { toc() }
-  if (verbose) { tic("FastFindMarkers.Seurat dispatch FastFindMarkers") }
+  if (verbose) { tictoc::toc() }
+  if (verbose) { tictoc::tic("FastFindMarkers.Seurat dispatch FastFindMarkers") }
   de.results <- FastFindMarkers(
     object = data.use,
     slot = slot,
@@ -810,7 +808,7 @@ FastFindMarkers.Seurat <- function(
     return.dataframe = return.dataframe,
     ...
   )
-  if (verbose) { toc() }
+  if (verbose) { tictoc::toc() }
   if (verbose) { print("TCP FASTDE: FastFindMarkers.Seurat DONE") }
   return(de.results)
 }
@@ -928,7 +926,7 @@ FastPerformDE <- function(
   if (verbose) {
     print("TCP FASTDE: PerformDE")
   }
-  tic("FastPerformDE")
+  tictoc::tic("FastPerformDE")
 
   if (! is.null(features)) {
     if (features.as.rows == TRUE) {
@@ -963,7 +961,7 @@ FastPerformDE <- function(
       return.dataframe = return.dataframe,
       ...
   )
-  toc()
+  tictoc::toc()
   if (verbose) {
     print("TCP FASTDE: PerformDE DONE")
   }

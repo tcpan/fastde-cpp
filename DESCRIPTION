@@ -12,6 +12,8 @@ Imports:
         Seurat,
         tictoc,
         BioQC,
+        Matrix,
+        rhdf5,
         future,
         methods
 LinkingTo: Rcpp
