@@ -408,8 +408,10 @@ FastPerformSparseFC <- function(data, clusters,
 
   PerformFCFunc <- if (is(dd, 'dgCMatrix64') )  {
     ComputeFoldChangeSparse64
+    ComputeFoldChangeSparse64SEXP
   } else {
     ComputeFoldChangeSparse
+    ComputeFoldChangeSparseSEXP
   }
 
   # output has features in columns, and clusters in rows

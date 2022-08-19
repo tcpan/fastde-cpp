@@ -710,6 +710,298 @@ extern SEXP ComputeFoldChangeSparse64(
 
 
 
+//' Fold Change
+//' 
+//' https://stackoverflow.com/questions/38338270/how-to-return-a-named-vecsxp-when-writing-r-extensions
+//' 
+//' @rdname ComputeFoldChangeSparseSEXP
+//' @param matrix an expression matrix, COLUMN-MAJOR, each row is a sample, each column a gene
+//' @param labels an integer vector, each element indicating the group to which a sample belongs.
+//' @param calc_percents  a boolean to indicate whether to compute percents or not.
+//' @param fc_name column name to use for the fold change results 
+//' @param use_expm1 for "data", use expm1
+//' @param min_threshold minimum threshold to count towards pct.1 and pct.2 percentages.
+//' @param use_log for "data" and default log type, indicate log of the sum is to be used.
+//' @param log_base base for the log
+//' @param use_pseudocount for "data" and default log type, add pseudocount after log.
+//' @param as_dataframe TRUE/FALSE.  TRUE = return a linearized dataframe.  FALSE = return matrices.
+//' @param threads number of threads to use
+//' @return dense array or dataframe of size features*clusters
+//' @name ComputeFoldChangeSparseSEXP
+//' @export
+// [[Rcpp::export]]
+extern SEXP ComputeFoldChangeSparseSEXP(
+  SEXP matrix, SEXP labels,
+  bool calc_percents, std::string fc_name, 
+  bool use_expm1, double min_threshold, 
+  bool use_log, double log_base, bool use_pseudocount, 
+  bool as_dataframe,
+  int threads) {
+
+  std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start;
+
+  start = std::chrono::steady_clock::now();
+  // ----------- copy to local
+  // ---- input matrix
+  std::vector<double> x;
+  std::vector<int> i, p;
+  size_t nsamples, nfeatures, nelem;
+  SEXP features = copy_rsparsematrix_to_cppvectors(matrix, x, i, p, nsamples, nfeatures, nelem);
+
+  // Rprintf("Sparse DIM: samples %lu x features %lu, non-zeros %lu\n", nsamples, nfeatures, nelem); 
+
+  // ---- label vector
+  std::vector<int> lab;
+  copy_rvector_to_cppvector(labels, lab, nsamples);
+
+  // get the number of unique labels.
+  std::vector<std::pair<int, size_t> > sorted_cluster_counts;
+  count_clusters(lab, sorted_cluster_counts);
+  size_t label_count = sorted_cluster_counts.size();
+
+  Rprintf("[TIME] FC SXP in copy Elapsed(ms)= %f\n", since(start).count());
+
+  start = std::chrono::steady_clock::now();
+
+  // ---- output pval matrix
+  std::vector<double> fc(nfeatures * label_count);
+  std::vector<double> p1(nfeatures * label_count);
+  std::vector<double> p2(nfeatures * label_count);
+  
+  // ------------------------ parameter
+  // int threads;
+  // double min_threshold, log_base;
+  // bool as_dataframe, calc_percents, use_expm1, use_log, use_pseudocount;
+  // import_fc_common_params(calc_percents, min_threshold, use_expm1,
+  //   use_log, log_base, use_pseudocount,
+  //   calc_percents, min_threshold, use_expm1, use_log, log_base, use_pseudocount);
+  // import_r_common_params(as_dataframe, threads,
+  //   as_dataframe, threads);
+  // std::string fc_name = Rcpp::as<std::string>(fc_name);
+
+  Rprintf("[TIME] FC SXP out init Elapsed(ms)= %f\n", since(start).count());
+
+  // ======= compute.
+  
+  omp_set_num_threads(threads);
+  Rprintf("THREADING: using %d threads\n", threads);
+  
+  start = std::chrono::steady_clock::now();
+
+#pragma omp parallel num_threads(threads)
+  {
+    int tid = omp_get_thread_num();
+    size_t block = nfeatures / threads;
+    size_t rem = nfeatures - threads * block;
+    size_t offset = tid * block + (tid > rem ? rem : tid);
+    int nid = tid + 1;
+    size_t end = nid * block + (nid > rem ? rem : nid);
+
+    int nz_offset, nz_count;
+    std::unordered_map<int, clust_info> cl_sums;
+
+    for(; offset < end; ++offset) {
+      nz_offset = p[offset];
+      nz_count = p[offset+1] - nz_offset;
+
+      sparse_foldchange_summary(&(x[nz_offset]), &(i[nz_offset]), nz_count,
+        lab.data(), nsamples,
+        static_cast<double>(0),
+        sorted_cluster_counts, cl_sums, min_threshold, use_expm1);
+
+      // if percent is required, calc
+      if (calc_percents) {
+        foldchange_percents(sorted_cluster_counts, cl_sums, nsamples, 
+        &(p1[offset * label_count]), &(p2[offset * label_count]));
+      }
+
+      if (use_log) {
+        foldchange_logmean(sorted_cluster_counts, cl_sums, nsamples, &(fc[offset * label_count]), use_pseudocount, log_base);
+      } else {
+        foldchange_mean(sorted_cluster_counts, cl_sums, nsamples, &(fc[offset * label_count]));
+      }
+    }
+  }
+  Rprintf("[TIME] FC SXP Elapsed(ms)= %f\n", since(start).count());
+  start = std::chrono::steady_clock::now();
+
+  // ------------------------ generate output
+  // GET features.
+  // Rcpp::StringVector new_features = populate_feature_names(features, nfeatures);
+
+  if (as_dataframe) {
+    if (calc_percents)
+      return(export_fc_to_r_dataframe(
+        fc, fc_name, 
+        p1, "pct.1", 
+        p2, "pct.2",
+        sorted_cluster_counts, features));
+    else
+      return(export_de_to_r_dataframe(fc, fc_name,
+      sorted_cluster_counts, features));
+  } else {
+    if (calc_percents)
+      return (export_fc_to_r_matrix(
+        fc, fc_name, 
+        p1, "pct.1", 
+        p2, "pct.2",
+        sorted_cluster_counts, features));
+    else
+    // use clust for column names.
+      return (export_fc_to_r_matrix(fc, fc_name,
+        sorted_cluster_counts, features));
+  }
+  Rprintf("[TIME] FC SXP out wrap Elapsed(ms)= %f\n", since(start).count());
+
+}
+
+
+//' Fold Change
+//' 
+//' https://stackoverflow.com/questions/38338270/how-to-return-a-named-vecsxp-when-writing-r-extensions
+//' 
+//' @rdname ComputeFoldChangeSparse64SEXP
+//' @param matrix an expression matrix, COLUMN-MAJOR, each row is a sample, each column a gene
+//' @param labels an integer vector, each element indicating the group to which a sample belongs.
+//' @param calc_percents  a boolean to indicate whether to compute percents or not.
+//' @param fc_name column name to use for the fold change results 
+//' @param use_expm1 for "data", use expm1
+//' @param min_threshold minimum threshold to count towards pct.1 and pct.2 percentages.
+//' @param use_log for "data" and default log type, indicate log of the sum is to be used.
+//' @param log_base base for the log
+//' @param use_pseudocount for "data" and default log type, add pseudocount after log.
+//' @param as_dataframe TRUE/FALSE.  TRUE = return a linearized dataframe.  FALSE = return matrices.
+//' @param threads number of threads to use
+//' @return dense array or dataframe of size features*clusters
+//' @name ComputeFoldChangeSparse64SEXP
+//' @export
+// [[Rcpp::export]]
+extern SEXP ComputeFoldChangeSparse64SEXP(
+  SEXP matrix, SEXP labels,
+  bool calc_percents, std::string fc_name, 
+  bool use_expm1, double min_threshold, 
+  bool use_log, double log_base, bool use_pseudocount, 
+  bool as_dataframe,
+  int threads) {
+
+  std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start;
+
+  start = std::chrono::steady_clock::now();
+  // ----------- copy to local
+  // ---- input matrix
+  std::vector<double> x;
+  std::vector<long> i, p;
+  size_t nsamples, nfeatures, nelem;
+  SEXP features = copy_rsparsematrix_to_cppvectors(matrix, x, i, p, nsamples, nfeatures, nelem);
+
+  // Rprintf("Sparse DIM: samples %lu x features %lu, non-zeros %lu\n", nsamples, nfeatures, nelem); 
+
+  // ---- label vector
+  std::vector<int> lab;
+  copy_rvector_to_cppvector(labels, lab, nsamples);
+
+  // get the number of unique labels.
+  std::vector<std::pair<int, size_t> > sorted_cluster_counts;
+  count_clusters(lab, sorted_cluster_counts);
+  size_t label_count = sorted_cluster_counts.size();
+
+  Rprintf("[TIME] FC SXP 64 in copy Elapsed(ms)= %f\n", since(start).count());
+
+  start = std::chrono::steady_clock::now();
+
+  // ---- output pval matrix
+  std::vector<double> fc(nfeatures * label_count);
+  std::vector<double> p1(nfeatures * label_count);
+  std::vector<double> p2(nfeatures * label_count);
+  
+  // ------------------------ parameter
+  // int threads;
+  // double min_threshold, log_base;
+  // bool as_dataframe, calc_percents, use_expm1, use_log, use_pseudocount;
+  // import_fc_common_params(calc_percents, min_threshold, use_expm1,
+  //   use_log, log_base, use_pseudocount,
+  //   calc_percents, min_threshold, use_expm1, use_log, log_base, use_pseudocount);
+  // import_r_common_params(as_dataframe, threads,
+  //   as_dataframe, threads);
+  // std::string fc_name = Rcpp::as<std::string>(fc_name);
+
+  Rprintf("[TIME] FC SXP 64 out init Elapsed(ms)= %f\n", since(start).count());
+
+  // ======= compute.
+  
+  omp_set_num_threads(threads);
+  Rprintf("THREADING: using %d threads\n", threads);
+  
+  start = std::chrono::steady_clock::now();
+
+#pragma omp parallel num_threads(threads)
+  {
+    int tid = omp_get_thread_num();
+    size_t block = nfeatures / threads;
+    size_t rem = nfeatures - threads * block;
+    size_t offset = tid * block + (tid > rem ? rem : tid);
+    int nid = tid + 1;
+    size_t end = nid * block + (nid > rem ? rem : nid);
+
+    long nz_offset, nz_count;
+    std::unordered_map<int, clust_info> cl_sums;
+
+    for(; offset < end; ++offset) {
+      nz_offset = p[offset];
+      nz_count = p[offset+1] - nz_offset;
+
+      sparse_foldchange_summary(&(x[nz_offset]), &(i[nz_offset]), nz_count,
+        lab.data(), nsamples,
+        static_cast<double>(0),
+        sorted_cluster_counts, cl_sums, min_threshold, use_expm1);
+
+      // if percent is required, calc
+      if (calc_percents) {
+        foldchange_percents(sorted_cluster_counts, cl_sums, nsamples, 
+        &(p1[offset * label_count]), &(p2[offset * label_count]));
+      }
+
+      if (use_log) {
+        foldchange_logmean(sorted_cluster_counts, cl_sums, nsamples, &(fc[offset * label_count]), use_pseudocount, log_base);
+      } else {
+        foldchange_mean(sorted_cluster_counts, cl_sums, nsamples, &(fc[offset * label_count]));
+      }
+    }
+  }
+  Rprintf("[TIME] FC SXP 64 Elapsed(ms)= %f\n", since(start).count());
+  start = std::chrono::steady_clock::now();
+
+  // ------------------------ generate output
+  // GET features.
+  // Rcpp::StringVector new_features = populate_feature_names(features, nfeatures);
+
+  if (as_dataframe) {
+    if (calc_percents)
+      return(export_fc_to_r_dataframe(
+        fc, fc_name, 
+        p1, "pct.1", 
+        p2, "pct.2",
+        sorted_cluster_counts, features));
+    else
+      return(export_de_to_r_dataframe(fc, fc_name,
+      sorted_cluster_counts, features));
+  } else {
+    if (calc_percents)
+      return (export_fc_to_r_matrix(
+        fc, fc_name, 
+        p1, "pct.1", 
+        p2, "pct.2",
+        sorted_cluster_counts, features));
+    else
+    // use clust for column names.
+      return (export_fc_to_r_matrix(fc, fc_name,
+        sorted_cluster_counts, features));
+  }
+  Rprintf("[TIME] FC SXP 64 out wrap Elapsed(ms)= %f\n", since(start).count());
+
+}
+
+
 //' Filter based on FoldChange
 //' 
 //'  https://stackoverflow.com/questions/38338270/how-to-return-a-named-vecsxp-when-writing-r-extensions

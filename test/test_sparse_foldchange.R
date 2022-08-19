@@ -176,6 +176,16 @@ fastdesfc_df <- fastde::ComputeFoldChangeSparse(input, labels, calc_percents = T
 toc()
 
 
+tic("sparse fastde SEXP df")
+# time and run BioQC
+cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
+fastdesfc_df <- fastde::ComputeFoldChangeSparseSEXP(input, labels, calc_percents = TRUE, fc_name = "fc", 
+    use_expm1 = FALSE, min_threshold = 0.0, use_log = FALSE, log_base = 2.0, 
+    use_pseudocount = FALSE, as_dataframe = TRUE, threads = as.integer(4))
+toc()
+
+
+
 tic("sparse fastde")
 # time and run BioQC
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
@@ -184,6 +194,15 @@ fastdesfc <- fastde::ComputeFoldChangeSparse(input, labels, calc_percents = TRUE
     use_pseudocount = FALSE, as_dataframe = FALSE, threads = as.integer(4))
 toc()
 cat(sprintf("output %d X %d\n", nrow(fastdefc$fc), ncol(fastdefc$fc)))
+
+
+tic("sparse fastde SEXP")
+# time and run BioQC
+cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
+fastdesfc <- fastde::ComputeFoldChangeSparseSEXP(input, labels, calc_percents = TRUE, fc_name = "fc", 
+    use_expm1 = FALSE, min_threshold = 0.0, use_log = FALSE, log_base = 2.0, 
+    use_pseudocount = FALSE, as_dataframe = FALSE, threads = as.integer(4))
+toc()
 
 
 
@@ -229,6 +248,14 @@ fastdesfc_df <- fastde::ComputeFoldChangeSparse64(input64, labels, calc_percents
     use_pseudocount = FALSE, as_dataframe = TRUE, threads = as.integer(4))
 toc()
 
+tic("sparse64 fastde df")
+# time and run BioQC
+cat(sprintf("input 64 %d X %d\n", nrow(input64), ncol(input64)))
+fastdesfc_df <- fastde::ComputeFoldChangeSparse64SEXP(input64, labels, calc_percents = TRUE, fc_name = "fc", 
+    use_expm1 = FALSE, min_threshold = 0.0, use_log = FALSE, log_base = 2.0, 
+    use_pseudocount = FALSE, as_dataframe = TRUE, threads = as.integer(4))
+toc()
+
 
 tic("sparse64 fastde")
 # time and run BioQC
@@ -238,6 +265,15 @@ fastdesfc <- fastde::ComputeFoldChangeSparse64(input64, labels, calc_percents = 
     use_pseudocount = FALSE, as_dataframe = FALSE, threads = as.integer(4))
 toc()
 cat(sprintf("output64 %d X %d\n", nrow(fastdefc$fc), ncol(fastdefc$fc)))
+
+
+tic("sparse64 fastde")
+# time and run BioQC
+cat(sprintf("input64 %d X %d\n", nrow(input64), ncol(input64)))
+fastdesfc <- fastde::ComputeFoldChangeSparse64SEXP(input64, labels, calc_percents = TRUE, fc_name = "fc", 
+    use_expm1 = FALSE, min_threshold = 0.0, use_log = FALSE, log_base = 2.0, 
+    use_pseudocount = FALSE, as_dataframe = FALSE, threads = as.integer(4))
+toc()
 
 
 

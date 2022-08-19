@@ -96,6 +96,48 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// ComputeFoldChangeSparseSEXP
+extern SEXP ComputeFoldChangeSparseSEXP(SEXP matrix, SEXP labels, bool calc_percents, std::string fc_name, bool use_expm1, double min_threshold, bool use_log, double log_base, bool use_pseudocount, bool as_dataframe, int threads);
+RcppExport SEXP _fastde_ComputeFoldChangeSparseSEXP(SEXP matrixSEXP, SEXP labelsSEXP, SEXP calc_percentsSEXP, SEXP fc_nameSEXP, SEXP use_expm1SEXP, SEXP min_thresholdSEXP, SEXP use_logSEXP, SEXP log_baseSEXP, SEXP use_pseudocountSEXP, SEXP as_dataframeSEXP, SEXP threadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type matrix(matrixSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type labels(labelsSEXP);
+    Rcpp::traits::input_parameter< bool >::type calc_percents(calc_percentsSEXP);
+    Rcpp::traits::input_parameter< std::string >::type fc_name(fc_nameSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_expm1(use_expm1SEXP);
+    Rcpp::traits::input_parameter< double >::type min_threshold(min_thresholdSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_log(use_logSEXP);
+    Rcpp::traits::input_parameter< double >::type log_base(log_baseSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_pseudocount(use_pseudocountSEXP);
+    Rcpp::traits::input_parameter< bool >::type as_dataframe(as_dataframeSEXP);
+    Rcpp::traits::input_parameter< int >::type threads(threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(ComputeFoldChangeSparseSEXP(matrix, labels, calc_percents, fc_name, use_expm1, min_threshold, use_log, log_base, use_pseudocount, as_dataframe, threads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// ComputeFoldChangeSparse64SEXP
+extern SEXP ComputeFoldChangeSparse64SEXP(SEXP matrix, SEXP labels, bool calc_percents, std::string fc_name, bool use_expm1, double min_threshold, bool use_log, double log_base, bool use_pseudocount, bool as_dataframe, int threads);
+RcppExport SEXP _fastde_ComputeFoldChangeSparse64SEXP(SEXP matrixSEXP, SEXP labelsSEXP, SEXP calc_percentsSEXP, SEXP fc_nameSEXP, SEXP use_expm1SEXP, SEXP min_thresholdSEXP, SEXP use_logSEXP, SEXP log_baseSEXP, SEXP use_pseudocountSEXP, SEXP as_dataframeSEXP, SEXP threadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type matrix(matrixSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type labels(labelsSEXP);
+    Rcpp::traits::input_parameter< bool >::type calc_percents(calc_percentsSEXP);
+    Rcpp::traits::input_parameter< std::string >::type fc_name(fc_nameSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_expm1(use_expm1SEXP);
+    Rcpp::traits::input_parameter< double >::type min_threshold(min_thresholdSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_log(use_logSEXP);
+    Rcpp::traits::input_parameter< double >::type log_base(log_baseSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_pseudocount(use_pseudocountSEXP);
+    Rcpp::traits::input_parameter< bool >::type as_dataframe(as_dataframeSEXP);
+    Rcpp::traits::input_parameter< int >::type threads(threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(ComputeFoldChangeSparse64SEXP(matrix, labels, calc_percents, fc_name, use_expm1, min_threshold, use_log, log_base, use_pseudocount, as_dataframe, threads));
+    return rcpp_result_gen;
+END_RCPP
+}
 // FilterFoldChange
 extern SEXP FilterFoldChange(SEXP fc, SEXP pct1, SEXP pct2, SEXP init_mask, double min_pct, double min_diff_pct, double logfc_threshold, bool only_pos, bool not_count, int threads);
 RcppExport SEXP _fastde_FilterFoldChange(SEXP fcSEXP, SEXP pct1SEXP, SEXP pct2SEXP, SEXP init_maskSEXP, SEXP min_pctSEXP, SEXP min_diff_pctSEXP, SEXP logfc_thresholdSEXP, SEXP only_posSEXP, SEXP not_countSEXP, SEXP threadsSEXP) {
@@ -285,6 +327,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fastde_ComputeFoldChange", (DL_FUNC) &_fastde_ComputeFoldChange, 11},
     {"_fastde_ComputeFoldChangeSparse", (DL_FUNC) &_fastde_ComputeFoldChangeSparse, 11},
     {"_fastde_ComputeFoldChangeSparse64", (DL_FUNC) &_fastde_ComputeFoldChangeSparse64, 11},
+    {"_fastde_ComputeFoldChangeSparseSEXP", (DL_FUNC) &_fastde_ComputeFoldChangeSparseSEXP, 11},
+    {"_fastde_ComputeFoldChangeSparse64SEXP", (DL_FUNC) &_fastde_ComputeFoldChangeSparse64SEXP, 11},
     {"_fastde_FilterFoldChange", (DL_FUNC) &_fastde_FilterFoldChange, 10},
     {"_fastde_rc_sp_transpose", (DL_FUNC) &_fastde_rc_sp_transpose, 1},
     {"_fastde_rc_sp64_transpose", (DL_FUNC) &_fastde_rc_sp64_transpose, 1},

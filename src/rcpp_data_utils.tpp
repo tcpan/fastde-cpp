@@ -4,6 +4,8 @@
 
 #include "rcpp_data_utils.hpp"
 
+#include <algorithm>
+
 // ------- class def
 namespace Rcpp {
 
@@ -108,6 +110,72 @@ size_t copy_rvector_to_cppvector(Rcpp::NumericVector const & _vector, std::vecto
     return len;
 }
 
+size_t copy_rvector_to_cppvector(SEXP _vector, std::vector<double> & vec, size_t const & length, size_t const & offset) {
+    if (TYPEOF(_vector) != REALSXP) return 0;
+
+    size_t veclen = Rf_xlength(_vector);
+    if (offset >= veclen) return 0;  // offset is greater than vector length
+    size_t len = std::min(length, veclen - offset);   // length to return
+    
+    double * val = REAL(_vector);
+    val += offset;
+
+    vec.clear();
+    vec.insert(vec.end(), val, val + len);
+
+    return len;
+}
+
+size_t copy_rvector_to_cppvector(SEXP _vector, std::vector<bool> & vec, size_t const & length, size_t const & offset) {
+    if (TYPEOF(_vector) != LGLSXP) return 0;
+
+    size_t veclen = Rf_xlength(_vector);
+    if (offset >= veclen) return 0;  // offset is greater than vector length
+    size_t len = std::min(length, veclen - offset);   // length to return
+    
+    int * val = LOGICAL(_vector);
+    val += offset;
+
+    vec.clear();
+    vec.insert(vec.end(), val, val + len);
+
+    return len;
+}
+
+size_t copy_rvector_to_cppvector(SEXP _vector, std::vector<int> & vec, size_t const & length, size_t const & offset) {
+    if (TYPEOF(_vector) != INTSXP) return 0;
+
+    size_t veclen = Rf_xlength(_vector);
+    if (offset >= veclen) return 0;  // offset is greater than vector length
+    size_t len = std::min(length, veclen - offset);   // length to return
+    
+    int * val = INTEGER(_vector);
+    val += offset;
+
+    vec.clear();
+    vec.insert(vec.end(), val, val + len);
+
+    return len;
+}
+
+size_t copy_rvector_to_cppvector(SEXP _vector, std::vector<long> & vec, size_t const & length, size_t const & offset) {
+    if (TYPEOF(_vector) != REALSXP) return 0;
+
+    size_t veclen = Rf_xlength(_vector);
+    if (offset >= veclen) return 0;  // offset is greater than vector length
+    size_t len = std::min(length, veclen - offset);   // length to return
+    
+    double * val = REAL(_vector);
+    val += offset;
+
+
+    vec.clear();
+    vec.insert(vec.end(), val, val + len);
+
+    return len;
+}
+
+
 
 Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::dgCMatrix const & obj, 
     std::vector<double> & x,
@@ -177,6 +245,89 @@ Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::dgCMatrix64 const & ob
     // GET features.
     return Rcpp::as<Rcpp::StringVector>(obj.get_colnames());  // 
 }
+
+
+
+SEXP copy_rsparsematrix_to_cppvectors(SEXP obj, 
+    std::vector<double> & x,
+    std::vector<int> & i,
+    std::vector<int> & p,
+    size_t & nrow, size_t & ncol, size_t & nelem) {
+    
+    if (TYPEOF(obj) != S4SXP) return NILSXP;
+
+    copy_rvector_to_cppvector(R_do_slot(obj, Rf_install("i")), i);
+    copy_rvector_to_cppvector(R_do_slot(obj, Rf_install("p")), p);
+    copy_rvector_to_cppvector(R_do_slot(obj, Rf_install("x")), x);
+
+    int * dim = INTEGER(R_do_slot(obj, Rf_install("Dim")));
+    
+    nrow = dim[0];   // sample count,  nrow
+    ncol = dim[1];   // feature/gene count,  ncol
+    nelem = p[ncol];   // since p is offsets, the ncol+1 entry has the total count
+
+    // get the column names == features.
+    // Rcpp::List dimnms = obj.Dimnames;
+    // SEXP rownms = VECTOR_ELT(dimnms, 0);    // samples
+    // Rcpp::StringVector features = dimnms[1];   // features_names = columnames
+    // GET features.
+    SEXP dimns = R_do_slot(obj, Rf_install("Dimnames"));  // 
+    return VECTOR_ELT(dimns, 1);
+}
+
+void copy_rsparsematrix_to_cppvectors(
+    SEXP _x, SEXP _i, SEXP _p, 
+    std::vector<double> & x,
+    std::vector<long> & i,
+    std::vector<long> & p) {
+
+    copy_rvector_to_cppvector(_i, i);
+    copy_rvector_to_cppvector(_p, p);
+    copy_rvector_to_cppvector(_x, x);
+}
+
+void copy_rsparsematrix_to_cppvectors(
+    SEXP _x, SEXP _i, SEXP _p, 
+    std::vector<double> & x,
+    std::vector<int> & i,
+    std::vector<int> & p) {
+
+    copy_rvector_to_cppvector(_i, i);
+    copy_rvector_to_cppvector(_p, p);
+    copy_rvector_to_cppvector(_x, x);
+}
+
+
+
+
+SEXP copy_rsparsematrix_to_cppvectors(SEXP obj, 
+    std::vector<double> & x,
+    std::vector<long> & i,
+    std::vector<long> & p,
+    size_t & nrow, size_t & ncol, size_t & nelem) {
+
+    if (TYPEOF(obj) != S4SXP) return NILSXP;
+
+    copy_rvector_to_cppvector(R_do_slot(obj, Rf_install("i")), i);
+    copy_rvector_to_cppvector(R_do_slot(obj, Rf_install("p")), p);
+    copy_rvector_to_cppvector(R_do_slot(obj, Rf_install("x")), x);
+
+    int * dim = INTEGER(R_do_slot(obj, Rf_install("Dim")));
+    
+    nrow = dim[0];   // sample count,  nrow
+    ncol = dim[1];   // feature/gene count,  ncol
+    nelem = p[ncol];   // since p is offsets, the ncol+1 entry has the total count
+
+    // get the column names == features.
+    // Rcpp::List dimnms = obj.Dimnames;
+    // SEXP rownms = VECTOR_ELT(dimnms, 0);    // samples
+    // Rcpp::StringVector features = dimnms[1];   // features_names = columnames
+    // GET features.
+    SEXP dimns = R_do_slot(obj, Rf_install("Dimnames"));  // 
+    return VECTOR_ELT(dimns, 1);
+}
+
+
 
 
 // void import_r_common_params(SEXP as_dataframe, SEXP threads,
@@ -421,4 +572,430 @@ Rcpp::List export_fc_to_r_matrix(
     );
 
     return res;
+}
+
+
+
+SEXP export_de_to_r_dataframe(
+    std::vector<double> const & pv, std::string const & name,
+    std::vector<std::pair<int, size_t> > const & sorted_labels,
+    SEXP features
+) {
+    // https://stackoverflow.com/questions/23547625/returning-a-data-frame-from-c-to-r
+    // https://coolbutuseless.github.io/2020/09/16/creating-a-data.frame-in-c/
+
+
+    int intlen = snprintf(NULL, 0, "%lu", std::numeric_limits<size_t>::max());
+    char * str = reinterpret_cast<char *>(malloc(intlen + 1));
+    int proc_count = 0;
+    
+    size_t label_count = sorted_labels.size();
+    size_t el_count = pv.size();
+    size_t nfeatures = el_count / label_count;
+
+    if (TYPEOF(features) == NILSXP) {
+        PROTECT(features = Rf_allocVector(STRSXP, nfeatures));
+        ++proc_count;
+        
+        for (size_t j = 0; j < nfeatures; ++j) {
+        // create string and set in clust.
+        sprintf(str, "%lu", j);
+        SET_STRING_ELT(features, j, Rf_mkChar(str));
+        memset(str, 0, intlen + 1);
+        }
+    }
+
+    SEXP fc, clust, genenames, res, names, rownames, cls, dimnames;
+    int ncols = 3;
+    int col_id = 0;
+
+    PROTECT(res = Rf_allocVector(VECSXP, ncols));   // cluster id and gene names are repeated.
+    PROTECT(names = Rf_allocVector(STRSXP, ncols));  // col names
+    proc_count += 2;
+
+    PROTECT(cls = Rf_allocVector(STRSXP, 1)); // class attribute
+    SET_STRING_ELT(cls, 0, Rf_mkChar("data.frame"));
+    Rf_classgets(res, cls);
+    ++proc_count;
+    // Rf_classgets(res, Rf_install("data.frame"));
+
+    PROTECT(clust = Rf_allocVector(INTSXP, el_count));
+    PROTECT(genenames = Rf_allocVector(STRSXP, el_count));
+    PROTECT(fc = Rf_allocVector(REALSXP, el_count));
+    proc_count += 3;
+
+    double * fc_ptr = REAL(fc);
+    std::copy(pv.begin(), pv.end(), fc_ptr);
+
+    PROTECT(rownames = Rf_allocVector(STRSXP, label_count * nfeatures));  // dataframe column names.
+    ++proc_count;
+
+    // make the clusters vector.
+    int * clust_ptr = INTEGER(clust);
+    SEXP * features_ptr = STRING_PTR(features);
+    size_t j = 0;
+    // outer group = features, inner order = cluster
+    for (size_t i = 0; i < nfeatures; ++i) {
+      for (auto item : sorted_labels) {
+        // rotate through cluster labels for this feature.        
+        *clust_ptr = item.first;
+        ++clust_ptr;
+
+        // same feature name for the set of cluster
+        SET_STRING_ELT(genenames, j, Rf_duplicate(*features_ptr));
+
+        sprintf(str, "%lu", j);
+        SET_STRING_ELT(rownames, j, Rf_mkChar(str));
+        memset(str, 0, intlen + 1);
+  
+        ++j;
+      }
+      ++features_ptr;
+    }
+
+    SET_VECTOR_ELT(res, col_id, clust);  
+    SET_STRING_ELT(names, col_id, Rf_mkChar("cluster"));
+    ++col_id;
+    SET_VECTOR_ELT(res, col_id, genenames);
+    SET_STRING_ELT(names, col_id, Rf_mkChar("gene"));
+    ++col_id;
+
+    SET_VECTOR_ELT(res, col_id, fc);
+    // convert from STRSXP to CHARSXP
+    SET_STRING_ELT(names, col_id, Rf_mkChar(name.c_str())); 
+    ++col_id;
+
+    Rf_setAttrib(res, R_NamesSymbol, names);
+
+    // set row names - NEEDED to print the dataframe!!!
+    Rf_setAttrib(res, R_RowNamesSymbol, rownames);
+
+    // //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // // Set the row.names on the list.
+    // // Use the shortcut as used in .set_row_names() in R
+    // // i.e. set rownames to c(NA_integer, -len) and it will
+    // // take care of the rest. This is equivalent to rownames(x) <- NULL
+    // //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // PROTECT(rownames = Rf_allocVector(INTSXP, 2));
+    // SET_INTEGER_ELT(rownames, 0, NA_INTEGER);
+    // SET_INTEGER_ELT(rownames, 1, -(static_cast<long>(el_count));
+    // Rf_setAttrib(res, R_RowNamesSymbol, rownames);
+    // ++proc_count;
+
+    UNPROTECT(proc_count);
+    free(str);
+    // end = Clock::now();
+    // Rprintf("cleaned up %ld ns\n", 
+    // std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count());
+    return(res);
+
+}
+
+SEXP export_fc_to_r_dataframe(
+    std::vector<double> const & fc, std::string const & fcname,
+    std::vector<double> const & p1, std::string const & p1name,
+    std::vector<double> const & p2, std::string const & p2name,
+    std::vector<std::pair<int, size_t> > const & sorted_labels,
+    SEXP features
+) {
+    // https://stackoverflow.com/questions/23547625/returning-a-data-frame-from-c-to-r
+    // https://coolbutuseless.github.io/2020/09/16/creating-a-data.frame-in-c/
+
+
+    int intlen = snprintf(NULL, 0, "%lu", std::numeric_limits<size_t>::max());
+    char * str = reinterpret_cast<char *>(malloc(intlen + 1));
+    int proc_count = 0;
+    
+    size_t label_count = sorted_labels.size();
+    size_t el_count = fc.size();
+    size_t nfeatures = el_count / label_count;
+
+    if (TYPEOF(features) == NILSXP) {
+        PROTECT(features = Rf_allocVector(STRSXP, nfeatures));
+        ++proc_count;
+        
+        for (size_t j = 0; j < nfeatures; ++j) {
+        // create string and set in clust.
+        sprintf(str, "%lu", j);
+        SET_STRING_ELT(features, j, Rf_mkChar(str));
+        memset(str, 0, intlen + 1);
+        }
+    }
+
+    SEXP _fc, _p1, _p2, clust, genenames, res, names, rownames, cls, dimnames;
+    int ncols = 5;
+    int col_id = 0;
+
+    PROTECT(res = Rf_allocVector(VECSXP, ncols));   // cluster id and gene names are repeated.
+    PROTECT(names = Rf_allocVector(STRSXP, ncols));  // col names
+    proc_count += 2;
+
+    PROTECT(cls = Rf_allocVector(STRSXP, 1)); // class attribute
+    SET_STRING_ELT(cls, 0, Rf_mkChar("data.frame"));
+    Rf_classgets(res, cls);
+    ++proc_count;
+    // Rf_classgets(res, Rf_install("data.frame"));
+
+    PROTECT(clust = Rf_allocVector(INTSXP, el_count));
+    PROTECT(genenames = Rf_allocVector(STRSXP, el_count));
+    PROTECT(_fc = Rf_allocVector(REALSXP, el_count));
+    proc_count += 3;
+
+    PROTECT(_p1 = Rf_allocVector(REALSXP, el_count));
+    PROTECT(_p2 = Rf_allocVector(REALSXP, el_count)); 
+    proc_count += 2;
+
+
+    double * fc_ptr = REAL(_fc);
+    std::copy(fc.begin(), fc.end(), fc_ptr);
+
+    double * p1_ptr = REAL(_p1);
+    std::copy(p1.begin(), p1.end(), p1_ptr);
+    double * p2_ptr = REAL(_p2);
+    std::copy(p2.begin(), p2.end(), p2_ptr);
+
+    PROTECT(rownames = Rf_allocVector(STRSXP, label_count * nfeatures));  // dataframe column names.
+    ++proc_count;
+
+    // make the clusters vector.
+    int * clust_ptr = INTEGER(clust);
+    SEXP * features_ptr = STRING_PTR(features);
+    size_t j = 0;
+    // outer group = features, inner order = cluster
+    for (size_t i = 0; i < nfeatures; ++i) {
+      for (auto item : sorted_labels) {
+        // rotate through cluster labels for this feature.        
+        *clust_ptr = item.first;
+        ++clust_ptr;
+
+        // same feature name for the set of cluster
+        SET_STRING_ELT(genenames, j, Rf_duplicate(*features_ptr));
+
+        sprintf(str, "%lu", j);
+        SET_STRING_ELT(rownames, j, Rf_mkChar(str));
+        memset(str, 0, intlen + 1);
+  
+        ++j;
+      }
+      ++features_ptr;
+    }
+
+    SET_VECTOR_ELT(res, col_id, clust);  
+    SET_STRING_ELT(names, col_id, Rf_mkChar("cluster"));
+    ++col_id;
+    SET_VECTOR_ELT(res, col_id, genenames);
+    SET_STRING_ELT(names, col_id, Rf_mkChar("gene"));
+    ++col_id;
+
+    SET_VECTOR_ELT(res, col_id, _fc);
+    // convert from STRSXP to CHARSXP
+    SET_STRING_ELT(names, col_id, Rf_mkChar(fcname.c_str())); 
+    ++col_id;
+
+    SET_VECTOR_ELT(res, col_id, _p1);
+    SET_STRING_ELT(names, col_id, Rf_mkChar(p1name.c_str())); 
+    ++col_id;
+    SET_VECTOR_ELT(res, col_id, _p2);
+    SET_STRING_ELT(names, col_id, Rf_mkChar(p2name.c_str())); 
+    ++col_id;
+
+
+    Rf_setAttrib(res, R_NamesSymbol, names);
+
+    // set row names - NEEDED to print the dataframe!!!
+    Rf_setAttrib(res, R_RowNamesSymbol, rownames);
+
+    // //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // // Set the row.names on the list.
+    // // Use the shortcut as used in .set_row_names() in R
+    // // i.e. set rownames to c(NA_integer, -len) and it will
+    // // take care of the rest. This is equivalent to rownames(x) <- NULL
+    // //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // PROTECT(rownames = Rf_allocVector(INTSXP, 2));
+    // SET_INTEGER_ELT(rownames, 0, NA_INTEGER);
+    // SET_INTEGER_ELT(rownames, 1, -n);
+    // Rf_setAttrib(res, R_RowNamesSymbol, rownames);
+    // ++proc_count;
+
+    UNPROTECT(proc_count);
+    free(str);
+    // end = Clock::now();
+    // Rprintf("cleaned up %ld ns\n", 
+    // std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count());
+    return(res);
+
+}
+
+
+SEXP export_fc_to_r_matrix(
+    std::vector<double> const & fc, std::string const & fcname,
+    std::vector<double> const & p1, std::string const & p1name,
+    std::vector<double> const & p2, std::string const & p2name,
+    std::vector<std::pair<int, size_t> > const & sorted_labels,
+    SEXP features
+) {
+    
+    int intlen = snprintf(NULL, 0, "%lu", std::numeric_limits<size_t>::max());
+    char * str = reinterpret_cast<char *>(malloc(intlen + 1));
+    int proc_count = 0;
+    
+    size_t label_count = sorted_labels.size();
+    size_t nfeatures = Rf_xlength(features);
+    size_t nelem = fc.size();
+
+    if (TYPEOF(features) == NILSXP) {
+        PROTECT(features = Rf_allocVector(STRSXP, nfeatures));
+        ++proc_count;
+        
+        for (size_t j = 0; j < nfeatures; ++j) {
+        // create string and set in clust.
+        sprintf(str, "%lu", j);
+        SET_STRING_ELT(features, j, Rf_mkChar(str));
+        memset(str, 0, intlen + 1);
+        }
+    }
+
+    SEXP _fc, _p1, _p2, clust, genenames, res, names, cls, dimnames;
+    int ncols = 3;
+    int col_id = 0;
+
+    PROTECT(res = Rf_allocVector(VECSXP, ncols));   // cluster id and gene names are repeated.
+    PROTECT(names = Rf_allocVector(STRSXP, ncols));  // col names
+    proc_count += 2;
+
+    // use clust for column names.
+    PROTECT(clust = Rf_allocVector(STRSXP, label_count));
+    ++proc_count;
+    size_t j = 0;
+    for (auto item : sorted_labels) {
+      sprintf(str, "%d", item.first);
+      SET_STRING_ELT(clust, j, Rf_mkChar(str));
+      memset(str, 0, intlen + 1);
+      ++j;
+    }
+    
+    PROTECT(_fc = Rf_allocMatrix(REALSXP, label_count, nfeatures));
+    ++proc_count;
+    PROTECT(_p1 = Rf_allocMatrix(REALSXP, label_count, nfeatures));
+    PROTECT(_p2 = Rf_allocMatrix(REALSXP, label_count, nfeatures)); 
+    proc_count += 2;
+
+    double * fc_ptr = REAL(_fc);
+    std::copy(fc.begin(), fc.end(), fc_ptr);
+    double * p1_ptr = REAL(_p1);
+    std::copy(p1.begin(), p1.end(), p1_ptr);
+    double * p2_ptr = REAL(_p2);
+    std::copy(p2.begin(), p2.end(), p2_ptr);
+
+    SET_VECTOR_ELT(res, col_id, _fc);
+    // convert from STRSXP to CHARSXP
+    SET_STRING_ELT(names, col_id, Rf_mkChar(fcname.c_str())); 
+    ++col_id;
+
+    SET_VECTOR_ELT(res, col_id, _p1);
+    SET_STRING_ELT(names, col_id, Rf_mkChar(p1name.c_str()));
+    ++col_id;
+    SET_VECTOR_ELT(res, col_id, _p2);
+    SET_STRING_ELT(names, col_id, Rf_mkChar(p2name.c_str()));
+    ++col_id;
+
+    // set list element names.
+    Rf_setAttrib(res, R_NamesSymbol, names);
+
+    PROTECT(dimnames = Rf_allocVector(VECSXP, 2));
+    ++proc_count;
+    SET_VECTOR_ELT(dimnames, 0, clust);  // rows = clusters
+    SET_VECTOR_ELT(dimnames, 1, features);  // columns  = features (genes)
+
+    // https://stackoverflow.com/questions/5709940/r-extension-in-c-setting-matrix-row-column-names
+    Rf_setAttrib(_fc, R_DimNamesSymbol, dimnames);
+    Rf_setAttrib(_p1, R_DimNamesSymbol, Rf_duplicate(dimnames));
+    Rf_setAttrib(_p2, R_DimNamesSymbol, Rf_duplicate(dimnames));
+
+    UNPROTECT(proc_count);
+    free(str);
+    // end = Clock::now();
+    // Rprintf("cleaned up %ld ns\n", 
+    // std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count());
+    return(res);
+
+
+}
+
+SEXP export_fc_to_r_matrix(
+    std::vector<double> const & fc, std::string const & fcname,
+    std::vector<std::pair<int, size_t> > const & sorted_labels,
+    SEXP features
+) {
+
+
+    int intlen = snprintf(NULL, 0, "%lu", std::numeric_limits<size_t>::max());
+    char * str = reinterpret_cast<char *>(malloc(intlen + 1));
+    int proc_count = 0;
+    
+    size_t label_count = sorted_labels.size();
+    size_t nfeatures = Rf_xlength(features);
+    size_t nelem = fc.size();
+
+    if (TYPEOF(features) == NILSXP) {
+        PROTECT(features = Rf_allocVector(STRSXP, nfeatures));
+        ++proc_count;
+        
+        for (size_t j = 0; j < nfeatures; ++j) {
+        // create string and set in clust.
+        sprintf(str, "%lu", j);
+        SET_STRING_ELT(features, j, Rf_mkChar(str));
+        memset(str, 0, intlen + 1);
+        }
+    }
+
+    SEXP _fc, _p1, _p2, clust, genenames, res, names, cls, dimnames;
+    int ncols = 1;
+    int col_id = 0;
+
+    PROTECT(res = Rf_allocVector(VECSXP, ncols));   // cluster id and gene names are repeated.
+    PROTECT(names = Rf_allocVector(STRSXP, ncols));  // col names
+    proc_count += 2;
+
+    // use clust for column names.
+    PROTECT(clust = Rf_allocVector(STRSXP, label_count));
+    ++proc_count;
+    size_t j = 0;
+    for (auto item : sorted_labels) {
+      sprintf(str, "%d", item.first);
+      SET_STRING_ELT(clust, j, Rf_mkChar(str));
+      memset(str, 0, intlen + 1);
+      ++j;
+    }
+    
+    PROTECT(_fc = Rf_allocMatrix(REALSXP, label_count, nfeatures));
+    ++proc_count;
+
+    double * fc_ptr = REAL(_fc);
+    std::copy(fc.begin(), fc.end(), fc_ptr);
+
+    SET_VECTOR_ELT(res, col_id, _fc);
+    // convert from STRSXP to CHARSXP
+    SET_STRING_ELT(names, col_id, Rf_mkChar(fcname.c_str())); 
+    ++col_id;
+
+    // set list element names.
+    Rf_setAttrib(res, R_NamesSymbol, names);
+
+    PROTECT(dimnames = Rf_allocVector(VECSXP, 2));
+    ++proc_count;
+    SET_VECTOR_ELT(dimnames, 0, clust);  // rows = clusters
+    SET_VECTOR_ELT(dimnames, 1, features);  // columns  = features (genes)
+
+    // https://stackoverflow.com/questions/5709940/r-extension-in-c-setting-matrix-row-column-names
+    Rf_setAttrib(_fc, R_DimNamesSymbol, dimnames);
+
+    UNPROTECT(proc_count);
+    free(str);
+    // end = Clock::now();
+    // Rprintf("cleaned up %ld ns\n", 
+    // std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count());
+    return(res);
+
+
 }

@@ -51,6 +51,20 @@ size_t copy_rvector_to_cppvector(Rcpp::NumericVector const & _vector, std::vecto
     size_t const & length = std::numeric_limits<size_t>::max(), size_t const & offset = 0);
 
 
+size_t copy_rvector_to_cppvector(SEXP _vector, std::vector<bool> & vec, 
+    size_t const & length = std::numeric_limits<size_t>::max(), size_t const & offset = 0);
+
+size_t copy_rvector_to_cppvector(SEXP _vector, std::vector<double> & vec, 
+    size_t const & length = std::numeric_limits<size_t>::max(), size_t const & offset = 0);
+
+size_t copy_rvector_to_cppvector(SEXP _vector, std::vector<long> & vec, 
+    size_t const & length = std::numeric_limits<size_t>::max(), size_t const & offset = 0);
+
+size_t copy_rvector_to_cppvector(SEXP _vector, std::vector<int> & vec, 
+    size_t const & length = std::numeric_limits<size_t>::max(), size_t const & offset = 0);
+
+
+
 Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::dgCMatrix const & matrix, 
     std::vector<double> & x,
     std::vector<int> & i,
@@ -63,8 +77,20 @@ Rcpp::StringVector copy_rsparsematrix_to_cppvectors(Rcpp::dgCMatrix64 const & ma
     std::vector<long> & p,
     size_t & nrow, size_t & ncol, size_t & nelem);
 
+SEXP copy_rsparsematrix_to_cppvectors(SEXP matrix, 
+    std::vector<double> & x,
+    std::vector<long> & i,
+    std::vector<long> & p,
+    size_t & nrow, size_t & ncol, size_t & nelem);
 
-Rcpp::StringVector copy_rsparsematrix_to_cppvectors(
+SEXP copy_rsparsematrix_to_cppvectors(SEXP matrix, 
+    std::vector<double> & x,
+    std::vector<int> & i,
+    std::vector<int> & p,
+    size_t & nrow, size_t & ncol, size_t & nelem);
+
+
+void copy_rsparsematrix_to_cppvectors(
     Rcpp::NumericVector const & _x, Rcpp::IntegerVector const & _i, Rcpp::IntegerVector const & _p, 
     std::vector<double> & x,
     std::vector<int> & i,
@@ -72,13 +98,26 @@ Rcpp::StringVector copy_rsparsematrix_to_cppvectors(
     size_t & nrow, size_t & ncol, size_t & nelem);
 
 
-Rcpp::StringVector copy_rsparsematrix_to_cppvectors(
+void copy_rsparsematrix_to_cppvectors(
     Rcpp::NumericVector const & _x, Rcpp::NumericVector const & _i, Rcpp::NumericVector const & _p, 
     std::vector<double> & x,
     std::vector<long> & i,
     std::vector<long> & p,
     size_t & nrow, size_t & ncol, size_t & nelem);
 
+void copy_rsparsematrix_to_cppvectors(
+    SEXP _x, SEXP _i, SEXP _p, 
+    std::vector<double> & x,
+    std::vector<long> & i,
+    std::vector<long> & p,
+    size_t & nrow, size_t & ncol, size_t & nelem);
+
+void copy_rsparsematrix_to_cppvectors(
+    SEXP _x, SEXP _i, SEXP _p, 
+    std::vector<double> & x,
+    std::vector<int> & i,
+    std::vector<int> & p,
+    size_t & nrow, size_t & ncol, size_t & nelem);
 
 // //------ these may not be needed - Rcpp can wrap?
 // void import_r_common_params(SEXP as_dataframe, SEXP threads,
@@ -130,4 +169,32 @@ Rcpp::List export_fc_to_r_matrix(
     std::vector<std::pair<int, size_t> > const & sorted_labels,
     Rcpp::StringVector const & features
 );
+
+
+SEXP export_de_to_r_dataframe(
+    std::vector<double> const & pv, std::string const & name,
+    std::vector<std::pair<int, size_t> > const & sorted_labels,
+    SEXP features
+);
+
+SEXP export_fc_to_r_dataframe(
+    std::vector<double> const & fc, std::string const & fcname,
+    std::vector<double> const & p1, std::string const & p1name,
+    std::vector<double> const & p2, std::string const & p2name,
+    std::vector<std::pair<int, size_t> > const & sorted_labels,
+    SEXP features
+);
+SEXP export_fc_to_r_matrix(
+    std::vector<double> const & fc, std::string const & fcname,
+    std::vector<double> const & p1, std::string const & p1name,
+    std::vector<double> const & p2, std::string const & p2name,
+    std::vector<std::pair<int, size_t> > const & sorted_labels,
+    SEXP features
+);
+SEXP export_fc_to_r_matrix(
+    std::vector<double> const & fc, std::string const & fcname,
+    std::vector<std::pair<int, size_t> > const & sorted_labels,
+    SEXP features
+);
+
 
