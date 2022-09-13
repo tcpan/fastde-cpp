@@ -43,7 +43,7 @@ rownames(input) <- samplenames
 #cat(sprintf("test size:  r %d X c %d.\n", nrow(wilcox), ncol(wilcox)))
 cat(sprintf("input size:  r %d X c %d\n", nrow(input), ncol(input)))
 
-labels <- labels_all[1:nrow(input)]
+labels <- as.integer(labels_all[1:nrow(input)])
 cat(sprintf("Labels: %d \n", length(labels)))
 
 L <- unique(sort(labels))

@@ -9,7 +9,7 @@
 #' @export dgCMatrix64
 #' @exportClass dgCMatrix64
 dgCMatrix64 <- setClass("dgCMatrix64", contains = c("dsparseMatrix"),
-	 slots = c(i = "numeric", p = "numeric"),
+	 slots = c(i = "integer", p = "numeric"),
 	 prototype = prototype(p = 0)
      )
 # no validation.  use Dim - assume dimensions are at most 2B..
@@ -25,7 +25,7 @@ dgCMatrix64 <- setClass("dgCMatrix64", contains = c("dsparseMatrix"),
     newx <- new("dgCMatrix64")
     slot(newx,"x",check=FALSE) <- x
     x <- NULL
-    slot(newx,"i",check=FALSE) <- as.numeric(i)
+    slot(newx,"i",check=FALSE) <- as.integer(i)
     i <- NULL
     slot(newx,"p",check=FALSE) <- as.numeric(p)
     p <- NULL
@@ -60,7 +60,7 @@ as.dgCMatrix64.dgCMatrix64 <- function(x, eps = .Machine$double.eps)  {
 as.dgCMatrix64.dgCMatrix <- function(x, eps = .Machine$double.eps)  {
     newx <- new("dgCMatrix64")
     slot(newx, "x", check=FALSE) <- x@x
-    slot(newx, "i", check=FALSE) <- as.numeric(x@i)
+    slot(newx, "i", check=FALSE) <- as.integer(x@i)
     slot(newx, "p", check=FALSE) <- as.numeric(x@p)
     slot(newx, "Dim", check=FALSE) <- x@Dim
     slot(newx, "Dimnames", check=FALSE) <- x@Dimnames

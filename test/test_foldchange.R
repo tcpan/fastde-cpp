@@ -47,7 +47,7 @@ tic("get unique labels")
 cat(sprintf("input size:  r %d X c %d\n", nrow(input), ncol(input)))
 cat(sprintf("Labels rows: %d \n", length(labels_all)))
 
-labels <- labels_all[1:nrow(input)]
+labels <- as.integer(labels_all[1:nrow(input)])
 cat(sprintf("Labels: %d \n", length(labels)))
 
 L <- unique(sort(labels))

@@ -3,11 +3,15 @@
 #' Description of your package
 #' 
 #' @docType package
-#' @author Tony Pan <tpan7@gatech.edu>
-#' @import Rcpp tictoc Seurat BioQC
-#' @importFrom Rcpp evalCpp
+#' @author Tony Pan <tcpan@emory.edu>
+#' @import tictoc 
+#' @import Seurat 
+#' @import Matrix 
+#' @import rhdf5 
+#' @import BioQC
+#' @import methods
 #' @import future
-#' @useDynLib fastde
+#' @useDynLib fastde, .registration = TRUE
 #' @name fastde
 NULL  
 

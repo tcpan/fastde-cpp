@@ -1,9 +1,6 @@
-#include <Rcpp.h>
-#include <R.h>
-#include <Rdefines.h>
+#pragma once
 
-// TRY WITH Rcpp classes (NumericMatrix, NumericVector), or use Rcpp::as<std::vector<double> >
-
+#include "fastde/ttest.hpp"
 
 // NOTE: column major R data structure.  getting a whole column is faster?
 // INPUT: samples are in rows, all samples (in rows) for a feature (a column) are contiguous.
@@ -17,21 +14,9 @@
  */
 
 #include <cmath>  // sqrt
-#include <tuple>
-#include <unordered_map>  // unordered_map
-#include <unordered_set> 
-#include <set>
-#include <vector>
 #include <algorithm>
 #include <type_traits>
-
-// Enable C++11
-// [[Rcpp::plugins(cpp11)]]
-
-// Enable OpenMP (excludes macOS)
-// [[Rcpp::plugins(openmp)]]
-
-// NOTE: do not use Rprintf inside thread.
+#include <cassert>
 
 #include <omp.h>
 
@@ -39,18 +24,10 @@
 // #define INV_SQRT2 0.70710678118
 // #endif
 
-#include "rcpp_cluster_utils.hpp"
-#include "rcpp_data_utils.hpp"
-#include "rcpp_benchmark_utils.hpp"
+#include "fastde/cluster_utils.hpp"
+#include "fastde/benchmark_utils.hpp"
 
-// sum, sum of square, and 
-template <typename IT>
-struct gaussian_stats {
-  size_t count;
-  size_t zeros;
-  IT sum;
-  IT sum_of_square;
-};
+
 
 // ids points to start of the column's positive element row ids
 // x  points to the start fo the columns positive element values
@@ -172,20 +149,12 @@ void dense_ttest_summary(
 //  https://codeplea.com/incomplete-beta-function-c  for computing the regularized incomplete beta function and the cdf.
 // the class below leverages the ideas and code from https://codeplea.com/incomplete-beta-function-c
 // to produce the regularized incomplete beta function output given a degree of freedom (v), and an x value derived from t and v.
-template <typename T, typename DEGREE, bool precompute>
-class incomplete_beta;
 
+
+// regularized incomplete beta function.  from https://codeplea.com/incomplete-beta-function-c
+// call with a, b, and x as originally supplied by the user.  use "flip" to reverse them.
 template <typename T, typename DEGREE>
-class incomplete_beta<T, DEGREE, false> {
-
-  protected:
-    static constexpr size_t ITERS = 200;   /// seems to be okay with the starting a, b.
-
-  public:
-
-    // regularized incomplete beta function.  from https://codeplea.com/incomplete-beta-function-c
-    // call with a, b, and x as originally supplied by the user.  use "flip" to reverse them.
-    double incbeta(DEGREE const & a, DEGREE const & b, 
+double incomplete_beta<T, DEGREE, false>::incbeta(DEGREE const & a, DEGREE const & b, 
       T const & x, bool const & flip) {
 
       /*Find the first part before the continued fraction.*/
@@ -242,11 +211,8 @@ class incomplete_beta<T, DEGREE, false> {
     }
 
 
-    // note that dof/2.0 for a AND b is not what wikipedia has.
-    incomplete_beta() {};
-
-
-    int get_convergence_type(DEGREE const & _a, DEGREE const & _b, T const & x) {
+template <typename T, typename DEGREE>
+int incomplete_beta<T, DEGREE, false>::get_convergence_type(DEGREE const & _a, DEGREE const & _b, T const & x) {
       if (x < 0.0 || x > 1.0) return 0;
 
       /*The continued fraction converges nicely for x < (a+1)/(a+b+2)*/
@@ -255,12 +221,14 @@ class incomplete_beta<T, DEGREE, false> {
       else return 1;
     }
 
-    T unchecked_incbeta(DEGREE const & _a, DEGREE const & _b, T const & x) {
+template <typename T, typename DEGREE>
+T incomplete_beta<T, DEGREE, false>::unchecked_incbeta(DEGREE const & _a, DEGREE const & _b, T const & x) {
       return incbeta(_a, _b, x, false);   // do as is.  no flip.
     }
 
 
-    T operator()(DEGREE const & _a, DEGREE const & _b, T const & x) {
+template <typename T, typename DEGREE>
+T incomplete_beta<T, DEGREE, false>::operator()(DEGREE const & _a, DEGREE const & _b, T const & x) {
       int type = get_convergence_type(_a, _b, x);
 
       if (type == 0) return std::numeric_limits<T>::infinity();
@@ -268,24 +236,10 @@ class incomplete_beta<T, DEGREE, false> {
       else return (1.0 - incbeta(_a, _b, x, true));  // inverse.  swap a and b, and complement x inside the function.
     }
 
-};
 
 
 template <typename T, typename DEGREE>
-class incomplete_beta<T, DEGREE, true> {
-
-  protected:
-    const double a;
-    const double b;
-    const double x_thresh;
-    const double lbeta;  // symmetric
-    std::vector<double> numerator_ab;
-    std::vector<double> numerator_ba;
-    // static constexpr double STOP = 1.0e-8;
-    // static constexpr double TINY = 1.0e-30;
-    static constexpr size_t ITERS = 200;
-
-    void precompute() {
+void incomplete_beta<T, DEGREE, true>::precompute() {
       numerator_ab.resize(ITERS + 1);
       numerator_ab[0] = 1.0;
       numerator_ba.resize(ITERS + 1);
@@ -308,8 +262,9 @@ class incomplete_beta<T, DEGREE, true> {
       }
     }
 
-  public:
-    double incbeta(T const & x, bool const & flip ) {
+
+template <typename T, typename DEGREE>
+double incomplete_beta<T, DEGREE, true>::incbeta(T const & x, bool const & flip ) {
 
       double front = exp(log(static_cast<double>(x))*a+log(1.0-static_cast<double>(x))*b - lbeta);
 
@@ -354,7 +309,8 @@ class incomplete_beta<T, DEGREE, true> {
     }
 
     // note that dof/2.0 for a AND b is not what wikipedia has.
-    incomplete_beta(DEGREE const & _a, DEGREE const & _b) :
+template <typename T, typename DEGREE>
+incomplete_beta<T, DEGREE, true>::incomplete_beta(DEGREE const & _a, DEGREE const & _b) :
       a(_a),
       b(_b), 
       x_thresh((a + 1.0) / (a + b + 2.0)),
@@ -364,19 +320,24 @@ class incomplete_beta<T, DEGREE, true> {
     }
 
 
-    int get_convergence_type(T const & x) {
+
+template <typename T, typename DEGREE>
+int incomplete_beta<T, DEGREE, true>::get_convergence_type(T const & x) {
       if (x < 0.0 || x > 1.0) return 0;
       /*The continued fraction converges nicely for x < (a+1)/(a+b+2)*/
       if (static_cast<double>(x) >= x_thresh) return -1;
       else return 1;
     }
 
-    T unchecked_incbeta(T const & x, bool const & flip) {
+
+template <typename T, typename DEGREE>
+T incomplete_beta<T, DEGREE, true>::unchecked_incbeta(T const & x, bool const & flip) {
       return incbeta(x, flip);   // flip is convergence_type == -1
     }
 
 
-    T operator()(T const & x) {
+template <typename T, typename DEGREE>
+T incomplete_beta<T, DEGREE, true>::operator()(T const & x) {
       int type = get_convergence_type(x);
 
       if (type == 0) return std::numeric_limits<T>::infinity();
@@ -384,28 +345,16 @@ class incomplete_beta<T, DEGREE, true> {
       else return (1.0 - incbeta(x, true));  // note (1.0 - X) is subject epsilon limits for X close to 0 and close to 1.
     }
 
-};
-
-
-
-template <typename T, typename DEGREE, bool precompute>
-class t_distribution;
 
 
 // based on nist's description of continued fractions.  http://dlmf.nist.gov/8.17#SS5.p1
 // following Lentz' Algorihtm
 // specialized for double for now.
-template <typename T, typename DEGREE>
-class t_distribution<T, DEGREE, false> {
-  protected:
-    incomplete_beta<T, DEGREE, false> incbeta;
 
-  public:
-    // note that dof/2.0 for a AND b is not what wikipedia has.
-    t_distribution() {};
 
     // directly compute pval (extreme value, or error probability)
-    T pval(T const & t, DEGREE const & _v, int const & test_type = PVAL_GREATER) {
+template <typename T, typename DEGREE>
+T t_distribution<T, DEGREE, false>::pval(T const & t, DEGREE const & _v, int const & test_type) {
       
       // first calcualte the cdf.
       double _cdf, o;
@@ -466,7 +415,8 @@ class t_distribution<T, DEGREE, false> {
     }
 
 
-    T cdf(T const & t, DEGREE const & _v) {
+template <typename T, typename DEGREE>
+T t_distribution<T, DEGREE, false>::cdf(T const & t, DEGREE const & _v) {
       //  if _v is infinity, then use normal CDF, so erfc()?
               
       if (_v == std::numeric_limits<T>::infinity()) return 0.5 * erfc(-t * M_SQRT1_2);
@@ -494,21 +444,15 @@ class t_distribution<T, DEGREE, false> {
       return out1;
     }
 
-};
 
 
-template <typename T, typename DEGREE>
-class t_distribution<T, DEGREE, true> {
-  protected:
-    DEGREE _v;
-    incomplete_beta<T, DEGREE, true> incbeta;
-
-  public:
     // note that dof/2.0 for a AND b is not what wikipedia has.
-    t_distribution(DEGREE const & dof) : _v(dof), incbeta(dof * 0.5, 0.5) {};
+template <typename T, typename DEGREE>
+t_distribution<T, DEGREE, true>::t_distribution(DEGREE const & dof) : _v(dof), incbeta(dof * 0.5, 0.5) {};
 
     // directly compute pval to avoid repeated 1-x that causes epsilon loss of precision.
-    T pval(T const & t, int const & test_type = PVAL_GREATER) {
+template <typename T, typename DEGREE>
+T t_distribution<T, DEGREE, true>::pval(T const & t, int const & test_type) {
       
       // first calcualte the cdf.
       double _cdf, o;
@@ -569,7 +513,8 @@ class t_distribution<T, DEGREE, true> {
     }
 
     // compute CDF directly
-    T cdf(T const & t) {
+template <typename T, typename DEGREE>
+T t_distribution<T, DEGREE, true>::cdf(T const & t) {
       //  if _v is infinity, then use normal CDF, so erfc()?
               
       if (_v == std::numeric_limits<T>::infinity()) return 0.5 * erfc(-t * M_SQRT1_2);
@@ -597,7 +542,6 @@ class t_distribution<T, DEGREE, true> {
       return out1;
     }
 
-};
 
 // types:  
 template <typename LABEL, typename OT_ITER,
@@ -606,8 +550,8 @@ void two_sample_ttest(
   std::unordered_map<LABEL, gaussian_stats<double> > const & gaussian_sums,
   std::vector<std::pair<LABEL, size_t> > const & clust_counts,
   OT_ITER out, 
-  int const & test_type = PVAL_TWO_SIDED, 
-  bool const equal_variance = false) {
+  int const & test_type, 
+  bool const equal_variance) {
   
   size_t count = 0;
 
@@ -703,51 +647,26 @@ void two_sample_ttest(
 }
 
 
-//' Fast t-Test for dense matrix
-//'
-//' This implementation uses normal approximation, which works reasonably well if sample size is large (say N>=20)
-//' 
-//' @rdname ttest_fast
-//' @param matrix an expression matrix, COLUMN-MAJOR, each col is a feature, each row a sample
-//' @param labels an integer vector, each element indicating the group to which a sample belongs.
-//' @param alternative 
-//' \itemize{
-//' \item{0} : p(two.sided)
-//' \item{1} : p(less)
-//' \item{2} : p(greater)
-//' }
-//' @param var_equal TRUE/FALSE to indicate the variance is expected to be equal
-//' @param as_dataframe TRUE/FALSE - TRUE returns a dataframe, FALSE returns a matrix
-//' @param threads  number of concurrent threads.
-//' @return array or dataframe.  for each gene/feature, the rows for the clusters are ordered by id.
-//' @name ttest_fast
-//' @export
-// [[Rcpp::export]]
-extern SEXP ttest_fast(
-    Rcpp::NumericMatrix const & matrix, Rcpp::IntegerVector const & labels, 
+// omp t-Test for dense matrix
+template < typename XIT, typename LIT>
+void omp_dense_ttest(
+    XIT mat, size_t const & nsamples, size_t const & nfeatures,
+    LIT lab, 
     int alternative, 
     bool var_equal, 
-    bool as_dataframe,
+    std::vector<double> &pv,
+    std::vector<std::pair<int, size_t> > &sorted_cluster_counts,
     int threads) {
 
-  // ----------- copy to local
-  // ---- input matrix
-  std::vector<double> mat;
-  size_t nsamples, nfeatures, nelem;
-  Rcpp::StringVector features = 
-    copy_rmatrix_to_cppvector(matrix, mat, nsamples, nfeatures, nelem);
-
-  // ---- label vector
-  std::vector<int> lab;
-  copy_rvector_to_cppvector(labels, lab, nsamples);
+  std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start = std::chrono::steady_clock::now();
 
   // get the number of unique labels.
-  std::vector<std::pair<int, size_t> > sorted_cluster_counts;
-  count_clusters(lab, sorted_cluster_counts);
+  sorted_cluster_counts.clear();
+  count_clusters(lab, nsamples, sorted_cluster_counts, threads);
   size_t label_count = sorted_cluster_counts.size();
 
   // ---- output pval matrix
-  std::vector<double> pv(nfeatures * label_count);
+  pv.clear(); pv.resize(nfeatures * label_count);
 
   // ------------------------ parameter
   // int alternative, threads;
@@ -759,9 +678,8 @@ extern SEXP ttest_fast(
 
   // ------------------------ compute
   omp_set_num_threads(threads);
-  Rprintf("THREADING: using %d threads\n", threads);
+  // Rprintf("THREADING: using %d threads\n", threads);
 
-  std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start = std::chrono::steady_clock::now();
 
 #pragma omp parallel num_threads(threads)
   {
@@ -776,81 +694,46 @@ extern SEXP ttest_fast(
     // printf("thread %d summarizing feature %ld\n", omp_get_thread_num(), offset);
     for(; offset < end; ++offset) {
       // directly compute matrix and res pointers.
-      dense_ttest_summary(&(mat[offset * nsamples]), 
-        lab.data(), nsamples, 0.0, sorted_cluster_counts, gaussian_sums);
+      dense_ttest_summary(mat + offset * nsamples, 
+        lab, nsamples, 0.0, sorted_cluster_counts, gaussian_sums);
+
       two_sample_ttest(gaussian_sums, sorted_cluster_counts, 
-        &(pv[offset * label_count]), alternative, var_equal);
+        pv.data() + offset * label_count, alternative, var_equal);
     }
   }
-  Rprintf("[TIME] T-test Elapsed(ms)= %f\n", since(start).count());
+  // Rprintf("[TIME] T-test Elapsed(ms)= %f\n", since(start).count());
 
-
-  // ------------------------ generate output
-  // GET features.
-  Rcpp::StringVector new_features = populate_feature_names(features, nfeatures);
-
-  if (as_dataframe) {
-    return(Rcpp::wrap(export_de_to_r_dataframe(pv, "p_val", sorted_cluster_counts, new_features)));
-  } else {
-    // use clust for column names.
-    return (Rcpp::wrap(export_de_to_r_matrix(pv, sorted_cluster_counts, new_features)));
-  }
 }
 
 
 
 
 // =================================
-
-//' Fast T-Test for sparse matrix.  2 sample t-test.
-//'
-//' This implementation uses normal approximation, which works reasonably well if sample size is large (say N>=20)
-//' 
-//' @rdname sparse_ttest_fast
-//' @param matrix an expression matrix, COLUMN-MAJOR, each col is a feature, each row a sample
-//' @param labels an integer vector, each element indicating the group to which a sample belongs.
-//' @param alternative 
-//' \itemize{
-//' \item{0} : p(two.sided)
-//' \item{1} : p(less)
-//' \item{2} : p(greater)
-//' }
-//' @param var_equal TRUE/FALSE to indicate the variance is expected to be equal
-//' @param as_dataframe TRUE/FALSE - TRUE returns a dataframe, FALSE returns a matrix
-//' @param threads  number of concurrent threads.
-//' @return array or dataframe.  for each gene/feature, the rows for the clusters are ordered by id.
-//' @name sparse_ttest_fast
-//' @export
-// [[Rcpp::export]]
-extern SEXP sparse_ttest_fast(
-    Rcpp::dgCMatrix const & matrix, Rcpp::IntegerVector const & labels, 
+template <typename XIT, typename IIT, typename PIT, 
+    typename LIT>
+void omp_sparse_ttest(
+    XIT x, IIT i, PIT p, size_t nsamples, size_t nfeatures,
+    LIT lab,
     int alternative, 
     bool var_equal, 
-    bool as_dataframe,
+    std::vector<double> &pv,
+    std::vector<std::pair<int, size_t> > &sorted_cluster_counts,
     int threads) {
   // Rprintf("here 1\n");
 
-  // ----------- copy to local
-  // ---- input matrix
-  std::vector<double> x;
-  std::vector<int> i, p;
-  size_t nsamples, nfeatures, nelem;
-  Rcpp::StringVector features = 
-    copy_rsparsematrix_to_cppvectors(matrix, x, i, p, nsamples, nfeatures, nelem);
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start;
 
-  // Rprintf("Sparse DIM: samples %lu x features %lu, non-zeros %lu\n", nsamples, nfeatures, nelem); 
+  start = std::chrono::steady_clock::now();
 
-  // ---- label vector
-  std::vector<int> lab;
-  copy_rvector_to_cppvector(labels, lab, nsamples);
 
   // get the number of unique labels.
-  std::vector<std::pair<int, size_t> > sorted_cluster_counts;
-  count_clusters(lab, sorted_cluster_counts);
+  sorted_cluster_counts.clear();
+  count_clusters(lab, nsamples, sorted_cluster_counts, threads);
   size_t label_count = sorted_cluster_counts.size();
 
+
   // ---- output pval matrix
-  std::vector<double> pv(nfeatures * label_count);
+  pv.clear(); pv.resize(nfeatures * label_count);
 
   // ------------------------ parameter
   // int alternative, threads;
@@ -862,113 +745,8 @@ extern SEXP sparse_ttest_fast(
 
   // ------------------------- compute
   omp_set_num_threads(threads);
-  Rprintf("THREADING: using %d threads\n", threads);
+  // Rprintf("THREADING: using %d threads\n", threads);
 
-  std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start = std::chrono::steady_clock::now();
-  
-#pragma omp parallel num_threads(threads)
-  {
-    int tid = omp_get_thread_num();
-    size_t block = nfeatures / threads;
-    size_t rem = nfeatures - threads * block;
-    size_t offset = tid * block + (tid > rem ? rem : tid);
-    int nid = tid + 1;
-    size_t end = nid * block + (nid > rem ? rem : nid);
-  
-    int nz_offset, nz_count;
-    std::unordered_map<int, gaussian_stats<double> > gaussian_sums;
-
-    for(; offset < end; ++offset) {
-      nz_offset = p[offset];
-      nz_count = p[offset+1] - nz_offset;
-      
-      // directly compute matrix and res pointers.
-      // Rprintf("thread %d processing feature %d, nonzeros %d\n", omp_get_thread_num(), offset, nz_count);
-      sparse_ttest_summary(&(x[nz_offset]), &(i[nz_offset]), nz_count,
-        lab.data(), nsamples, 0.0, sorted_cluster_counts, gaussian_sums);
-      two_sample_ttest(gaussian_sums, sorted_cluster_counts,
-        &(pv[offset * label_count]), alternative, var_equal);
-    }
-  }
-  Rprintf("[TIME] T-test Elapsed(ms)= %f\n", since(start).count());
-
-
-  // ----------------------- make output
-  Rcpp::StringVector new_features = populate_feature_names(features, nfeatures);
-  
-  if (as_dataframe) {
-    return(Rcpp::wrap(export_de_to_r_dataframe(pv, "p_val", sorted_cluster_counts, new_features)));
-  } else {
-    // use clust for column names.
-    return (Rcpp::wrap(export_de_to_r_matrix(pv, sorted_cluster_counts, new_features)));
-  }
-}
-
-
-
-//' Fast T-Test for sparse matrix.  2 sample t-test.
-//'
-//' This implementation uses normal approximation, which works reasonably well if sample size is large (say N>=20)
-//' 
-//' @rdname sparse64_ttest_fast
-//' @param matrix an expression matrix, COLUMN-MAJOR, each col is a feature, each row a sample
-//' @param labels an integer vector, each element indicating the group to which a sample belongs.
-//' @param alternative 
-//' \itemize{
-//' \item{0} : p(two.sided)
-//' \item{1} : p(less)
-//' \item{2} : p(greater)
-//' }
-//' @param var_equal TRUE/FALSE to indicate the variance is expected to be equal
-//' @param as_dataframe TRUE/FALSE - TRUE returns a dataframe, FALSE returns a matrix
-//' @param threads  number of concurrent threads.
-//' @return array or dataframe.  for each gene/feature, the rows for the clusters are ordered by id.
-//' @name sparse64_ttest_fast
-//' @export
-// [[Rcpp::export]]
-extern SEXP sparse64_ttest_fast(
-    Rcpp::dgCMatrix64 const & matrix, Rcpp::IntegerVector const & labels, 
-    int alternative, 
-    bool var_equal, 
-    bool as_dataframe,
-    int threads) {
-  // Rprintf("here 1\n");
-
-  // ----------- copy to local
-  // ---- input matrix
-  std::vector<double> x;
-  std::vector<long> i, p;
-  size_t nsamples, nfeatures, nelem;
-  Rcpp::StringVector features = 
-    copy_rsparsematrix_to_cppvectors(matrix, x, i, p, nsamples, nfeatures, nelem);
-
-  // Rprintf("Sparse DIM: samples %lu x features %lu, non-zeros %lu\n", nsamples, nfeatures, nelem); 
-
-  // ---- label vector
-  std::vector<int> lab;
-  copy_rvector_to_cppvector(labels, lab, nsamples);
-
-  // get the number of unique labels.
-  std::vector<std::pair<int, size_t> > sorted_cluster_counts;
-  count_clusters(lab, sorted_cluster_counts);
-  size_t label_count = sorted_cluster_counts.size();
-
-  // ---- output pval matrix
-  std::vector<double> pv(nfeatures * label_count);
-
-  // ------------------------ parameter
-  // int alternative, threads;
-  // bool as_dataframe, var_equal;
-  // import_de_common_params(alternative, var_equal,
-  //   alternative, var_equal);
-  // import_r_common_params(as_dataframe, threads,
-  //   as_dataframe, threads);
-
-  // ------------------------- compute
-  omp_set_num_threads(threads);
-  Rprintf("THREADING: using %d threads\n", threads);
-
-  std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start = std::chrono::steady_clock::now();
   
 #pragma omp parallel num_threads(threads)
   {
@@ -983,28 +761,19 @@ extern SEXP sparse64_ttest_fast(
     std::unordered_map<int, gaussian_stats<double> > gaussian_sums;
 
     for(; offset < end; ++offset) {
-      nz_offset = p[offset];
-      nz_count = p[offset+1] - nz_offset;
+      nz_offset = *(p + offset);
+      nz_count = *(p + offset+1) - nz_offset;
       
       // directly compute matrix and res pointers.
       // Rprintf("thread %d processing feature %d, nonzeros %d\n", omp_get_thread_num(), offset, nz_count);
-      sparse_ttest_summary(&(x[nz_offset]), &(i[nz_offset]), nz_count,
-        lab.data(), nsamples, 0.0, sorted_cluster_counts, gaussian_sums);
+      sparse_ttest_summary(x +nz_offset, i + nz_offset, nz_count,
+        lab, nsamples, 0.0, sorted_cluster_counts, gaussian_sums);
+
       two_sample_ttest(gaussian_sums, sorted_cluster_counts,
-        &(pv[offset * label_count]), alternative, var_equal);
+        pv.data() + offset * label_count, alternative, var_equal);
     }
   }
-  Rprintf("[TIME] T-test Elapsed(ms)= %f\n", since(start).count());
+  // Rprintf("[TIME] T-test Elapsed(ms)= %f\n", since(start).count());
 
-
-  // ----------------------- make output
-  Rcpp::StringVector new_features = populate_feature_names(features, nfeatures);
-  
-  if (as_dataframe) {
-    return(Rcpp::wrap(export_de_to_r_dataframe(pv, "p_val", sorted_cluster_counts, new_features)));
-  } else {
-    // use clust for column names.
-    return (Rcpp::wrap(export_de_to_r_matrix(pv, sorted_cluster_counts, new_features)));
-  }
 }
 

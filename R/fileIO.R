@@ -30,11 +30,10 @@ Write10X_h5 <- function(data, filename, use.names = TRUE) {
   # create group
   genome <- outfile$create_group("rna")
   genome[["data"]] <- data@x
+  genome[["indices"]] <- data@i
   if (class(data) == 'dgCMatrix64') {
-    genome[["indices"]] <- as.numeric(data@i)
     genome[["indptr"]] <- as.numeric(data@p)
   } else {
-    genome[["indices"]] <- as.integer(data@i)
     genome[["indptr"]] <- as.integer(data@p)
   }
   genome[["shape"]] <- as.integer(data@Dim)
@@ -98,7 +97,7 @@ Read10X_h5_big <- function(filename, use.names = TRUE, unique.features = TRUE) {
     print(shp)
     sparse.mat <- new("dgCMatrix64", 
       x = as.numeric(x = counts[]),
-      i = as.numeric(x = indices[]), 
+      i = as.integer(x = indices[]), 
       p = as.numeric(x = indptr[]),
       Dim = as.integer(x = shp[]))   # must have Dim to be able to set row/col names.
     # TCP: end dgCMatrix64...

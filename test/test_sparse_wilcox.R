@@ -45,7 +45,7 @@ nrows = 10000  # samples
 nclusters = 30
 
 clusters = 1:nclusters
-labels <- sample(clusters, nrows, replace = TRUE)
+labels <- as.integer(sample(clusters, nrows, replace = TRUE))
 
 input <- rsparsematrix(nrows, ncols, 0.05)
 
@@ -239,7 +239,7 @@ toc()
 # Rwilcox2[, 1]
 
 
-## compare by calculating the residuals.
+# compare by calculating the residuals.
 comparemat("R vs fastde", Rwilcox, fastdewilcox)
 # comparemat("bioqc vs fastde", BioQCwilcox2, fastdewilcox)
 comparemat("limma vs fastde", Limmawilcox, fastdewilcox)
@@ -254,7 +254,7 @@ comparemat("limma vs fastde", Limmawilcox, fastdewilcox)
 tic("fastde sparse")
 # time and run BioQC
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
-fastdewilcox <- fastde::sparse_wmw_fast(input, labels, rtype=as.integer(2), 
+fastdewilcox <- fastde::sparse_wmw_fast(input, labels, features_as_rows = FALSE, rtype=as.integer(2), 
     continuity_correction=TRUE, as_dataframe = FALSE, threads = as.integer(4))
 toc()
 
@@ -262,7 +262,7 @@ toc()
 tic("fastde_df sparse")
 # time and run BioQC
 cat(sprintf("input %d X %d\n", nrow(input), ncol(input)))
-fastdewilcox_df <- fastde::sparse_wmw_fast(input, labels, rtype=as.integer(2), 
+fastdewilcox_df <- fastde::sparse_wmw_fast(input, labels, features_as_rows = FALSE, rtype=as.integer(2), 
     continuity_correction=TRUE, as_dataframe = TRUE, threads = as.integer(4))
 toc()
 
@@ -280,7 +280,7 @@ input64 <- as.dgCMatrix64(input)
 tic("fastde sparse64")
 # time and run BioQC
 cat(sprintf("input64 %d X %d\n", nrow(input64), ncol(input64)))
-fastdewilcox <- fastde::sparse64_wmw_fast(input64, labels, rtype=as.integer(2), 
+fastdewilcox <- fastde::sparse_wmw_fast(input64, labels, features_as_rows = FALSE, rtype=as.integer(2), 
     continuity_correction=TRUE, as_dataframe = FALSE, threads = as.integer(4))
 toc()
 
@@ -288,7 +288,7 @@ toc()
 tic("fastde_df sparse")
 # time and run BioQC
 cat(sprintf("input64 %d X %d\n", nrow(input64), ncol(input64)))
-fastdewilcox_df <- fastde::sparse64_wmw_fast(input64, labels, rtype=as.integer(2), 
+fastdewilcox_df <- fastde::sparse_wmw_fast(input64, labels, features_as_rows = FALSE, rtype=as.integer(2), 
     continuity_correction=TRUE, as_dataframe = TRUE, threads = as.integer(4))
 toc()
 

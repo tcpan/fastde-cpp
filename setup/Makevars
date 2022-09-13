@@ -1,36 +1,37 @@
+NATIVE_CFLAGS = -mtune=native -march=native
+OPT_CFLAGS = -O2
+OPT_CXXFLAGS = -O2
+
 CC = gcc
-CFLAGS = -g -O2 -mtune=native -std=gnu11 -fpic -march=native -fopenmp 
-# -fsanitize=address 
+CFLAGS = $(OPT_CFLAGS) $(NATIVE_CFLAGS)
 
 CXX = g++
-CXXSTD = -std=gnu++11
-CXXFLAGS = -g -O2 -fno-omit-frame-pointer -mtune=native -march=native -fopenmp
-# -fsanitize=address 
+CXXSTD = -std=c++11
+CXXFLAGS = $(OPT_CXXFLAGS) $(NATIVE_CFLAGS)
 CXXPICFLAGS = -fpic
 
 CXX98 = g++
-CXX98STD = -std=gnu++98
-CXX98FLAGS = -g -O2 -fno-omit-frame-pointer -mtune=native -march=native -fopenmp 
+CXX98STD = -std=c++98
+CXX98FLAGS = $(OPT_CXXFLAGS) $(NATIVE_CFLAGS)
 # -fsanitize=address 
 CXX98PICFLAGS = -fpic
 
 
 CXX11 = g++
-CXX11STD = -std=gnu++11
-CXX11FLAGS = -g -O2 -fno-omit-frame-pointer -mtune=native -march=native -fopenmp 
+CXX11STD = -std=c++11
+CXX11FLAGS = $(OPT_CXXFLAGS) $(NATIVE_CFLAGS)
 # -fsanitize=address 
 CXX11PICFLAGS = -fpic
 
 
 CXX14 = g++
-CXX14STD = -std=gnu++14
-CXX14FLAGS = -g -O2 -fno-omit-frame-pointer -mtune=native -march=native -fopenmp 
+CXX14STD = -std=c++14
+CXX14FLAGS = $(OPT_CXXFLAGS) $(NATIVE_CFLAGS)
 # -fsanitize=address 
 CXX14PICFLAGS = -fpic
 
 #PKG_LIBS = -fsanitize=address 
 # -static-libasan
-
 
 MAKE = make -j16
 

@@ -46,7 +46,7 @@ input <- input[, 1:100]
 # cat(sprintf("test size:  r %d X c %d.\n", nrow(wilcox), ncol(wilcox)))
 cat(sprintf("input size:  r %d X c %d\n", nrow(input), ncol(input)))
 
-labels <- 1 - labels_all[1:nrow(input)]  # inputs are 0 an 1.   wilcox treat class 0 as other in a formula.   fastde treat 0 as first class.   We need to flip this...
+labels <- as.integer(1 - labels_all[1:nrow(input)])  # inputs are 0 an 1.   wilcox treat class 0 as other in a formula.   fastde treat 0 as first class.   We need to flip this...
 cat(sprintf("Labels: %d \n", length(labels)))
 
 L <- unique(sort(labels))

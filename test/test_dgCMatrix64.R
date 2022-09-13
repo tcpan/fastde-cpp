@@ -21,28 +21,48 @@ nclusters = 30
 # generate fake class labels.
 tic("GEN clusters")
 clusters = 1:nclusters
-labels <- sample(clusters, nrows, replace = TRUE)
+labels <- as.integer(sample(clusters, nrows, replace = TRUE))
 toc()
 
 tic("sparse fastde FC")
 # time and run BioQC
-fastdefc <- fastde::ComputeFoldChangeSparse(sobject, labels, calc_percents = TRUE, fc_name = "fc", 
+fastdefc <- fastde::ComputeFoldChangeSparse(fastde::sp_transpose(sobject, threads = as.integer(1)), labels, 
+    features_as_rows = FALSE,
+    calc_percents = TRUE, fc_name = "fc", 
     use_expm1 = FALSE, min_threshold = 0.0, use_log = FALSE, log_base = 2.0, 
     use_pseudocount = FALSE, as_dataframe = FALSE, threads = as.integer(1))
 toc()
-str(fastdefc)
+# str(fastdefc)
 
-
-
-tic("wilcox pbmc3k")
-# run wilcox
-wilcox_de <- fastde::FastFindAllMarkers64(sobject, idents.clusters = labels, test.use = 'fastwmw')
+tic("sparse fastde FC 4")
+# time and run BioQC
+fastdefc <- fastde::ComputeFoldChangeSparse(fastde::sp_transpose(sobject, threads = as.integer(4)), labels, 
+    features_as_rows = FALSE,
+    calc_percents = TRUE, fc_name = "fc", 
+    use_expm1 = FALSE, min_threshold = 0.0, use_log = FALSE, log_base = 2.0, 
+    use_pseudocount = FALSE, as_dataframe = FALSE, threads = as.integer(4))
 toc()
+# str(fastdefc)
 
-# run ttest
-tic("ttest pbmc3k")
-ttest_de <- fastde::FastFindAllMarkers64(sobject, idents.clusters = labels, test.use = 'fast_t')
+
+tic("sparse fastde FC 4 transpose")
+# time and run BioQC
+fastdefc <- fastde::ComputeFoldChangeSparse(sobject, labels, 
+    features_as_rows = TRUE,
+    calc_percents = TRUE, fc_name = "fc", 
+    use_expm1 = FALSE, min_threshold = 0.0, use_log = FALSE, log_base = 2.0, 
+    use_pseudocount = FALSE, as_dataframe = FALSE, threads = as.integer(4))
 toc()
+# str(fastdefc)
+# tic("wilcox pbmc3k")
+# # run wilcox
+# wilcox_de <- fastde::FastFindAllMarkers64(sobject, idents.clusters = labels, test.use = 'fastwmw')
+# toc()
+
+# # run ttest
+# tic("ttest pbmc3k")
+# ttest_de <- fastde::FastFindAllMarkers64(sobject, idents.clusters = labels, test.use = 'fast_t')
+# toc()
 
 message("FINISHED 1")
 
@@ -61,21 +81,34 @@ toc()
 
 tic("sparse fastde 64 FC")
 # time and run BioQC
-fastdefc2 <- fastde::ComputeFoldChangeSparse64(so64, labels, calc_percents = TRUE, fc_name = "fc", 
+fastdefc2 <- fastde::ComputeFoldChangeSparse(fastde::sp_transpose(so64, threads = as.integer(4)), labels, 
+    features_as_rows = FALSE,
+    calc_percents = TRUE, fc_name = "fc", 
     use_expm1 = FALSE, min_threshold = 0.0, use_log = FALSE, log_base = 2.0, 
-    use_pseudocount = FALSE, as_dataframe = FALSE, threads = as.integer(1))
+    use_pseudocount = FALSE, as_dataframe = FALSE, threads = as.integer(4))
 toc()
-str(fastdefc2)
+# str(fastdefc2)
 
-tic("wilcox pbmc3k 64")
-# run wilcox
-wilcox_de <- fastde::FastFindAllMarkers64(so64, idents.clusters = labels, test.use = 'fastwmw')
+tic("sparse fastde 64 FC, transpose")
+# time and run BioQC
+fastdefc2 <- fastde::ComputeFoldChangeSparse(so64, labels, 
+    features_as_rows = TRUE,
+    calc_percents = TRUE, fc_name = "fc", 
+    use_expm1 = FALSE, min_threshold = 0.0, use_log = FALSE, log_base = 2.0, 
+    use_pseudocount = FALSE, as_dataframe = FALSE, threads = as.integer(4))
 toc()
+# str(fastdefc2)
 
-# run ttest
-tic("ttest pbmc3k 64")
-ttest_de <- fastde::FastFindAllMarkers64(so64, idents.clusters = labels, test.use = 'fast_t')
-toc()
+
+# tic("wilcox pbmc3k 64")
+# # run wilcox
+# wilcox_de <- fastde::FastFindAllMarkers64(so64, idents.clusters = labels, test.use = 'fastwmw')
+# toc()
+
+# # run ttest
+# tic("ttest pbmc3k 64")
+# ttest_de <- fastde::FastFindAllMarkers64(so64, idents.clusters = labels, test.use = 'fast_t')
+# toc()
 
 message("FINISHED 2")
 
@@ -93,7 +126,7 @@ sobject4 <- Seurat::Read10X_h5(f)
 str(sobject4)
 toc()
 
-tic("READ pbmc3k h5")
+tic("READ pbmc3k h5 big")
 sobject3 <- fastde::Read10X_h5_big(f)
 str(sobject3)
 toc()
@@ -124,7 +157,7 @@ message("FINISHED 3")
 
 # tic("sparse fastde 64 FC")
 # # time and run BioQC
-# fastdefc3 <- fastde::ComputeFoldChangeSparse64(sobject2, labels2, calc_percents = TRUE, fc_name = "fc", 
+# fastdefc3 <- fastde::ComputeFoldChangeSparse(sobject2, labels2, calc_percents = TRUE, fc_name = "fc", 
 #     use_expm1 = FALSE, min_threshold = 0.0, use_log = FALSE, log_base = 2.0, 
 #     use_pseudocount = FALSE, as_dataframe = FALSE, threads = as.integer(1))
 # toc()

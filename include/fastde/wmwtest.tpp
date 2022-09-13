@@ -1,8 +1,8 @@
-#include <Rcpp.h>
-#include <R.h>
-#include <Rdefines.h>
+#pragma once
 
+#include <cpp11/R.hpp>
 
+#include "fastde/wmwtest.hpp"
 /*
  *  copied and modified from wave/include/transform/wilcox.hpp
  *
@@ -13,18 +13,9 @@
  */
 
 #include <cmath>  // sqrt
-#include <tuple>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
 #include <algorithm>
 #include <type_traits>
-
-// Enable C++11
-// [[Rcpp::plugins(cpp11)]]
-
-// Enable OpenMP (excludes macOS)
-// [[Rcpp::plugins(openmp)]]
+#include <cassert>
 
 #include <omp.h>
 
@@ -32,13 +23,12 @@
 // #define INV_SQRT2 0.70710678118
 // #endif
 
-#include "rcpp_cluster_utils.hpp"
-#include "rcpp_data_utils.hpp"
-#include "rcpp_benchmark_utils.hpp"
+#include "fastde/cluster_utils.hpp"
+#include "fastde/benchmark_utils.hpp"
 
 
 template <typename IT, typename LABEL>
-void sparse_sum_rank(std::vector<std::pair<IT, LABEL> > const & temp, 
+void sparse_sum_rank(std::pair<IT, LABEL> * temp, size_t const & nzc, 
   size_t const & count, IT const & zero_val,
   std::unordered_map<LABEL, size_t> const & z_cl_counts,
   std::unordered_map<LABEL, size_t> & rank_sums,
@@ -47,7 +37,6 @@ void sparse_sum_rank(std::vector<std::pair<IT, LABEL> > const & temp,
   rank_sums.clear();
   tie_sum = 0.0;
 
-  size_t nzc = temp.size();
   double tiesum_scale = 1.0 / (static_cast<double>(count) * static_cast<double>(count - 1));
 
   // initialize
@@ -58,15 +47,16 @@ void sparse_sum_rank(std::vector<std::pair<IT, LABEL> > const & temp,
   }
 
   double tie;
+  auto in_end = temp + nzc;
 
   // ---- below zero, forward walk
   std::pair<IT, LABEL> zero = {zero_val, 0};
-  auto lower = std::lower_bound(temp.begin(), temp.end(), zero,
+  auto lower = std::lower_bound(temp, in_end, zero,
     [](std::pair<IT, LABEL> const & a, std::pair<IT, LABEL> const & b){
       return a.first < b.first;
     });
   // init loop.
-  auto start = temp.begin();
+  auto start = temp;
   size_t rank = 0;
   
   // insert first and save value for last.
@@ -113,7 +103,7 @@ void sparse_sum_rank(std::vector<std::pair<IT, LABEL> > const & temp,
   last_val = zero_val;
 
   // ----- above zero
-  for (; start != temp.end(); ++start, ++i) {
+  for (; start != in_end; ++start, ++i) {
     // rank update
     if (last_val < start->first) {  // ties are dealt with only when exiting ties.
         tie = i - rank;  // rank is of the first element in the tie.
@@ -132,12 +122,17 @@ void sparse_sum_rank(std::vector<std::pair<IT, LABEL> > const & temp,
     tie_sum += tiesum_scale * (tie * tie - 1.0) * tie;
   }
     
-  // =====  reverse walk
-  auto upper = std::lower_bound(temp.rbegin(), temp.rend(), zero, 
+  // =====  reverse walk.  changed as we are using pointers instead of reverse iterators.
+  in_end = temp + nzc;
+  // find the first entry from the back that is <= zero
+  // OR, find the last entry from the front that is <= zero
+  auto upper = std::upper_bound(lower, in_end, zero, 
       [](std::pair<IT, LABEL> const & a, std::pair<IT, LABEL> const & b){
-      return a.first > b.first;
+      return a.first < b.first;
     });
-  auto rstart = temp.rbegin();
+  --upper;  // then decrement by 1.  if upper was at start, this would still be consistent with the reverse traversal
+  // if upper was at end, then decrement will point to last element, which is also corret
+  auto rstart = temp + nzc - 1;
   rank = count;
 
   // insert first and save value for last.
@@ -146,7 +141,7 @@ void sparse_sum_rank(std::vector<std::pair<IT, LABEL> > const & temp,
   // reverse walking 
   // ------ greater than zero.
   i = count;
-  for (; rstart != upper; ++rstart, --i) {
+  for (; rstart != upper; --rstart, --i) {
     // rank update
     if (last_val > rstart->first) rank = i;  // not tie, so advance to new rank
     // ELSE tie, so don't change the rank  (note :  this is the higher of the range for median)
@@ -175,7 +170,8 @@ void sparse_sum_rank(std::vector<std::pair<IT, LABEL> > const & temp,
   i -= count - nzc;  // count - non-zero == zero count.
   last_val = zero_val;
 
-  for (; rstart != temp.rend(); ++rstart, --i) {
+  in_end = temp - 1;
+  for (; rstart != in_end; --rstart, --i) {
     // rank update
     if (last_val > rstart->first) rank = i;  // not tie, so advance to new rank
     // ELSE tie, so don't change the rank  (note :  this is the higher of the range for median)
@@ -225,11 +221,13 @@ void sparse_wmw_summary(IT_ITER in, IDX_ITER ids,
   // ============== populate the sort structure and Sort ONLY NON-ZERO ENTRIES.  if any input is actually 0.0, skip
   std::vector<std::pair<IT, LABEL> > temp;
   temp.reserve(nz_count);
-  for (size_t i = 0; i < nz_count; ++i) {
+  auto in_ptr = in;
+  auto id_ptr = ids;
+  for (size_t i = 0; i < nz_count; ++i, ++in_ptr, ++id_ptr) {
     // EXCLUDE values with 0, as they would and should tie with the elements not present.
-    if (in[i] != zero_val) {
-      key = labels[ids[i]];
-      temp.emplace_back(in[i], key);
+    if (*in_ptr != zero_val) {
+      key = *(labels + *id_ptr);
+      temp.emplace_back(*in_ptr, key);
       --z_cl_counts[key];   // get the zero counts by subtracting non-zero entries
     }  
   }
@@ -255,7 +253,7 @@ void sparse_wmw_summary(IT_ITER in, IDX_ITER ids,
 
   // == local zero crossing in the sorted list (temp), 
   //   then process 2 halves separately.
-  sparse_sum_rank(temp, count, zero_val, z_cl_counts, rank_sums, tie_sum);
+  sparse_sum_rank(temp.data(), temp.size(), count, zero_val, z_cl_counts, rank_sums, tie_sum);
 }
 
 
@@ -286,11 +284,12 @@ void pseudosparse_wmw_summary(
   // ============== populate the sort structure and Sort
   std::vector<std::pair<IT, LABEL> > temp;
   temp.reserve(count);
-  for (size_t i = 0; i < count; ++i) {
+  auto in_ptr = in;
+  for (size_t i = 0; i < count; ++i, ++in_ptr) {
     // EXCLUDE values with 0, as they would and should tie with the elements not present.
-    if (in[i] != zero_val) {
-      key = labels[i];
-      temp.emplace_back(in[i], key);
+    if (*in_ptr != zero_val) {
+      key = *(labels + i);
+      temp.emplace_back(*in_ptr, key);
       --z_cl_counts[key];   // get the zero counts by subtracting non-zero entries
     }  
   }
@@ -310,93 +309,93 @@ void pseudosparse_wmw_summary(
   // any tie detection would need 1x iteration.   each tie would need another pass to get median so may break prefetching, but this may not be common?
   // should minimize writes in the big array as well.
 
-  sparse_sum_rank(temp, count, zero_val, z_cl_counts, rank_sums, tie_sum);
+  sparse_sum_rank(temp.data(), temp.size(), count, zero_val, z_cl_counts, rank_sums, tie_sum);
 
 }
 
 
-// rank_sums output:  map cluster to rank_sum.
-// old, do not use.
-template <typename IT_ITER, typename LABEL_ITER,
-  typename IT = typename std::iterator_traits<IT_ITER>::value_type,
-  typename LABEL = typename std::iterator_traits<LABEL_ITER>::value_type>
-void dense_wmw_summary(
-  IT_ITER in, LABEL_ITER labels, size_t const & count,
-  std::unordered_map<LABEL, size_t> & rank_sums, double & tie_sum) {
+// // rank_sums output:  map cluster to rank_sum.
+// // old, and slower than pseudosparse.  do not use.
+// template <typename IT_ITER, typename LABEL_ITER,
+//   typename IT = typename std::iterator_traits<IT_ITER>::value_type,
+//   typename LABEL = typename std::iterator_traits<LABEL_ITER>::value_type>
+// void dense_wmw_summary(
+//   IT_ITER in, LABEL_ITER labels, size_t const & count,
+//   std::unordered_map<LABEL, size_t> & rank_sums, double & tie_sum) {
 
-  // tuplize in and labels.
-  rank_sums.clear();
-  double tiesum_scale = 1.0 / (static_cast<double>(count) * static_cast<double>(count - 1));
+//   // tuplize in and labels.
+//   rank_sums.clear();
+//   double tiesum_scale = 1.0 / (static_cast<double>(count) * static_cast<double>(count - 1));
 
-  tie_sum = 0.0;
-  if (count == 0) return;
-  assert((count < 20) && "ERROR: count is too small (< 20) for a normal approximation\n");
+//   tie_sum = 0.0;
+//   if (count == 0) return;
+//   assert((count < 20) && "ERROR: count is too small (< 20) for a normal approximation\n");
 
-  // ============== populate the sort structure and Sort
-  std::vector<std::pair<IT, LABEL> > temp;
-  temp.reserve(count);
-  for (size_t i = 0; i < count; ++i) {
-      temp.emplace_back(in[i], labels[i]);
-  }
-  // sort by value...
-  std::sort(temp.begin(), temp.end(), 
-    [](std::pair<IT, LABEL> const & a, std::pair<IT, LABEL> const & b){
-      return (a.first == b.first) ? (a.second < b.second) : (a.first < b.first);
-  });
+//   // ============== populate the sort structure and Sort
+//   std::vector<std::pair<IT, LABEL> > temp;
+//   temp.reserve(count);
+//   for (size_t i = 0; i < count; ++i) {
+//       temp.emplace_back(in[i], labels[i]);
+//   }
+//   // sort by value...
+//   std::sort(temp.begin(), temp.end(), 
+//     [](std::pair<IT, LABEL> const & a, std::pair<IT, LABEL> const & b){
+//       return (a.first == b.first) ? (a.second < b.second) : (a.first < b.first);
+//   });
 
-  // assign rank and accumulate count and rank
+//   // assign rank and accumulate count and rank
 
-  // to handle ties, we need 0.5.  To make comparison easier and not float based, double the rank value here and divide later.
-  // actually, we may need to have median of the tie ranks.
-  // here is an approach:  keep undoubled rank, walk once from front, and once from back.  if ties, do not change rank until value changes.  each sum /2 would give correct rank
-  //    at end of tie, reset to use array index as rank.
-  // any tie detection would need 1x iteration.   each tie would need another pass to get median so may break prefetching, but this may not be common?
-  // should minimize writes in the big array as well.
+//   // to handle ties, we need 0.5.  To make comparison easier and not float based, double the rank value here and divide later.
+//   // actually, we may need to have median of the tie ranks.
+//   // here is an approach:  keep undoubled rank, walk once from front, and once from back.  if ties, do not change rank until value changes.  each sum /2 would give correct rank
+//   //    at end of tie, reset to use array index as rank.
+//   // any tie detection would need 1x iteration.   each tie would need another pass to get median so may break prefetching, but this may not be common?
+//   // should minimize writes in the big array as well.
 
-  size_t rank = 1;
-  double tie;
-  LABEL key = temp[0].second;
-  // insert first
-  if (rank_sums.count(key) == 0) rank_sums[key] = rank;
-  else {
-      rank_sums[key] += rank;
-  }
-  // forward walk
-  size_t i = 1;
-  for (size_t i = 1; i < count; ++i) {
-      // rank update
-      if (temp[i-1].first < temp[i].first) {  // ties are dealt with only when exiting ties.
-          tie = i + 1 - rank;  // rank is of the first element in the tie.
-          tie_sum += tiesum_scale * (tie * tie - 1.0) * tie;
-          rank = i + 1;  // not tie, so advance to new rank
-      } // ELSE tie, so don't change the rank  (note :  this is the lower of the range for median)
-      key = temp[i].second;
-      // add rank to sum
-      if (rank_sums.count(key) == 0) rank_sums[key] = rank;
-      else {
-          rank_sums[key] += rank;
-      }
-  }
-  if (i > rank + 1) {
-    tie = i + 1 - rank;
-    tie_sum += tiesum_scale * (tie * tie - 1.0) * tie;
-  }
+//   size_t rank = 1;
+//   double tie;
+//   LABEL key = temp[0].second;
+//   // insert first
+//   if (rank_sums.count(key) == 0) rank_sums[key] = rank;
+//   else {
+//       rank_sums[key] += rank;
+//   }
+//   // forward walk
+//   size_t i = 1;
+//   for (size_t i = 1; i < count; ++i) {
+//       // rank update
+//       if (temp[i-1].first < temp[i].first) {  // ties are dealt with only when exiting ties.
+//           tie = i + 1 - rank;  // rank is of the first element in the tie.
+//           tie_sum += tiesum_scale * (tie * tie - 1.0) * tie;
+//           rank = i + 1;  // not tie, so advance to new rank
+//       } // ELSE tie, so don't change the rank  (note :  this is the lower of the range for median)
+//       key = temp[i].second;
+//       // add rank to sum
+//       if (rank_sums.count(key) == 0) rank_sums[key] = rank;
+//       else {
+//           rank_sums[key] += rank;
+//       }
+//   }
+//   if (i > rank + 1) {
+//     tie = i + 1 - rank;
+//     tie_sum += tiesum_scale * (tie * tie - 1.0) * tie;
+//   }
     
-  // reverse walk
-  rank = count;
-  i = count - 1;
-  for (; i > 0; --i) {
-      // add rank to sum
-      rank_sums[temp[i].second] += rank;
+//   // reverse walk
+//   rank = count;
+//   i = count - 1;
+//   for (; i > 0; --i) {
+//       // add rank to sum
+//       rank_sums[temp[i].second] += rank;
 
-      // rank update
-      if (temp[i].first > temp[i-1].first) rank = i;  // not tie, so advance to new rank
-      // ELSE tie, so don't change the rank  (note :  this is the higher of the range for median)
-  }
-  // need to count ties...
-  rank_sums[temp[0].second] += rank;
+//       // rank update
+//       if (temp[i].first > temp[i-1].first) rank = i;  // not tie, so advance to new rank
+//       // ELSE tie, so don't change the rank  (note :  this is the higher of the range for median)
+//   }
+//   // need to count ties...
+//   rank_sums[temp[0].second] += rank;
 
-}
+// }
 
 
 // types:  0 = less, 1 = greater, 2 = twosided (default), 3 = U2
@@ -428,6 +427,7 @@ void wmw(
   size_t i = 0;
   LABEL key;
   size_t val;
+  auto out_ptr = out;
   for (auto item : cl_counts) {
       key = item.first;
       n1 = item.second;
@@ -466,68 +466,42 @@ void wmw(
       // https://stackoverflow.com/questions/2328258/cumulative-normal-distribution-function-in-c-c
       // use erfc function  This is 2-tailed.
       if (test_type == PVAL_TWO_SIDED)  // 2 sided
-        out[i] = erfc( fabs(z) * M_SQRT1_2 );   // this is correct.  erf is has stdev of 1/sqrt(2), and return prob(-x < X < x).   erfc = 1- erf(x)
+        *out_ptr = erfc( fabs(z) * M_SQRT1_2 );   // this is correct.  erf is has stdev of 1/sqrt(2), and return prob(-x < X < x).   erfc = 1- erf(x)
       else if (test_type == PVAL_LESS)
-        out[i] = 0.5 * erfc( -z * M_SQRT1_2 );
+        *out_ptr = 0.5 * erfc( -z * M_SQRT1_2 );
       else if (test_type == PVAL_GREATER)  // greater or less - U is changed (either U1 or U2), thus z is changed.  still calculating 1-CDF = survival
-        out[i] = 1.0 - 0.5 * erfc( -z * M_SQRT1_2 );
+        *out_ptr = 1.0 - 0.5 * erfc( -z * M_SQRT1_2 );
       else if (test_type == TEST_VAL)
-        out[i] = U1;
+        *out_ptr = U1;
       else
-        out[i] = z;
-      ++i;
+        *out_ptr = z;
+      ++out_ptr;
 
   }
 
 }
 
-
-//' Fast Wilcoxon-Mann-Whitney Test for dense matrix
-//'
-//' This implementation uses normal approximation, which works reasonably well if sample size is large (say N>=20)
-//' 
-//' @rdname wmw_fast
-//' @param matrix an expression matrix, COLUMN-MAJOR, each col is a feature, each row a sample
-//' @param labels an integer vector, each element indicating the group to which a sample belongs.
-//' @param rtype 
-//' \itemize{
-//' \item{0} : p(less)
-//' \item{1} : p(greater)
-//' \item{2} : p(twoSided)
-//' \item{3} : U
-//' }
-//' @param continuity_correction TRUE/FALSE for continuity correction
-//' @param as_dataframe TRUE/FALSE - TRUE returns a dataframe, FALSE returns a matrix
-//' @param threads  number of concurrent threads.
-//' @return array or dataframe.  for each gene/feature, the rows for the clusters are ordered by id.
-//' @name wmw_fast
-//' @export
-// [[Rcpp::export]]
-extern SEXP wmw_fast(
-    Rcpp::NumericMatrix const & matrix, Rcpp::IntegerVector const & labels, 
+template < typename XIT, typename LIT>
+void omp_dense_wmw(
+    XIT mat, size_t const & nsamples, size_t const & nfeatures,
+    LIT lab, 
     int rtype, 
     bool continuity_correction, 
-    bool as_dataframe,
+    std::vector<double> &pv,
+    std::vector<std::pair<int, size_t> > &sorted_cluster_counts,
     int threads) {
-
-  // ----------- copy to local
-  // ---- input matrix
-  std::vector<double> mat;
-  size_t nsamples, nfeatures, nelem;
-  Rcpp::StringVector features = 
-    copy_rmatrix_to_cppvector(matrix, mat, nsamples, nfeatures, nelem);
-
-  // ---- label vector
-  std::vector<int> lab;
-  copy_rvector_to_cppvector(labels, lab, nsamples);
+  std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start = std::chrono::steady_clock::now();
 
   // get the number of unique labels.
-  std::vector<std::pair<int, size_t> > sorted_cluster_counts;
-  count_clusters(lab, sorted_cluster_counts);
+  sorted_cluster_counts.clear();
+  count_clusters(lab, nsamples, sorted_cluster_counts, threads);
   size_t label_count = sorted_cluster_counts.size();
+  // Rprintf("[DEBUG] WMW DN label count %ld \n", label_count);
 
   // ---- output pval matrix
-  std::vector<double> pv(nfeatures * label_count);
+  pv.clear(); pv.resize(nfeatures * label_count);
+  // Rprintf("[DEBUG] WMW DN pv size %ld \n", pv.size());
+
 
   // ------------------------ parameter
   // int rtype, threads;
@@ -538,9 +512,8 @@ extern SEXP wmw_fast(
 
   // ------------------------ compute
   omp_set_num_threads(threads);
-  Rprintf("THREADING: using %d threads\n", threads);
+  // Rprintf("THREADING: using %d threads\n", threads);
 
-  std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start = std::chrono::steady_clock::now();
 
 #pragma omp parallel num_threads(threads)
   {
@@ -557,81 +530,46 @@ extern SEXP wmw_fast(
     for(; offset < end; ++offset) {
       // directly compute matrix and res pointers.
       // Rprintf("thread %d processing feature %d\n", omp_get_thread_num(), i);
-      pseudosparse_wmw_summary(&(mat[offset * nsamples]), 
-        lab.data(), nsamples, 
+      pseudosparse_wmw_summary(mat + offset * nsamples, 
+        lab, nsamples, 
         static_cast<double>(0),
         sorted_cluster_counts, rank_sums, tie_sum);
-      wmw(sorted_cluster_counts, rank_sums, tie_sum, nsamples, &(pv[offset * label_count]), rtype, continuity_correction);
+      wmw(sorted_cluster_counts, rank_sums, tie_sum, nsamples, 
+      pv.data() + offset * label_count, rtype, continuity_correction);
     }
+    // Rprintf("[DEBUG] WMW DN thread %d %ld ranksums %ld,\n", tid, end, rank_sums.size() );
+
   }
-  Rprintf("[TIME] WMW Elapsed(ms)= %f\n", since(start).count());
 
-
-  // ------------------------ generate output
-  // GET features.
-  Rcpp::StringVector new_features = populate_feature_names(features, nfeatures);
-
-  if (as_dataframe) {
-    return(Rcpp::wrap(export_de_to_r_dataframe(pv, "p_val", sorted_cluster_counts, new_features)));
-  } else {
-    // use clust for column names.
-    return (Rcpp::wrap(export_de_to_r_matrix(pv, sorted_cluster_counts, new_features)));
-  }
 }
 
 
 // =================================
-
-//' Fast Wilcoxon-Mann-Whitney Test for dense matrix
-//'
-//' This implementation uses normal approximation, which works reasonably well if sample size is large (say N>=20)
-//' 
-//' @rdname sparse_wmw_fast
-//' @param matrix an expression matrix, COLUMN-MAJOR, each col is a feature, each row a sample
-//' @param labels an integer vector, each element indicating the group to which a sample belongs.
-//' @param rtype 
-//' \itemize{
-//' \item{0} : p(less)
-//' \item{1} : p(greater)
-//' \item{2} : p(twoSided)
-//' \item{3} : U
-//' }
-//' @param continuity_correction TRUE/FALSE for continuity_correction correction
-//' @param as_dataframe TRUE/FALSE - TRUE returns a dataframe, FALSE returns a matrix
-//' @param threads  number of concurrent threads.
-//' @return array or dataframe.  for each gene/feature, the rows for the clusters are ordered by id.
-//' @name sparse_wmw_fast
-//' @export
-// [[Rcpp::export]]
-extern SEXP sparse_wmw_fast(
-    Rcpp::dgCMatrix const & matrix, Rcpp::IntegerVector const & labels, 
+template <typename XIT, typename IIT, typename PIT, 
+    typename LIT>
+void omp_sparse_wmw(
+    XIT x, IIT i, PIT p, size_t nsamples, size_t nfeatures,
+    LIT lab,
     int rtype, 
     bool continuity_correction, 
-    bool as_dataframe,
+    std::vector<double> &pv,
+    std::vector<std::pair<int, size_t> > &sorted_cluster_counts,
     int threads) {
   // Rprintf("here 1\n");
 
-  // ----------- copy to local
-  // ---- input matrix
-  std::vector<double> x;
-  std::vector<int> i, p;
-  size_t nsamples, nfeatures, nelem;
-  Rcpp::StringVector features = 
-    copy_rsparsematrix_to_cppvectors(matrix, x, i, p, nsamples, nfeatures, nelem);
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start;
 
-  // Rprintf("Sparse DIM: samples %lu x features %lu, non-zeros %lu\n", nsamples, nfeatures, nelem); 
+  start = std::chrono::steady_clock::now();
 
-  // ---- label vector
-  std::vector<int> lab;
-  copy_rvector_to_cppvector(labels, lab, nsamples);
 
   // get the number of unique labels.
-  std::vector<std::pair<int, size_t> > sorted_cluster_counts;
-  count_clusters(lab, sorted_cluster_counts);
+  sorted_cluster_counts.clear();
+  count_clusters(lab, nsamples, sorted_cluster_counts, threads);
   size_t label_count = sorted_cluster_counts.size();
 
+
   // ---- output pval matrix
-  std::vector<double> pv(nfeatures * label_count);
+  pv.clear(); pv.resize(nfeatures * label_count);
 
   // ------------------------ parameter
   // int rtype, threads;
@@ -643,121 +581,8 @@ extern SEXP sparse_wmw_fast(
 
   // ------------------------- compute
   omp_set_num_threads(threads);
-  Rprintf("THREADING: using %d threads\n", threads);
+  // Rprintf("THREADING: using %d threads\n", threads);
 
-  std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start = std::chrono::steady_clock::now();
-
-#pragma omp parallel num_threads(threads)
-  {
-    int tid = omp_get_thread_num();
-    size_t block = nfeatures / threads;
-    size_t rem = nfeatures - threads * block;
-    size_t offset = tid * block + (tid > rem ? rem : tid);
-    int nid = tid + 1;
-    size_t end = nid * block + (nid > rem ? rem : nid);
-
-    int nz_offset, nz_count;
-    std::unordered_map<int, size_t> rank_sums;
-    double tie_sum;
-
-    for(; offset < end; ++offset) {
-      nz_offset = p[offset];
-      nz_count = p[offset+1] - nz_offset;
-
-      // directly compute matrix and res pointers.
-      // Rprintf("thread %d processing feature %d\n", omp_get_thread_num(), i);
-      sparse_wmw_summary(&(x[nz_offset]), &(i[nz_offset]), nz_count,
-        lab.data(), nsamples, 
-        static_cast<double>(0),
-        sorted_cluster_counts, rank_sums, tie_sum);
-      wmw(sorted_cluster_counts, rank_sums, tie_sum, nsamples, &(pv[offset * label_count]), rtype, continuity_correction);
-    }
-  }
-  Rprintf("[TIME] WMW Elapsed(ms)= %f\n", since(start).count());
-
-  // ----------------------- make output
-  Rcpp::StringVector new_features = populate_feature_names(features, nfeatures);
-
-  if (as_dataframe) {
-    return(Rcpp::wrap(export_de_to_r_dataframe(pv, "p_val", sorted_cluster_counts, new_features)));
-  } else {
-    // use clust for column names.
-    return (Rcpp::wrap(export_de_to_r_matrix(pv, sorted_cluster_counts, new_features)));
-  }
-}
-
-
-
-// =================================
-
-
-
-// =================================
-
-//' Fast Wilcoxon-Mann-Whitney Test for dense matrix
-//'
-//' This implementation uses normal approximation, which works reasonably well if sample size is large (say N>=20)
-//' 
-//' @rdname sparse64_wmw_fast
-//' @param matrix an expression matrix, COLUMN-MAJOR, each col is a feature, each row a sample
-//' @param labels an integer vector, each element indicating the group to which a sample belongs.
-//' @param rtype 
-//' \itemize{
-//' \item{0} : p(less)
-//' \item{1} : p(greater)
-//' \item{2} : p(twoSided)
-//' \item{3} : U
-//' }
-//' @param continuity_correction TRUE/FALSE for continuity_correction correction
-//' @param as_dataframe TRUE/FALSE - TRUE returns a dataframe, FALSE returns a matrix
-//' @param threads  number of concurrent threads.
-//' @return array or dataframe.  for each gene/feature, the rows for the clusters are ordered by id.
-//' @name sparse64_wmw_fast
-//' @export
-// [[Rcpp::export]]
-extern SEXP sparse64_wmw_fast(
-    Rcpp::dgCMatrix64 const & matrix, Rcpp::IntegerVector const & labels, 
-    int rtype, 
-    bool continuity_correction, 
-    bool as_dataframe,
-    int threads) {
-  // Rprintf("here 1\n");
-
-  // ----------- copy to local
-  // ---- input matrix
-  std::vector<double> x;
-  std::vector<long> i, p;
-  size_t nsamples, nfeatures, nelem;
-  Rcpp::StringVector features = 
-    copy_rsparsematrix_to_cppvectors(matrix, x, i, p, nsamples, nfeatures, nelem);
-
-  // Rprintf("Sparse DIM: samples %lu x features %lu, non-zeros %lu\n", nsamples, nfeatures, nelem); 
-
-  // ---- label vector
-  std::vector<int> lab;
-  copy_rvector_to_cppvector(labels, lab, nsamples);
-
-  // get the number of unique labels.
-  std::vector<std::pair<int, size_t> > sorted_cluster_counts;
-  count_clusters(lab, sorted_cluster_counts);
-  size_t label_count = sorted_cluster_counts.size();
-
-  // ---- output pval matrix
-  std::vector<double> pv(nfeatures * label_count);
-
-  // ------------------------ parameter
-  // int rtype, threads;
-  // bool as_dataframe, continuity_correction;
-  // import_de_common_params(rtype, continuity_correction, rtype, continuity_correction);
-  // import_r_common_params(as_dataframe, threads,
-  //   as_dataframe, threads);
-
-
-  // ------------------------- compute
-  omp_set_num_threads(threads);
-  Rprintf("THREADING: using %d threads\n", threads);
-
-  std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start = std::chrono::steady_clock::now();
 
 #pragma omp parallel num_threads(threads)
   {
@@ -773,27 +598,20 @@ extern SEXP sparse64_wmw_fast(
     double tie_sum;
 
     for(; offset < end; ++offset) {
-      nz_offset = p[offset];
-      nz_count = p[offset+1] - nz_offset;
+      nz_offset = *(p + offset);
+      nz_count = *(p + offset+1) - nz_offset;
 
       // directly compute matrix and res pointers.
       // Rprintf("thread %d processing feature %d\n", omp_get_thread_num(), i);
-      sparse_wmw_summary(&(x[nz_offset]), &(i[nz_offset]), nz_count,
-        lab.data(), nsamples, 
+      sparse_wmw_summary(x +nz_offset, i + nz_offset, nz_count,
+        lab, nsamples, 
         static_cast<double>(0),
         sorted_cluster_counts, rank_sums, tie_sum);
-      wmw(sorted_cluster_counts, rank_sums, tie_sum, nsamples, &(pv[offset * label_count]), rtype, continuity_correction);
+      wmw(sorted_cluster_counts, rank_sums, tie_sum, nsamples, 
+        pv.data() + offset * label_count, rtype, continuity_correction);
     }
   }
-  Rprintf("[TIME] WMW Elapsed(ms)= %f\n", since(start).count());
+  // Rprintf("[TIME] WMW Elapsed(ms)= %f\n", since(start).count());
 
-  // ----------------------- make output
-  Rcpp::StringVector new_features = populate_feature_names(features, nfeatures);
-
-  if (as_dataframe) {
-    return(Rcpp::wrap(export_de_to_r_dataframe(pv, "p_val", sorted_cluster_counts, new_features)));
-  } else {
-    // use clust for column names.
-    return (Rcpp::wrap(export_de_to_r_matrix(pv, sorted_cluster_counts, new_features)));
-  }
 }
+

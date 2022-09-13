@@ -63,27 +63,27 @@ FastSparseDiffTTest <- function(
 
 
   # need to put features into columns.
-  if (features.as.rows == TRUE) {
-    # slice and transpose
-    if (is(data.use, 'dgCMatrix64') )  {
-      dd <- fastde::sp_transpose(data.use)
-    } else {
-      dd <- fastde::sp_transpose(data.use)
-    }
-  } else {
-    # slice the data
-    dd <- data.use
-  }
+  # if (features.as.rows == TRUE) {
+  #   # slice and transpose
+  #   if (is(data.use, 'dgCMatrix64') )  {
+  #     dd <- fastde::sp_transpose(data.use)
+  #   } else {
+  #     dd <- fastde::sp_transpose(data.use)
+  #   }
+  # } else {
+  #   # slice the data
+  #   dd <- data.use
+  # }
 
-  PerformDEFunc <- if (is(dd, 'dgCMatrix64') )  {
-    sparse64_ttest_fast
-  } else {
-    sparse_ttest_fast
-  }
+  # PerformDEFunc <- if (is(dd, 'dgCMatrix64') )  {
+  #   sparse64_ttest_fast
+  # } else {
+  #   sparse_ttest_fast
+  # }
 
 
   # default type is 2 (2 sided)
-  p_val <- PerformDEFunc(dd, as.integer(cells.clusters),
+  p_val <- sparse_ttest_fast(dd, as.integer(cells.clusters), features.as.rows,
           as_dataframe = return.dataframe, threads = get_num_threads(),
           alternative = as.integer(2), var_equal = FALSE)
   if (return.dataframe == FALSE) {

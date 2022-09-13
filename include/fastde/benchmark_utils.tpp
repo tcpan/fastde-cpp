@@ -1,7 +1,7 @@
 #pragma once
 
 // ==== function definition
-#include "rcpp_benchmark_utils.hpp"
+#include "fastde/benchmark_utils.hpp"
 
 
 template < class clock_t, class duration_t >

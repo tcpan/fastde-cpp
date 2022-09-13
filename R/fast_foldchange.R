@@ -390,32 +390,29 @@ FastPerformSparseFC <- function(data, clusters,
 
   # no need to break up the data - can't deal with larger datasets than have non-zero entries.
 
-  # need to put features into columns.
-  if (features_as_rows == TRUE) {
-    # slice and transpose
-    if (is(data, 'dgCMatrix64') )  {
-      dd <- fastde::sp_transpose(data)
-    } else {
-      dd <- fastde::sp_transpose(data)
-    }
-  } else {
-    # slice the data
-    dd <- data
-  }
+  # # need to put features into columns.
+  # if (features_as_rows == TRUE) {
+  #   # slice and transpose
+  #   # if (is(data, 'dgCMatrix64') )  {
+  #   #   dd <- fastde::sp_transpose(data)
+  #   # } else {
+  #   #   dd <- fastde::sp_transpose(data)
+  #   # }
+  #   dd <- fastde::sp_transpose(data, threads=threads)
+  # } else {
+  #   # slice the data
+  #   dd <- data
+  # }
 
-  print('IN FC')
-  str(dd)
+  # print('IN FC')
+  # str(dd)
 
-  PerformFCFunc <- if (is(dd, 'dgCMatrix64') )  {
-    ComputeFoldChangeSparse64
-    ComputeFoldChangeSparse64SEXP
-  } else {
-    ComputeFoldChangeSparse
-    ComputeFoldChangeSparseSEXP
-  }
+  # PerformFCFunc <- ComputeFoldChangeSparse
+
 
   # output has features in columns, and clusters in rows
-  fc.results <- PerformFCFunc(dd, as.integer(clusters),
+  fc.results <- ComputeFoldChangeSparse(data, as.integer(clusters),
+    features_as_rows = features_as_rows,
     calc_percents = calc_percents, fc_name = fc_name, 
     use_expm1 = use_expm1, min_threshold = min_threshold, 
     use_log = use_log, log_base = log_base, use_pseudocount = use_pseudocount, 

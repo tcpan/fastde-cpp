@@ -7,14 +7,6 @@
 #include <vector>
 
 
-#ifndef NROW
-#define NROW(x) INTEGER(GET_DIM((x)))[0]
-#endif
-
-#ifndef NCOL
-#define NCOL(x) INTEGER(GET_DIM((x)))[1]
-#endif
-
 #define PVAL_TWO_SIDED 2
 #define PVAL_GREATER 1
 #define PVAL_LESS 0
@@ -27,28 +19,29 @@
 template <typename LABEL_ITER,
   typename LABEL = typename std::iterator_traits<LABEL_ITER>::value_type >
 void count_clusters(LABEL_ITER labels, size_t const & count,
-  std::unordered_map<LABEL, size_t> & clust_counts);
+  std::unordered_map<LABEL, size_t> & clust_counts, int const & threads = 1);
 
 template <typename LABEL >
 void count_clusters(std::vector<LABEL> const & labels,
-  std::unordered_map<LABEL, size_t> & clust_counts);
+  std::unordered_map<LABEL, size_t> & clust_counts, int const & threads = 1);
 
 // count the number of clusters.  does not assume the labels to be in consecutive range
 // produce map ORDERED by key, so no further sort is needed to get ordered key
 template <typename LABEL_ITER,
   typename LABEL = typename std::iterator_traits<LABEL_ITER>::value_type >
 void count_clusters(LABEL_ITER labels, size_t const & count,
-  std::map<LABEL, size_t> & clust_counts);
+  std::map<LABEL, size_t> & clust_counts, int const & threads = 1);
 
 // count the number of clusters.  does not assume the labels to be in consecutive range
 // produce map ORDERED by key, so no further sort is needed to get ordered key
 template <typename LABEL_ITER,
   typename LABEL = typename std::iterator_traits<LABEL_ITER>::value_type >
 void count_clusters(LABEL_ITER labels, size_t const & count,
-  std::vector<std::pair<LABEL, size_t> > & clust_counts);
+  std::vector<std::pair<LABEL, size_t> > & clust_counts, int const & threads = 1);
+
 template <typename LABEL >
 void count_clusters(std::vector<LABEL> const & labels, 
-  std::vector<std::pair<LABEL, size_t> > & clust_counts);
+  std::vector<std::pair<LABEL, size_t> > & clust_counts, int const & threads = 1);
 
 template <typename LABEL>
 void get_unique_clusters(std::vector<LABEL> const & lab, 
