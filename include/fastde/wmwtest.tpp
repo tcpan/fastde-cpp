@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cpp11/R.hpp>
-
 #include "fastde/wmwtest.hpp"
 /*
  *  copied and modified from wave/include/transform/wilcox.hpp
