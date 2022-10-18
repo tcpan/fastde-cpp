@@ -197,7 +197,7 @@ extern cpp11::writable::list _sp_transpose_par(
     cpp11::writable::r_vector<IT> ti(nelem);   // as many as there are values 
     cpp11::writable::r_vector<PT> tp(nrow + 1);       // number of rows + 1.
 
-  Rprintf("[TIME] sp_transpose_par 1 Elapsed(ms)= %f\n", since(start).count());
+//   Rprintf("[TIME] sp_transpose_par 1 Elapsed(ms)= %f\n", since(start).count());
 
   start = std::chrono::steady_clock::now();
 
@@ -221,7 +221,7 @@ extern cpp11::writable::list _sp_transpose_par(
     lps[threads].resize(nrow + 1);
     std::fill(lps[threads].begin(), lps[threads].end(), 0);
 
-  Rprintf("[TIME] sp_transpose_par 2 Elapsed(ms)= %f\n", since(start).count());
+ // Rprintf("[TIME] sp_transpose_par 2 Elapsed(ms)= %f\n", since(start).count());
 
   start = std::chrono::steady_clock::now();
 
@@ -255,7 +255,7 @@ extern cpp11::writable::list _sp_transpose_par(
         ++lps[tid+1][static_cast<IT2>(i[offset])];
     }
 }
-  Rprintf("[TIME] sp_transpose_par 3 Elapsed(ms)= %f\n", since(start).count());
+ // Rprintf("[TIME] sp_transpose_par 3 Elapsed(ms)= %f\n", since(start).count());
 
   start = std::chrono::steady_clock::now();
 
@@ -283,7 +283,7 @@ extern cpp11::writable::list _sp_transpose_par(
     }
     // at the end, lps[thread] has total counts per row.
 }
-      Rprintf("[TIME] sp_transpose_par 4 Elapsed(ms)= %f\n", since(start).count());
+     // Rprintf("[TIME] sp_transpose_par 4 Elapsed(ms)= %f\n", since(start).count());
 
   start = std::chrono::steady_clock::now();
 
@@ -303,7 +303,7 @@ extern cpp11::writable::list _sp_transpose_par(
         tp[r+1] = lps[0][r+1];
     }
     tp[0] = lps[0][0];
-  Rprintf("[TIME] sp_transpose_par 5 Elapsed(ms)= %f\n", since(start).count());
+ // Rprintf("[TIME] sp_transpose_par 5 Elapsed(ms)= %f\n", since(start).count());
 
   start = std::chrono::steady_clock::now();
 
@@ -322,7 +322,7 @@ extern cpp11::writable::list _sp_transpose_par(
     }
 }
     // per thread we now have the starting offset for writing.
-  Rprintf("[TIME] sp_transpose_par 6 Elapsed(ms)= %f\n", since(start).count());
+ // Rprintf("[TIME] sp_transpose_par 6 Elapsed(ms)= %f\n", since(start).count());
 
   start = std::chrono::steady_clock::now();
 
@@ -359,7 +359,7 @@ extern cpp11::writable::list _sp_transpose_par(
         ++lps[tid][rid];  // update the offset - 1 space consumed.
     }
 }
-  Rprintf("[TIME] sp_transpose_par 7 Elapsed(ms)= %f\n", since(start).count());
+ // Rprintf("[TIME] sp_transpose_par 7 Elapsed(ms)= %f\n", since(start).count());
 
   start = std::chrono::steady_clock::now();
 
@@ -369,7 +369,7 @@ extern cpp11::writable::list _sp_transpose_par(
     cpp11::named_arg _tp("p"); _tp = tp;
     cpp11::writable::list out( { _tx, _ti, _tp} );
 
-      Rprintf("[TIME] sp_transpose_par 8 Elapsed(ms)= %f\n", since(start).count());
+     // Rprintf("[TIME] sp_transpose_par 8 Elapsed(ms)= %f\n", since(start).count());
 
     return out;
 
@@ -500,7 +500,7 @@ extern void _sp_transpose_par(
     tx.clear();    tx.resize(x.size()); 
     ti.clear();    ti.resize(x.size());   // as many as there are values 
     tp.clear();    tp.resize(nrow + 1);       // number of rows + 1.
-  Rprintf("[TIME] sp_transpose_par alloc output Elapsed(ms)= %f\n", since(start).count());
+ // Rprintf("[TIME] sp_transpose_par alloc output Elapsed(ms)= %f\n", since(start).count());
 
     _sp_transpose_par(x, i, p, nrow, ncol, tx.data(), ti.data(), tp.data(), threads);    
 
@@ -541,7 +541,7 @@ extern void _sp_transpose_par(
 
     // assume all allocated properly
 
-  Rprintf("[TIME] sp_transpose_par 1 Elapsed(ms)= %f\n", since(start).count());
+ // Rprintf("[TIME] sp_transpose_par 1 Elapsed(ms)= %f\n", since(start).count());
 
   start = std::chrono::steady_clock::now();
 
@@ -564,7 +564,7 @@ extern void _sp_transpose_par(
     std::fill(lps[threads].begin(), lps[threads].end(), 0);
 
     // ======= do the transpose.
-      Rprintf("[TIME] sp_transpose_par 2 Elapsed(ms)= %f\n", since(start).count());
+     // Rprintf("[TIME] sp_transpose_par 2 Elapsed(ms)= %f\n", since(start).count());
 
   start = std::chrono::steady_clock::now();
 
@@ -596,7 +596,7 @@ extern void _sp_transpose_par(
         ++lps[tid+1][static_cast<IT2>(i[offset])];
     }
 }
-  Rprintf("[TIME] sp_transpose_par 3 Elapsed(ms)= %f\n", since(start).count());
+ // Rprintf("[TIME] sp_transpose_par 3 Elapsed(ms)= %f\n", since(start).count());
 
   start = std::chrono::steady_clock::now();
 
@@ -624,7 +624,7 @@ extern void _sp_transpose_par(
     }
     // at the end, lps[thread] has total counts per row.
 }
-      Rprintf("[TIME] sp_transpose_par 4 Elapsed(ms)= %f\n", since(start).count());
+     // Rprintf("[TIME] sp_transpose_par 4 Elapsed(ms)= %f\n", since(start).count());
 
   start = std::chrono::steady_clock::now();
 
@@ -645,7 +645,7 @@ extern void _sp_transpose_par(
     }
     tp[0] = lps[0][0];
 
-  Rprintf("[TIME] sp_transpose_par 5 Elapsed(ms)= %f\n", since(start).count());
+ // Rprintf("[TIME] sp_transpose_par 5 Elapsed(ms)= %f\n", since(start).count());
 
   start = std::chrono::steady_clock::now();
 
@@ -664,7 +664,7 @@ extern void _sp_transpose_par(
     }
 }
     // per thread we now have the starting offset for writing.
-  Rprintf("[TIME] sp_transpose_par 6 Elapsed(ms)= %f\n", since(start).count());
+ // Rprintf("[TIME] sp_transpose_par 6 Elapsed(ms)= %f\n", since(start).count());
 
   start = std::chrono::steady_clock::now();
 
@@ -701,7 +701,7 @@ extern void _sp_transpose_par(
         ++lps[tid][rid];  // update the offset - 1 space consumed.
     }
 }
-  Rprintf("[TIME] sp_transpose_par 7 Elapsed(ms)= %f\n", since(start).count());
+ // Rprintf("[TIME] sp_transpose_par 7 Elapsed(ms)= %f\n", since(start).count());
 
 
 }

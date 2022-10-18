@@ -29,7 +29,7 @@ FastFoldChange.default <- function(
   cells.clusters = NULL,
   features = NULL,
   slot = "data",
-  pseudocount.use = 1,
+  pseudocount.use = TRUE,
   base = 2,
   fc.name = NULL,
   return.dataframe = TRUE,

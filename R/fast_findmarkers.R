@@ -409,11 +409,11 @@ FastFindMarkers.default <- function(
   # message("FASTFindMarkers.default min_pct ", min.pct, " diff pct ", min.diff.pct, " log tr ", logfc.threshold, " pos ", only.pos)
   tictoc::tic("FastFindMarkers.default FilterFoldChange")
   fc_mask <- FilterFoldChange(
-    fc.results[[colidx]], fc.results$pct.1, fc.results$pct.2,   
+    fc = fc.results[[colidx]], pct1 = fc.results$pct.1, pct2 = fc.results$pct.2,
     init_mask = imask,
-    min_pct = min.pct, min_diff_pct = min.diff.pct, 
-    logfc_threshold = logfc.threshold, only_pos = only.pos, 
-    not_count = (slot != "scale.data"), 
+    min_pct = min.pct, min_diff_pct = min.diff.pct,
+    logfc_threshold = logfc.threshold, only_pos = only.pos,
+    not_count = (slot != "scale.data"),
     threads = get_num_threads())
   # mask the dataframe or matrix.
   tictoc::toc()
@@ -660,9 +660,9 @@ FastFindMarkers.DimReduc <- function(
 
   fc.results <- PerformFCFunc(data, clusters,
     features_as_rows = FALSE,
-    calc_percents = FALSE, fc_name = fc.name, 
+    calc_percents = FALSE, fc_name = fc.name,
     use_expm1 = FALSE, min_threshold = 0.0, 
-    use_log = FALSE, log_base = 2, use_pseudocount = FALSE, 
+    use_log = FALSE, log_base = 2, use_pseudocount = FALSE,
     as_dataframe = return.dataframe,
     threads = get_num_threads())
   tictoc::toc()

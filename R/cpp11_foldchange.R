@@ -3,7 +3,7 @@
 #' https://stackoverflow.com/questions/38338270/how-to-return-a-named-vecsxp-when-writing-r-extensions
 #' 
 #' @rdname ComputeFoldChange
-#' @param matrix an expression matrix, COLUMN-MAJOR, each row is a sample, each column a gene
+#' @param mat an expression matrix, COLUMN-MAJOR, each row is a sample, each column a gene
 #' @param labels an integer vector, each element indicating the group to which a sample belongs.
 #' @param calc_percents  a boolean to indicate whether to compute percents or not.
 #' @param fc_name column name to use for the fold change results 
@@ -17,22 +17,24 @@
 #' @return array or dataframe
 #' @name ComputeFoldChange
 #' @export
-ComputeFoldChange <- function(matrix, labels, 
+ComputeFoldChange <- function(mat, labels, 
     calc_percents, fc_name, use_expm1, min_threshold, 
     use_log, log_base, use_pseudocount, as_dataframe, threads) {
 
-    out <- cpp11_ComputeFoldChange(matrix, colnames(matrix), 
-        labels, calc_percents, fc_name, use_expm1, min_threshold, 
-        use_log, log_base, use_pseudocount, as_dataframe, threads)
+    out <- cpp11_ComputeFoldChange(mat, colnames(mat), 
+        labels, as.logical(calc_percents), fc_name, as.logical(use_expm1),
+         min_threshold, 
+        as.logical(use_log), log_base, as.logical(use_pseudocount), 
+        as.logical(as_dataframe), threads)
 
 
     if (!as_dataframe) {
         L <- unique(sort(labels))
         if (calc_percents) {
-            colnames(out[[fc_name]]) <- colnames(matrix)
+            colnames(out[[fc_name]]) <- colnames(mat)
             rownames(out[[fc_name]]) <- L
         } else {
-            colnames(out) <- colnames(matrix)
+            colnames(out) <- colnames(mat)
             rownames(out) <- L
         }
     }
@@ -45,7 +47,7 @@ ComputeFoldChange <- function(matrix, labels,
 #' https://stackoverflow.com/questions/38338270/how-to-return-a-named-vecsxp-when-writing-r-extensions
 #' 
 #' @rdname ComputeFoldChangeSparse
-#' @param matrix an expression matrix, COLUMN-MAJOR, each row is a sample, each column a gene
+#' @param mat an expression matrix, COLUMN-MAJOR, each row is a sample, each column a gene
 #' @param labels an integer vector, each element indicating the group to which a sample belongs.
 #' @param calc_percents  a boolean to indicate whether to compute percents or not.
 #' @param fc_name column name to use for the fold change results 
@@ -59,29 +61,31 @@ ComputeFoldChange <- function(matrix, labels,
 #' @return array or dataframe
 #' @name ComputeFoldChangeSparse
 #' @export
-ComputeFoldChangeSparse <- function(matrix, labels, 
+ComputeFoldChangeSparse <- function(mat, labels, 
     features_as_rows,
     calc_percents, fc_name, use_expm1, min_threshold, 
     use_log, log_base, use_pseudocount, as_dataframe, threads) {
 
     if (features_as_rows) 
-        fnames <- rownames(matrix)
+        fnames <- rownames(mat)
     else 
-        fnames <- colnames(matrix)
+        fnames <- colnames(mat)
 
-    if (is(matrix, 'dgCMatrix64')) {
-        out <- cpp11_ComputeFoldChangeSparse64(matrix@x, matrix@i, matrix@p, 
-            fnames, nrow(matrix), ncol(matrix),
-            labels, features_as_rows, calc_percents, fc_name, use_expm1, min_threshold, 
-            use_log, log_base, use_pseudocount, as_dataframe, threads)
-
+    compute <- if (is(mat, 'dgCMatrix64')) {
+        cpp11_ComputeFoldChangeSparse64
     } else {
-        out <- cpp11_ComputeFoldChangeSparse(matrix@x, matrix@i, matrix@p, 
-            fnames, nrow(matrix), ncol(matrix),
-            labels, features_as_rows, calc_percents, fc_name, use_expm1, min_threshold, 
-            use_log, log_base, use_pseudocount, as_dataframe, threads)
+        cpp11_ComputeFoldChangeSparse
     }
-    
+    out <- compute(x=mat@x, i=mat@i, p=mat@p, 
+            features = fnames, rows = nrow(mat), cols = ncol(mat),
+            labels = labels, features_as_rows = as.logical(features_as_rows),
+            calc_percents = as.logical(calc_percents), 
+            fc_name= fc_name, use_expm1=as.logical(use_expm1), 
+            min_threshold=min_threshold, 
+            use_log=as.logical(use_log), log_base=log_base, 
+            use_pseudocount=as.logical(use_pseudocount), 
+            as_dataframe=as.logical(as_dataframe), threads= threads)
+
     if (!as_dataframe) {
         L <- unique(sort(labels))
         if (calc_percents) {
@@ -119,11 +123,18 @@ ComputeFoldChangeSparse <- function(matrix, labels,
 #' @export
 FilterFoldChange <- function(fc, pct1, pct2, init_mask, 
     min_pct, min_diff_pct, logfc_threshold, only_pos, not_count, threads) {
-    if (is.matrix(fc)) {
-        return(cpp11_FilterFoldChangeMat(fc, pct1, pct2, init_mask, 
-            min_pct, min_diff_pct, logfc_threshold, only_pos, not_count, threads))
+    compute <- if (is.matrix(fc)) {
+        cpp11_FilterFoldChangeMat
     } else {
-        return(cpp11_FilterFoldChange_nocopy(fc, pct1, pct2, init_mask, 
-            min_pct, min_diff_pct, logfc_threshold, only_pos, not_count, threads))
+        cpp11_FilterFoldChange
     }
+    if (is.null(init_mask)) {
+        imask <- rep(TRUE, length(pct1))
+    } else {
+        imask <- init_mask
+    }
+    return(compute(fc = fc, pct1 = pct1, pct2 = pct2, init_mask = imask, 
+            min_pct = min_pct, min_diff_pct = min_diff_pct, 
+            logfc_threshold = logfc_threshold, only_pos = as.logical(only_pos),
+            not_count = as.logical(not_count), threads = threads))
 }

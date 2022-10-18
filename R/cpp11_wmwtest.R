@@ -4,7 +4,7 @@
 #' This implementation uses normal approximation, which works reasonably well if sample size is large (say N>=20)
 #' 
 #' @rdname wmw_fast
-#' @param matrix an expression matrix, COLUMN-MAJOR, each col is a feature, each row a sample
+#' @param mat an expression matrix, COLUMN-MAJOR, each col is a feature, each row a sample
 #' @param labels an integer vector, each element indicating the group to which a sample belongs.
 #' @param rtype 
 #' \itemize{
@@ -19,15 +19,15 @@
 #' @return array or dataframe.  for each gene/feature, the rows for the clusters are ordered by id.
 #' @name wmw_fast
 #' @export
-wmw_fast <- function(input, labels,
+wmw_fast <- function(mat, labels,
     rtype, continuity_correction, as_dataframe, threads) {
 
-        out <- cpp11_dense_wmw(input, colnames(input), labels, 
-        rtype, continuity_correction, as_dataframe, threads)
+        out <- cpp11_dense_wmw(mat, colnames(mat), labels, 
+        rtype, as.logical(continuity_correction), as.logical(as_dataframe), threads)
         
     if (!as_dataframe) {
         L <- unique(sort(labels))
-        colnames(out) <- colnames(input)
+        colnames(out) <- colnames(mat)
         rownames(out) <- L
     }
 
@@ -39,7 +39,7 @@ wmw_fast <- function(input, labels,
 #' This implementation uses normal approximation, which works reasonably well if sample size is large (say N>=20)
 #' 
 #' @rdname sparse_wmw_fast
-#' @param matrix an expression matrix, COLUMN-MAJOR, each col is a feature, each row a sample
+#' @param mat an expression matrix, COLUMN-MAJOR, each col is a feature, each row a sample
 #' @param labels an integer vector, each element indicating the group to which a sample belongs.
 #' @param rtype 
 #' \itemize{
@@ -54,24 +54,23 @@ wmw_fast <- function(input, labels,
 #' @return array or dataframe.  for each gene/feature, the rows for the clusters are ordered by id.
 #' @name sparse_wmw_fast
 #' @export
-sparse_wmw_fast <- function(matrix, labels,
+sparse_wmw_fast <- function(mat, labels,
     features_as_rows, rtype, continuity_correction, as_dataframe, threads) {
     if (features_as_rows) 
-        fnames <- rownames(matrix)
+        fnames <- rownames(mat)
     else 
-        fnames <- colnames(matrix)
+        fnames <- colnames(mat)
 
 
-    if (is(matrix, 'dgCMatrix64')) {
-        out <- cpp11_sparse64_wmw(matrix@x, matrix@i, matrix@p, 
-            fnames, nrow(matrix), ncol(matrix),
-            labels, features_as_rows, rtype, continuity_correction, as_dataframe, threads)
-
+    compute <- if (is(mat, 'dgCMatrix64')) {
+        cpp11_sparse64_wmw
     } else {
-        out <- cpp11_sparse_wmw(matrix@x, matrix@i, matrix@p, 
-            fnames, nrow(matrix), ncol(matrix),
-            labels, features_as_rows, rtype, continuity_correction, as_dataframe, threads)
+        cpp11_sparse_wmw
     }
+    out <- compute(mat@x, mat@i, mat@p, 
+            fnames, nrow(mat), ncol(mat),
+            labels, as.logical(features_as_rows), rtype, as.logical(continuity_correction), as.logical(as_dataframe), threads)
+
     if (!as_dataframe) {
         L <- unique(sort(labels))
 

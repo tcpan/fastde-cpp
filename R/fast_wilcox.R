@@ -63,7 +63,6 @@ FastSparseWilcoxDETest <- function(
   tictoc::tic("FastWilcoxDETest wmwfast")
 
   # need to put features into columns.
-  dd <- data
   # if (features.as.rows == TRUE) {
   #   # slice and transpose
   #   if (is(data.use, 'dgCMatrix64') )  {
@@ -73,7 +72,7 @@ FastSparseWilcoxDETest <- function(
   #   }
   # } else {
   #   # slice the data
-  #   dd <- data
+  #   dd <- data.use
   # }
 
   # PerformDEFunc <- if (is(dd, 'dgCMatrix64') )  {
@@ -82,7 +81,7 @@ FastSparseWilcoxDETest <- function(
   #   sparse_wmw_fast
   # }
 
-  p_val <- sparse_wmw_fast(dd, as.integer(cells.clusters),
+  p_val <- sparse_wmw_fast(data.use, as.integer(cells.clusters),
           features.as.rows,
           rtype = as.integer(2), 
           continuity_correction = TRUE,

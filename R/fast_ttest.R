@@ -81,9 +81,8 @@ FastSparseDiffTTest <- function(
   #   sparse_ttest_fast
   # }
 
-
   # default type is 2 (2 sided)
-  p_val <- sparse_ttest_fast(dd, as.integer(cells.clusters), features.as.rows,
+  p_val <- sparse_ttest_fast(data.use, as.integer(cells.clusters), features.as.rows,
           as_dataframe = return.dataframe, threads = get_num_threads(),
           alternative = as.integer(2), var_equal = FALSE)
   if (return.dataframe == FALSE) {
