@@ -975,3 +975,201 @@ extern OUT _sp_to_dense_transposed(
  
     return out;
 }
+
+// omp causes stack imbalance.   
+template <typename XT, typename IT, typename PT>
+extern cpp11::writable::list _sp_rbind(
+    cpp11::list_of<cpp11::r_vector<XT>> const & xvecs, 
+    cpp11::list_of<cpp11::r_vector<IT>> const & ivecs, 
+    cpp11::list_of<cpp11::r_vector<PT>> const & pvecs, 
+    cpp11::r_vector<IT> const & nrows, 
+    cpp11::r_vector<IT> const & ncols, int const & threads) {
+    // data in CSC format. row elements are consecutive, columns are consecutive blocks.
+    // rbind requires reconstructing the elements.
+
+    using PT2 = typename std::conditional<std::is_same<PT, double>::value, size_t, int>::type;
+
+    cpp11::writable::list out;
+
+    int n_vecs = nrows.size();
+
+    // check to see if all inputs have the same number of columns.
+    IT ncol = ncols[0];
+    for (int i = 1; i < n_vecs; ++i) {
+        if (ncol != ncols[i]) return out; // bad input.
+    }
+
+    // compute p offsets, 1 per col.
+    std::vector<PT2> p_offsets(ncol + 1);
+#pragma omp parallel num_threads(threads)
+{   
+    int tid = omp_get_thread_num();
+    size_t block = (ncol+1) / threads;   // each thread handles a block of rows.
+    size_t rem = (ncol+1) - threads * block;
+    size_t offset = tid * block + (tid > rem ? rem : tid);
+    int nid = tid + 1;
+    size_t end = nid * block + (nid > rem ? rem : nid);
+    
+    for (IT i = offset; i < end; ++i) {
+        p_offsets[i] = 0;
+    }
+}
+
+    // count the number of non-zero elements per column
+    for (int j = 0; j < n_vecs; ++j) {
+        auto ip = pvecs[j];
+        for (IT i = 0; i < ncol; ++i) {
+            p_offsets[i+1] += ip[i+1] - ip[i];
+        }
+    }
+    // prefix scan to get the global p offsets.
+    for (IT i = 0; i < ncol; ++i) {
+        p_offsets[i+1] += p_offsets[i];
+    }
+
+    // compute row offsets, 1 per vec, to added to i.
+    std::vector<IT> i_offsets(n_vecs+1);  // as many as there are ivecs + 1.
+    i_offsets[0] = 0;
+    for (int i = 0; i < n_vecs; ++i) {
+        i_offsets[i+1] = i_offsets[i] + nrows[i];
+    }
+    IT nr = i_offsets[n_vecs];
+
+    // using temporary data structure because of omp and R stack imbalance issue.  okay here since we have lots of random writes so rather have the multithreading benefits.
+    cpp11::writable::r_vector<XT> xv(p_offsets[ncol]);
+    cpp11::writable::r_vector<IT> iv(p_offsets[ncol]);
+    cpp11::writable::r_vector<PT> pv(ncol + 1);
+
+    // copy data over to the aggregated output
+    PT2 nz = 0;
+    for (int j = 0; j < n_vecs; ++j) {
+
+
+        auto ix = xvecs[j];
+        auto ii = ivecs[j];
+        auto ip = pvecs[j];
+        for (IT i = 0; i < ncol; ++i) {
+            PT2 in_start = ip[i];
+            PT2 in_end = ip[i+1];
+            PT2 out_start = p_offsets[i];
+
+            // iterate over none zeros.
+            for (; in_start < in_end; ++in_start, ++out_start) {
+                xv[out_start] = ix[in_start];  // copy the input x
+                iv[out_start] = ii[in_start] + i_offsets[j];
+            }
+
+            p_offsets[i] = out_start;  // set the new position.
+        }
+    }
+    // copy p_offset
+#pragma omp parallel num_threads(threads)
+{   
+    int tid = omp_get_thread_num();
+    size_t block = ncol / threads;   // each thread handles a block of rows.
+    size_t rem = ncol - threads * block;
+    size_t offset = tid * block + (tid > rem ? rem : tid);
+    int nid = tid + 1;
+    size_t end = nid * block + (nid > rem ? rem : nid);
+
+    for (IT i = offset; i < end; ++i) {
+        pv[i+1] = p_offsets[i];
+    }
+}
+    pv[0] = 0;
+
+    // create output.
+    out.push_back(xv);
+    out.push_back(iv);
+    out.push_back(pv);
+    out.push_back(cpp11::as_sexp(nr));
+    out.push_back(cpp11::as_sexp(ncol));
+    
+    return out;
+}
+
+template <typename XT, typename IT, typename PT>
+extern cpp11::writable::list _sp_cbind(
+    cpp11::list_of<cpp11::r_vector<XT>> const & xvecs, 
+    cpp11::list_of<cpp11::r_vector<IT>> const & ivecs, 
+    cpp11::list_of<cpp11::r_vector<PT>> const & pvecs, 
+    cpp11::r_vector<IT> const & nrows, 
+    cpp11::r_vector<IT> const & ncols, int const & threads) {
+
+    using PT2 = typename std::conditional<std::is_same<PT, double>::value, size_t, int>::type;
+
+    // data in CSC format. row elements are consecutive, columns are consecutive blocks.
+    // rbind requires reconstructing the elements.
+
+    cpp11::writable::list out;
+
+    int n_vecs = nrows.size();
+
+    // check to see if all inputs have the same number of rows.
+    IT nrow = nrows[0];
+    for (int i = 1; i < n_vecs; ++i) {
+        if (nrow != nrows[i]) return out; // bad input.
+    }
+
+    // compute p offsets, 1 per vec.
+    std::vector<PT2> p_offsets(n_vecs+1);
+    std::vector<IT> c_offsets(n_vecs+1);
+    p_offsets[0] = 0;
+    c_offsets[0] = 0;
+    IT nc = 0;
+    for (int i = 0; i < n_vecs; ++i) {
+        nc = ncols[i];
+        c_offsets[i+1] = c_offsets[i] + nc;
+        p_offsets[i+1] = p_offsets[i] + pvecs[i][nc];
+    }
+    IT ncol = c_offsets[n_vecs];
+
+    cpp11::writable::r_vector<XT> xv(p_offsets[n_vecs]);
+    cpp11::writable::r_vector<IT> iv(p_offsets[n_vecs]);
+    cpp11::writable::r_vector<PT> pv(ncol + 1);
+
+    // cbind would copy big blocks of data, so more memory coherence.
+    // parallelize by vecs.
+
+    // int nt = std::min(threads, n_vecs);
+
+    // copy data over to the aggregated output
+    // omp causes stack imbalance.   
+    PT2 nz = 0, out_x = 0, out_p = 0, poff;
+    IT coff = 0;
+    for (int j = 0; j < n_vecs; ++j) {
+
+        auto ix = xvecs[j];
+        auto ii = ivecs[j];
+        auto ip = pvecs[j];
+
+        // copy the x and i vectors
+        nc = ncols[j];
+        nz = ip[nc];
+        poff = p_offsets[j];
+        
+        for (PT2 i = 0; i < nz; ++i, ++poff) {
+            xv[poff] = ix[i];
+            iv[poff] = ii[i];
+            // ++out_x;
+        }
+
+        poff = p_offsets[j];
+        coff = c_offsets[j];
+        // copy the p vector
+
+        for (IT i = 0; i < nc; ++i) {
+            pv[coff + i] = ip[i] + poff;
+        }
+    }
+    pv[ncol] = p_offsets[n_vecs];
+
+    // create output.
+    out.push_back(xv);
+    out.push_back(iv);
+    out.push_back(pv);
+    out.push_back(cpp11::as_sexp(nrow));
+    out.push_back(cpp11::as_sexp(ncol));
+    
+    return out;
+}

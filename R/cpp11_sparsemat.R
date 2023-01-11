@@ -96,3 +96,136 @@ sp_to_dense_transposed <- function(spmat, threads = 1) {
     # # colnames(out) <- rownames(x)
     # return(out)
 }
+
+#' R Sparse rbind
+#'
+#' This implementation allows production of very large sparse matrices.
+#' 
+#' @rdname sp_rbind
+#' @param spmats a list of sparse matrice
+#' @return a dgCMatrix64 object with the combined content.
+#' @name sp_rbind
+#' @export
+sp_rbind <- function(spmats, threads = 1) {
+
+    nmats = length(spmats)
+
+    # create the data structures
+    xs <- vector(mode = "list", length = nmats)
+    iss <- vector(mode = "list", length = nmats)
+    ps <- vector(mode = "list", length = nmats)
+    nrs <- integer(nmats)
+    ncs <- integer(nmats)
+    nms <- character()
+
+    tic("gathering data")
+    for (i in 1:nmats) {
+        xs[[i]] = spmats[[i]]@x
+        iss[[i]] = spmats[[i]]@i
+        ps[[i]] = spmats[[i]]@p
+        nrs[[i]] = spmats[[i]]@Dim[1]
+        ncs[[i]] = spmats[[i]]@Dim[2]
+
+        nms <- c(nms, rownames(spmats[[i]]))
+    }
+    toc()
+
+    tic("combine")
+    # invoke the rbind
+    if (is(spmats[[1]], 'dgCMatrix')) {
+        m <- cpp11_sp_rbind(xs, iss, ps, nrs, ncs, threads)
+    } else if (is(spmats[[1]], 'dgCMatrix64')) {
+        m <- cpp11_sp64_rbind(xs, iss, ps, nrs, ncs, threads)
+    } else {
+        print("UNSUPPORTED.  Matrices must be sparse matrices")
+        return(NULL)
+    }
+    toc()
+
+    tic("build output")
+    if (length(m[[3]]) <= .Machine$integer.max) {
+        ip <- integer(length=length(m[[3]]))
+        for (ii in 1:length(m[[3]])) {
+            ip[[ii]] <- m[[3]][[ii]]
+        }
+        out <- new('dgCMatrix', x = m[[1]], i = m[[2]], p = ip, 
+            Dim = c(m[[4]], m[[5]]))
+    } else {
+        out <- new('dgCMatrix64', x = m[[1]], i = m[[2]], p = m[[3]], 
+            Dim = c(m[[4]], m[[5]]))
+    }
+    rownames(out) <- nms
+    colnames(out) <- colnames(spmats[[1]])
+    toc()
+
+    return(out)
+
+}
+
+
+#' R Sparse cbind
+#'
+#' This implementation allows production of very large sparse matrices.
+#' 
+#' @rdname sp_cbind
+#' @param spmats a list of sparse matrice
+#' @return a dgCMatrix64 object with the combined content.
+#' @name sp_cbind
+#' @export
+sp_cbind <- function(spmats, threads = 1) {
+
+    nmats = length(spmats)
+
+    # create the data structures
+    xs <- vector(mode = "list", length = nmats)
+    iss <- vector(mode = "list", length = nmats)
+    ps <- vector(mode = "list", length = nmats)
+    nrs <- integer(nmats)
+    ncs <- integer(nmats)
+    nms <- character()
+
+    tic("gather data")
+    for (i in 1:nmats) {
+        xs[[i]] = spmats[[i]]@x
+        iss[[i]] = spmats[[i]]@i
+        ps[[i]] = spmats[[i]]@p
+        nrs[[i]] = spmats[[i]]@Dim[1]
+        ncs[[i]] = spmats[[i]]@Dim[2]
+
+        nms <- c(nms, colnames(spmats[[i]]))
+    }
+    toc()
+
+    tic("combine")
+    # invoke the rbind
+    if (is(spmats[[1]], 'dgCMatrix')) {
+        m <- cpp11_sp_cbind(xs, iss, ps, nrs, ncs, threads)
+    } else if (is(spmats[[1]], 'dgCMatrix64')) {
+        m <- cpp11_sp64_cbind(xs, iss, ps, nrs, ncs, threads)
+    } else {
+        print("UNSUPPORTED.  Matrices must be sparse matrices")
+        return(NULL)
+    }
+    toc()
+
+    tic("create output")
+    if (length(m[[3]]) <= .Machine$integer.max) {
+        ip <- integer(length=length(m[[3]]))
+        for (ii in 1:length(m[[3]])) {
+            ip[[ii]] <- m[[3]][[ii]]
+        }
+        out <- new('dgCMatrix', x = m[[1]], i = m[[2]], p = ip, 
+            Dim = c(m[[4]], m[[5]]))
+    } else {
+        out <- new('dgCMatrix64', x = m[[1]], i = m[[2]], p = m[[3]], 
+            Dim = c(m[[4]], m[[5]]))
+    }
+    rownames(out) <- rownames(spmats[[1]])
+    colnames(out) <- nms
+    toc()
+
+    return(out)
+
+}
+
+

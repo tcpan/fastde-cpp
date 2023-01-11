@@ -175,3 +175,31 @@ template cpp11::writable::doubles_matrix<cpp11::by_column> _sp_to_dense_transpos
     cpp11::doubles const & x, 
     cpp11::integers const & i, 
     cpp11::doubles const & p, int const & nrow, int const & ncol, int const & threads);
+
+template cpp11::writable::list _sp_rbind(
+    cpp11::list_of<cpp11::doubles> const & xvecs, 
+    cpp11::list_of<cpp11::integers> const & ivecs, 
+    cpp11::list_of<cpp11::integers> const & pvecs, 
+    cpp11::integers const & nrows, 
+    cpp11::integers const & ncols, int const & threads);
+
+template cpp11::writable::list _sp_rbind(
+    cpp11::list_of<cpp11::doubles> const & xvecs, 
+    cpp11::list_of<cpp11::integers> const & ivecs, 
+    cpp11::list_of<cpp11::doubles> const & pvecs, 
+    cpp11::integers const & nrows, 
+    cpp11::integers const & ncols, int const & threads);
+
+template cpp11::writable::list _sp_cbind(
+    cpp11::list_of<cpp11::doubles> const & xvecs, 
+    cpp11::list_of<cpp11::integers> const & ivecs, 
+    cpp11::list_of<cpp11::integers> const & pvecs, 
+    cpp11::integers const & nrows, 
+    cpp11::integers const & ncols, int const & threads);
+
+template cpp11::writable::list _sp_cbind(
+    cpp11::list_of<cpp11::doubles> const & xvecs, 
+    cpp11::list_of<cpp11::integers> const & ivecs, 
+    cpp11::list_of<cpp11::doubles> const & pvecs, 
+    cpp11::integers const & nrows, 
+    cpp11::integers const & ncols, int const & threads);

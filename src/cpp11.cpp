@@ -82,6 +82,34 @@ extern "C" SEXP _fastde_cpp11_sp64_to_dense_transposed(SEXP x, SEXP i, SEXP p, S
     return cpp11::as_sexp(cpp11_sp64_to_dense_transposed(cpp11::as_cpp<cpp11::decay_t<cpp11::doubles const &>>(x), cpp11::as_cpp<cpp11::decay_t<cpp11::integers const &>>(i), cpp11::as_cpp<cpp11::decay_t<cpp11::doubles const &>>(p), cpp11::as_cpp<cpp11::decay_t<int const &>>(nrow), cpp11::as_cpp<cpp11::decay_t<int const &>>(ncol), cpp11::as_cpp<cpp11::decay_t<int const &>>(threads)));
   END_CPP11
 }
+// cpp11_sparsemat.cpp
+extern cpp11::writable::list cpp11_sp_rbind(cpp11::list_of<cpp11::doubles> const & xvecs, cpp11::list_of<cpp11::integers> const & ivecs, cpp11::list_of<cpp11::integers> const & pvecs, cpp11::integers const & nrows, cpp11::integers const & ncols, int const & threads);
+extern "C" SEXP _fastde_cpp11_sp_rbind(SEXP xvecs, SEXP ivecs, SEXP pvecs, SEXP nrows, SEXP ncols, SEXP threads) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(cpp11_sp_rbind(cpp11::as_cpp<cpp11::decay_t<cpp11::list_of<cpp11::doubles> const &>>(xvecs), cpp11::as_cpp<cpp11::decay_t<cpp11::list_of<cpp11::integers> const &>>(ivecs), cpp11::as_cpp<cpp11::decay_t<cpp11::list_of<cpp11::integers> const &>>(pvecs), cpp11::as_cpp<cpp11::decay_t<cpp11::integers const &>>(nrows), cpp11::as_cpp<cpp11::decay_t<cpp11::integers const &>>(ncols), cpp11::as_cpp<cpp11::decay_t<int const &>>(threads)));
+  END_CPP11
+}
+// cpp11_sparsemat.cpp
+extern cpp11::writable::list cpp11_sp64_rbind(cpp11::list_of<cpp11::doubles> const & xvecs, cpp11::list_of<cpp11::integers> const & ivecs, cpp11::list_of<cpp11::doubles> const & pvecs, cpp11::integers const & nrows, cpp11::integers const & ncols, int const & threads);
+extern "C" SEXP _fastde_cpp11_sp64_rbind(SEXP xvecs, SEXP ivecs, SEXP pvecs, SEXP nrows, SEXP ncols, SEXP threads) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(cpp11_sp64_rbind(cpp11::as_cpp<cpp11::decay_t<cpp11::list_of<cpp11::doubles> const &>>(xvecs), cpp11::as_cpp<cpp11::decay_t<cpp11::list_of<cpp11::integers> const &>>(ivecs), cpp11::as_cpp<cpp11::decay_t<cpp11::list_of<cpp11::doubles> const &>>(pvecs), cpp11::as_cpp<cpp11::decay_t<cpp11::integers const &>>(nrows), cpp11::as_cpp<cpp11::decay_t<cpp11::integers const &>>(ncols), cpp11::as_cpp<cpp11::decay_t<int const &>>(threads)));
+  END_CPP11
+}
+// cpp11_sparsemat.cpp
+extern cpp11::writable::list cpp11_sp_cbind(cpp11::list_of<cpp11::doubles> const & xvecs, cpp11::list_of<cpp11::integers> const & ivecs, cpp11::list_of<cpp11::integers> const & pvecs, cpp11::integers const & nrows, cpp11::integers const & ncols, int const & threads);
+extern "C" SEXP _fastde_cpp11_sp_cbind(SEXP xvecs, SEXP ivecs, SEXP pvecs, SEXP nrows, SEXP ncols, SEXP threads) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(cpp11_sp_cbind(cpp11::as_cpp<cpp11::decay_t<cpp11::list_of<cpp11::doubles> const &>>(xvecs), cpp11::as_cpp<cpp11::decay_t<cpp11::list_of<cpp11::integers> const &>>(ivecs), cpp11::as_cpp<cpp11::decay_t<cpp11::list_of<cpp11::integers> const &>>(pvecs), cpp11::as_cpp<cpp11::decay_t<cpp11::integers const &>>(nrows), cpp11::as_cpp<cpp11::decay_t<cpp11::integers const &>>(ncols), cpp11::as_cpp<cpp11::decay_t<int const &>>(threads)));
+  END_CPP11
+}
+// cpp11_sparsemat.cpp
+extern cpp11::writable::list cpp11_sp64_cbind(cpp11::list_of<cpp11::doubles> const & xvecs, cpp11::list_of<cpp11::integers> const & ivecs, cpp11::list_of<cpp11::doubles> const & pvecs, cpp11::integers const & nrows, cpp11::integers const & ncols, int const & threads);
+extern "C" SEXP _fastde_cpp11_sp64_cbind(SEXP xvecs, SEXP ivecs, SEXP pvecs, SEXP nrows, SEXP ncols, SEXP threads) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(cpp11_sp64_cbind(cpp11::as_cpp<cpp11::decay_t<cpp11::list_of<cpp11::doubles> const &>>(xvecs), cpp11::as_cpp<cpp11::decay_t<cpp11::list_of<cpp11::integers> const &>>(ivecs), cpp11::as_cpp<cpp11::decay_t<cpp11::list_of<cpp11::doubles> const &>>(pvecs), cpp11::as_cpp<cpp11::decay_t<cpp11::integers const &>>(nrows), cpp11::as_cpp<cpp11::decay_t<cpp11::integers const &>>(ncols), cpp11::as_cpp<cpp11::decay_t<int const &>>(threads)));
+  END_CPP11
+}
 // cpp11_ttest.cpp
 extern cpp11::sexp cpp11_dense_ttest(cpp11::doubles_matrix<cpp11::by_column> const & input, cpp11::strings const & features, cpp11::integers const & labels, int alternative, bool var_equal, bool as_dataframe, int threads);
 extern "C" SEXP _fastde_cpp11_dense_ttest(SEXP input, SEXP features, SEXP labels, SEXP alternative, SEXP var_equal, SEXP as_dataframe, SEXP threads) {
@@ -134,9 +162,13 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fastde_cpp11_FilterFoldChangeMat",       (DL_FUNC) &_fastde_cpp11_FilterFoldChangeMat,       10},
     {"_fastde_cpp11_dense_ttest",               (DL_FUNC) &_fastde_cpp11_dense_ttest,                7},
     {"_fastde_cpp11_dense_wmw",                 (DL_FUNC) &_fastde_cpp11_dense_wmw,                  7},
+    {"_fastde_cpp11_sp64_cbind",                (DL_FUNC) &_fastde_cpp11_sp64_cbind,                 6},
+    {"_fastde_cpp11_sp64_rbind",                (DL_FUNC) &_fastde_cpp11_sp64_rbind,                 6},
     {"_fastde_cpp11_sp64_to_dense",             (DL_FUNC) &_fastde_cpp11_sp64_to_dense,              6},
     {"_fastde_cpp11_sp64_to_dense_transposed",  (DL_FUNC) &_fastde_cpp11_sp64_to_dense_transposed,   6},
     {"_fastde_cpp11_sp64_transpose",            (DL_FUNC) &_fastde_cpp11_sp64_transpose,             6},
+    {"_fastde_cpp11_sp_cbind",                  (DL_FUNC) &_fastde_cpp11_sp_cbind,                   6},
+    {"_fastde_cpp11_sp_rbind",                  (DL_FUNC) &_fastde_cpp11_sp_rbind,                   6},
     {"_fastde_cpp11_sp_to_dense",               (DL_FUNC) &_fastde_cpp11_sp_to_dense,                6},
     {"_fastde_cpp11_sp_to_dense_transposed",    (DL_FUNC) &_fastde_cpp11_sp_to_dense_transposed,     6},
     {"_fastde_cpp11_sp_transpose",              (DL_FUNC) &_fastde_cpp11_sp_transpose,               6},

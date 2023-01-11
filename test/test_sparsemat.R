@@ -163,3 +163,56 @@ print(all.equal(dM, cdM64))
 rm(dM)
 rm(cdM64)
 
+# test cbind and rbind that can produce output that's 64bit.
+
+Ms  <- list(M, M, M)
+
+rMR <- rbind(M, M, M)
+cMR <- cbind(M, M, M)
+
+
+
+tic("R rbind")
+rMR <- rbind(M, M, M)
+toc()
+
+tic("fastde rbind")
+rM <- fastde::sp_rbind(Ms, 1)
+toc()
+
+identical(rMR@x, rM@x)
+identical(rMR@i, rM@i)
+identical(rMR@p, rM@p)
+
+
+
+tic("fastde rbind 4t")
+rM4 <- fastde::sp_rbind(Ms, 4)
+toc()
+
+
+identical(rMR@x, rM4@x)
+identical(rMR@i, rM4@i)
+identical(rMR@p, rM4@p)
+
+
+
+tic("R cbind")
+cMR <- cbind(M, M, M)
+toc()
+
+tic("fastde cbind")
+cM <- fastde::sp_cbind(Ms, 1)
+toc()
+
+identical(cMR@x, cM@x)
+identical(cMR@i, cM@i)
+identical(cMR@p, cM@p)
+
+tic("fastde cbind 4t")
+cM4 <- fastde::sp_cbind(Ms, 4)
+toc()
+
+identical(cMR@x, cM4@x)
+identical(cMR@i, cM4@i)
+identical(cMR@p, cM4@p)

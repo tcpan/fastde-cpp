@@ -2,6 +2,7 @@
 
 #include "cpp11/r_vector.hpp"
 #include "cpp11/list.hpp"
+#include "cpp11/list_of.hpp"
 
 // Todo: remove all cpp11 references.  actually, using ITER makes it slower?  move this code to fastde core for now.
 
@@ -111,4 +112,19 @@ extern OUT _sp_to_dense_transposed(
     cpp11::r_vector<IT> const & i, 
     cpp11::r_vector<PT> const & p, IT2 const & nrow, IT2 const & ncol, int const & threads);
 
-    
+
+template <typename XT, typename IT, typename PT>
+extern cpp11::writable::list _sp_rbind(
+    cpp11::list_of<cpp11::r_vector<XT>> const & xvecs, 
+    cpp11::list_of<cpp11::r_vector<IT>> const & ivecs, 
+    cpp11::list_of<cpp11::r_vector<PT>> const & pvecs, 
+    cpp11::r_vector<IT> const & nrows, 
+    cpp11::r_vector<IT> const & ncols, int const & threads);
+
+template <typename XT, typename IT, typename PT>
+extern cpp11::writable::list _sp_cbind(
+    cpp11::list_of<cpp11::r_vector<XT>> const & xvecs, 
+    cpp11::list_of<cpp11::r_vector<IT>> const & ivecs, 
+    cpp11::list_of<cpp11::r_vector<PT>> const & pvecs, 
+    cpp11::r_vector<IT> const & nrows, 
+    cpp11::r_vector<IT> const & ncols, int const & threads);
