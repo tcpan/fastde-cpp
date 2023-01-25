@@ -110,6 +110,27 @@ extern "C" SEXP _fastde_cpp11_sp64_cbind(SEXP xvecs, SEXP ivecs, SEXP pvecs, SEX
     return cpp11::as_sexp(cpp11_sp64_cbind(cpp11::as_cpp<cpp11::decay_t<cpp11::list_of<cpp11::doubles> const &>>(xvecs), cpp11::as_cpp<cpp11::decay_t<cpp11::list_of<cpp11::integers> const &>>(ivecs), cpp11::as_cpp<cpp11::decay_t<cpp11::list_of<cpp11::doubles> const &>>(pvecs), cpp11::as_cpp<cpp11::decay_t<cpp11::integers const &>>(nrows), cpp11::as_cpp<cpp11::decay_t<cpp11::integers const &>>(ncols), cpp11::as_cpp<cpp11::decay_t<int const &>>(threads)));
   END_CPP11
 }
+// cpp11_sparsemat.cpp
+extern cpp11::writable::doubles cpp11_sp_colSums(cpp11::doubles const & x, cpp11::integers const & p, int const & threads);
+extern "C" SEXP _fastde_cpp11_sp_colSums(SEXP x, SEXP p, SEXP threads) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(cpp11_sp_colSums(cpp11::as_cpp<cpp11::decay_t<cpp11::doubles const &>>(x), cpp11::as_cpp<cpp11::decay_t<cpp11::integers const &>>(p), cpp11::as_cpp<cpp11::decay_t<int const &>>(threads)));
+  END_CPP11
+}
+// cpp11_sparsemat.cpp
+extern cpp11::writable::doubles cpp11_sp64_colSums(cpp11::doubles const & x, cpp11::doubles const & p, int const & threads);
+extern "C" SEXP _fastde_cpp11_sp64_colSums(SEXP x, SEXP p, SEXP threads) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(cpp11_sp64_colSums(cpp11::as_cpp<cpp11::decay_t<cpp11::doubles const &>>(x), cpp11::as_cpp<cpp11::decay_t<cpp11::doubles const &>>(p), cpp11::as_cpp<cpp11::decay_t<int const &>>(threads)));
+  END_CPP11
+}
+// cpp11_sparsemat.cpp
+extern cpp11::writable::doubles cpp11_sp_rowSums(cpp11::doubles const & x, cpp11::integers const & i, int const & nrows, int const & threads);
+extern "C" SEXP _fastde_cpp11_sp_rowSums(SEXP x, SEXP i, SEXP nrows, SEXP threads) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(cpp11_sp_rowSums(cpp11::as_cpp<cpp11::decay_t<cpp11::doubles const &>>(x), cpp11::as_cpp<cpp11::decay_t<cpp11::integers const &>>(i), cpp11::as_cpp<cpp11::decay_t<int const &>>(nrows), cpp11::as_cpp<cpp11::decay_t<int const &>>(threads)));
+  END_CPP11
+}
 // cpp11_ttest.cpp
 extern cpp11::sexp cpp11_dense_ttest(cpp11::doubles_matrix<cpp11::by_column> const & input, cpp11::strings const & features, cpp11::integers const & labels, int alternative, bool var_equal, bool as_dataframe, int threads);
 extern "C" SEXP _fastde_cpp11_dense_ttest(SEXP input, SEXP features, SEXP labels, SEXP alternative, SEXP var_equal, SEXP as_dataframe, SEXP threads) {
@@ -163,12 +184,15 @@ static const R_CallMethodDef CallEntries[] = {
     {"_fastde_cpp11_dense_ttest",               (DL_FUNC) &_fastde_cpp11_dense_ttest,                7},
     {"_fastde_cpp11_dense_wmw",                 (DL_FUNC) &_fastde_cpp11_dense_wmw,                  7},
     {"_fastde_cpp11_sp64_cbind",                (DL_FUNC) &_fastde_cpp11_sp64_cbind,                 6},
+    {"_fastde_cpp11_sp64_colSums",              (DL_FUNC) &_fastde_cpp11_sp64_colSums,               3},
     {"_fastde_cpp11_sp64_rbind",                (DL_FUNC) &_fastde_cpp11_sp64_rbind,                 6},
     {"_fastde_cpp11_sp64_to_dense",             (DL_FUNC) &_fastde_cpp11_sp64_to_dense,              6},
     {"_fastde_cpp11_sp64_to_dense_transposed",  (DL_FUNC) &_fastde_cpp11_sp64_to_dense_transposed,   6},
     {"_fastde_cpp11_sp64_transpose",            (DL_FUNC) &_fastde_cpp11_sp64_transpose,             6},
     {"_fastde_cpp11_sp_cbind",                  (DL_FUNC) &_fastde_cpp11_sp_cbind,                   6},
+    {"_fastde_cpp11_sp_colSums",                (DL_FUNC) &_fastde_cpp11_sp_colSums,                 3},
     {"_fastde_cpp11_sp_rbind",                  (DL_FUNC) &_fastde_cpp11_sp_rbind,                   6},
+    {"_fastde_cpp11_sp_rowSums",                (DL_FUNC) &_fastde_cpp11_sp_rowSums,                 4},
     {"_fastde_cpp11_sp_to_dense",               (DL_FUNC) &_fastde_cpp11_sp_to_dense,                6},
     {"_fastde_cpp11_sp_to_dense_transposed",    (DL_FUNC) &_fastde_cpp11_sp_to_dense_transposed,     6},
     {"_fastde_cpp11_sp_transpose",              (DL_FUNC) &_fastde_cpp11_sp_transpose,               6},

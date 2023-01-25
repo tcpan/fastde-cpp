@@ -203,3 +203,24 @@ template cpp11::writable::list _sp_cbind(
     cpp11::list_of<cpp11::doubles> const & pvecs, 
     cpp11::integers const & nrows, 
     cpp11::integers const & ncols, int const & threads);
+
+
+// csc
+template cpp11::doubles _sp_colsums(
+    cpp11::doubles const & x, 
+    cpp11::integers const & p, 
+    int const & ncol, 
+    int const & threads);
+
+template cpp11::doubles _sp_colsums(
+    cpp11::doubles const & x, 
+    cpp11::doubles const & p, 
+    int const & ncol, 
+    int const & threads);
+
+// csc
+template cpp11::doubles _sp_rowsums(
+    cpp11::doubles const & x, 
+    cpp11::integers const & i, 
+    int const & nrow, size_t const & nzcount, 
+    int const & threads);

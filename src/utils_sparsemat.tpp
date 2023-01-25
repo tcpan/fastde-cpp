@@ -18,146 +18,6 @@
 #include "fastde/benchmark_utils.hpp"
 
 
-// #include <atomic>
-// #include <parallel/algorithm>
-// VERY SLOW
-// // NOTe:  there is no formal definition of sparse matrix.
-// // input is column major, so i has the row ids, and p is per column.
-// template <typename XT, typename IT, typename PT, typename IT2>
-// extern cpp11::writable::list _sp_transpose_sort(
-//     cpp11::r_vector<XT> const & x, 
-//     cpp11::r_vector<IT> const & i, 
-//     cpp11::r_vector<PT> const & p, IT2 const & nrow, IT2 const & ncol, int const & threads) {
-
-//     using PT2 = typename std::conditional<std::is_same<PT, double>::value, long, int>::type;
-//     // https://www.r-bloggers.com/2020/03/what-is-a-dgcmatrix-object-made-of-sparse-matrix-format-in-r/
-//     // ======= decompose the input matrix in CSC format, S4 object with slots:
-//     // i :  int, row numbers, 0-based.
-//     // p :  int, p[i] is the position offset in x for row i.  i has range [0-r] inclusive.
-//     // x :  numeric, values
-//     // Dim:  int, 2D, sizes of full matrix
-//     // Dimnames:  2D, names.
-//     // factors:  ignore.
-    
-//     // input
-//     size_t nelem = x.size();
-//   std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start;
-
-
-//   start = std::chrono::steady_clock::now();
-
-//     std::vector<std::tuple<IT, PT2, XT>> temp;
-//     temp.resize(nelem);
-
-//     // copy to temp
-// #pragma omp parallel num_threads(threads)
-// {   
-//     int tid = omp_get_thread_num();
-//     size_t block = ncol / threads;
-//     size_t rem = ncol - threads * block;
-//     size_t offset = tid * block + (tid > rem ? rem : tid);
-//     int nid = tid + 1;
-//     size_t end = nid * block + (nid > rem ? rem : nid);
-
-//     IT2 i_start = p[offset], i_end;
-//     for (; offset < end; ++offset) {
-//         i_end = p[offset + 1];
-//         for (; i_start < i_end; ++i_start) {
-//             temp[i_start] = {i[i_start], offset, x[i_start]};
-//         }
-//     }
-// }
-
-
-//     // parallel sort
-//     __gnu_parallel::sort(temp.begin(), temp.end(), 
-//         [](std::tuple<IT, PT2, XT> const & lhs, std::tuple<IT, PT2, XT> const & rhs){
-//             return (std::get<0>(lhs) == std::get<0>(rhs)) ? (std::get<1>(lhs) < std::get<1>(rhs)) : (std::get<0>(lhs) < std::get<0>(rhs));
-//     });
-
-
-//   Rprintf("[TIME] sp_transpose_par 1 Elapsed(ms)= %f\n", since(start).count());
-
-//   start = std::chrono::steady_clock::now();
-//     // looking for starting offset for the rows. 
-//     // need to do below in case 1 row spans multiple threads.
-//     // collect from each thread, the first row encountered's offset position.
-//     std::vector<std::pair<IT, PT2>> boundaries;
-//     boundaries.resize(threads);
-// #pragma omp parallel num_threads(threads)
-// {   
-//     int tid = omp_get_thread_num();
-//     size_t block = nelem / threads;
-//     size_t rem = nelem - threads * block;
-//     size_t offset = tid * block + (tid > rem ? rem : tid);
-
-//     boundaries[tid] = {std::get<0>(temp[offset]), offset};
-// }
-
-
-//   Rprintf("[TIME] sp_transpose_par 2 Elapsed(ms)= %f\n", since(start).count());
-
-//   start = std::chrono::steady_clock::now();
-//     // empty output 
-//     cpp11::writable::r_vector<XT> tx(nelem); 
-//     cpp11::writable::r_vector<IT> ti(nelem);   // as many as there are values 
-//     cpp11::writable::r_vector<PT> tp(nrow + 1);       // number of rows + 1.
-    
-//     std::fill(tp.begin(), tp.end(), nelem);  // initialize tp so we can do min.
-
-//     // do a linear scan of the thread boundaries for min
-//     IT rid;
-//     for (int t = 0; t < threads; ++t) {
-//         rid = boundaries[t].first;
-//         tp[rid] = (boundaries[t].second < tp[rid]) ? boundaries[t].second : tp[rid];
-//     }
-//     // now that we've set a minimum offsets for the boundary cases, we can blanketly compare and update -
-//     // only 1 thread will have temp elements with offsets that are smaller to update tp
-//     // so no thread contention.
-
-//   Rprintf("[TIME] sp_transpose_par 3 Elapsed(ms)= %f\n", since(start).count());
-
-//   start = std::chrono::steady_clock::now();
-//     // now copy out.
-// #pragma omp parallel num_threads(threads)
-// {   
-//     int tid = omp_get_thread_num();
-//     size_t block = nelem / threads;
-//     size_t rem = nelem - threads * block;
-//     size_t offset = tid * block + (tid > rem ? rem : tid);
-//     int nid = tid + 1;
-//     size_t end = nid * block + (nid > rem ? rem : nid);
-
-//     IT rid2;
-//     for (; offset < end; ++offset) {
-//         tx[offset] = std::get<2>(temp[offset]);
-//         ti[offset] = std::get<1>(temp[offset]);
-//         rid2 = std::get<0>(temp[offset]);
-//         if (offset < tp[rid2]) tp[rid2] = offset;
-//     }
-// }
-//   Rprintf("[TIME] sp_transpose_par 4 Elapsed(ms)= %f\n", since(start).count());
-
-//   start = std::chrono::steady_clock::now();
-
-//     // scan tp to replace remaining "nelem" value, i.e. empty columns
-//     PT v = 0;
-//     for (size_t e = 0; e < nrow; ++e) {
-//         if (tp[e] == nelem) tp[e] = v;
-//         else v = tp[e];
-//     }
-//   Rprintf("[TIME] sp_transpose_par 5 Elapsed(ms)= %f\n", since(start).count());
-
-//   start = std::chrono::steady_clock::now();
-//     // ======= return
-//     cpp11::named_arg _tx("x"); _tx = tx;
-//     cpp11::named_arg _ti("i"); _ti = ti;
-//     cpp11::named_arg _tp("p"); _tp = tp;
-//     cpp11::writable::list out( { _tx, _ti, _tp} );
-//   Rprintf("[TIME] sp_transpose_par 6 Elapsed(ms)= %f\n", since(start).count());
-
-//     return out;
-// }
 
 
 
@@ -384,7 +244,8 @@ template <typename XT, typename IT, typename PT, typename IT2>
 extern cpp11::writable::list _sp_transpose(
     cpp11::r_vector<XT> const & x, 
     cpp11::r_vector<IT> const & i, 
-    cpp11::r_vector<PT> const & p, IT2 const & nrow, IT2 const & ncol, int const & threads) {
+    cpp11::r_vector<PT> const & p, 
+    IT2 const & nrow, IT2 const & ncol, int const & threads) {
 
     // https://www.r-bloggers.com/2020/03/what-is-a-dgcmatrix-object-made-of-sparse-matrix-format-in-r/
     // ======= decompose the input matrix in CSC format, S4 object with slots:
@@ -832,8 +693,10 @@ extern void _sp_transpose(
 
 // no names.
 template <typename OUT, typename XT, typename IT, typename PT, typename IT2>
-extern OUT _sp_to_dense(cpp11::r_vector<XT> const & x, 
-    cpp11::r_vector<IT> const & i, cpp11::r_vector<PT> const & p, 
+extern OUT _sp_to_dense(
+    cpp11::r_vector<XT> const & x, 
+    cpp11::r_vector<IT> const & i, 
+    cpp11::r_vector<PT> const & p, 
     IT2 const & nrow, IT2 const & ncol, int const & threads) {
 
     // https://www.r-bloggers.com/2020/03/what-is-a-dgcmatrix-object-made-of-sparse-matrix-format-in-r/
@@ -904,7 +767,8 @@ template <typename OUT, typename XT, typename IT, typename PT, typename IT2>
 extern OUT _sp_to_dense_transposed(
     cpp11::r_vector<XT> const & x, 
     cpp11::r_vector<IT> const & i, 
-    cpp11::r_vector<PT> const & p, IT2 const & nrow, IT2 const & ncol, int const & threads) {
+    cpp11::r_vector<PT> const & p, 
+    IT2 const & nrow, IT2 const & ncol, int const & threads) {
 
     // https://www.r-bloggers.com/2020/03/what-is-a-dgcmatrix-object-made-of-sparse-matrix-format-in-r/
     // ======= decompose the input matrix in CSC format, S4 object with slots:
@@ -1171,5 +1035,107 @@ extern cpp11::writable::list _sp_cbind(
     out.push_back(cpp11::as_sexp(nrow));
     out.push_back(cpp11::as_sexp(ncol));
     
+    return out;
+}
+
+
+// csc
+template <typename XT, typename PT, typename IT>
+extern cpp11::r_vector<XT> _sp_colsums(
+    cpp11::r_vector<XT> const & x, 
+    cpp11::r_vector<PT> const & p, 
+    IT const & ncol, 
+    int const & threads) {
+
+    using PT2 = typename std::conditional<std::is_same<PT, double>::value, long, int>::type;
+
+    cpp11::writable::r_vector<XT> out;
+    out.resize(ncol);
+
+#pragma omp parallel num_threads(threads)
+{   
+    int tid = omp_get_thread_num();
+    size_t block = ncol / threads;
+    size_t rem = ncol - threads * block;
+    size_t offset = tid * block + (tid > rem ? rem : tid);
+    int nid = tid + 1;
+    size_t end = nid * block + (nid > rem ? rem : nid);
+
+    PT2 start = p[offset], end2;
+    for (; offset < end; ++offset) {
+        end2 = p[offset+1];
+        XT sum = 0;
+        for (; start != end2; ++start) {
+            sum += x[start];
+        }
+
+        out[offset] = sum;
+    }
+}
+    return out;
+}
+
+// csc
+template <typename XT, typename IT, typename IT2>
+extern cpp11::r_vector<XT> _sp_rowsums(
+    cpp11::r_vector<XT> const & x, 
+    cpp11::r_vector<IT> const & i, 
+    IT const & nrow, IT2 const & nzcount, 
+    int const & threads) {
+
+    cpp11::writable::r_vector<XT> out;
+    out.resize(nrow);
+    
+    if (threads == 1) {
+
+        IT r;
+        for (IT2 offset = 0; offset < nzcount; ++offset) {
+            r = i[offset];
+            out[r] += x[offset];
+        }
+    } else {
+
+        // alloc temp storage.
+        std::vector<std::vector<XT>> sums(threads);
+
+#pragma omp parallel num_threads(threads)
+{   
+        int tid = omp_get_thread_num();
+        size_t block = nzcount / threads;
+        size_t rem = nzcount - threads * block;
+        size_t offset = tid * block + (tid > rem ? rem : tid);
+        int nid = tid + 1;
+        size_t end = nid * block + (nid > rem ? rem : nid);
+
+        sums[tid].resize(nrow);
+        IT r;
+
+        for (; offset < end; ++offset) {
+            r = i[offset];
+            sums[tid][r] += x[offset];
+        }
+}
+
+
+#pragma omp parallel num_threads(threads)
+{   
+        int tid = omp_get_thread_num();
+        size_t block = nrow / threads;
+        size_t rem = nrow - threads * block;
+        size_t offset = tid * block + (tid > rem ? rem : tid);
+        int nid = tid + 1;
+        size_t end = nid * block + (nid > rem ? rem : nid);
+
+        for (; offset < end; ++offset) {
+            XT sum = 0;
+            for (size_t t = 0; t < threads; ++t) {
+                sum += sums[t][offset];
+            }
+
+            out[offset] = sum;
+        }
+}
+
+    }
     return out;
 }

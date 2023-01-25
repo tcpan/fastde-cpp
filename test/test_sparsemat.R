@@ -216,3 +216,38 @@ toc()
 identical(cMR@x, cM4@x)
 identical(cMR@i, cM4@i)
 identical(cMR@p, cM4@p)
+
+
+############
+
+tic("[TIME] R colsum")
+cs <- colSums(M, 1)
+toc()
+
+tic("[TIME] fastde colsum")
+fcs <- fastde::sp_colSums(M, 1)
+toc()
+
+tic("[TIME] fastde colsum 4")
+fcs4 <- fastde::sp_colSums(M, 4)
+toc()
+
+identical(cs, fcs)
+identical(cs, fcs4)
+
+
+
+tic("[TIME] R rowsum")
+cs <- colSums(M, 1)
+toc()
+
+tic("[TIME] fastde rowsum")
+fcs <- fastde::sp_colSums(M, 1)
+toc()
+
+tic("[TIME] fastde rowsum 4")
+fcs4 <- fastde::sp_colSums(M, 4)
+toc()
+
+identical(cs, fcs)
+identical(cs, fcs4)

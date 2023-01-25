@@ -9,6 +9,7 @@
 #include <R.h>
 #include <vector>
 
+// adapters for cpp11 r_vector to c++ implementation
 
 [[cpp11::register]]
 extern cpp11::writable::list cpp11_sp_transpose(cpp11::doubles const & x,
@@ -169,4 +170,36 @@ extern cpp11::writable::list cpp11_sp64_cbind(
     int const & threads
 ) {
     return _sp_cbind(xvecs, ivecs, pvecs, nrows, ncols, threads);
+}
+
+
+
+
+[[cpp11::register]]
+extern cpp11::writable::doubles cpp11_sp_colSums(
+    cpp11::doubles const & x,
+    cpp11::integers const & p,
+    int const & threads
+) {
+    return _sp_colsums(x, p, static_cast<int>(p.size() - 1), threads);
+}
+
+[[cpp11::register]]
+extern cpp11::writable::doubles cpp11_sp64_colSums(
+    cpp11::doubles const & x,
+    cpp11::doubles const & p,
+    int const & threads
+) {
+    return _sp_colsums(x, p, static_cast<int>(p.size() - 1), threads);
+}
+
+
+[[cpp11::register]]
+extern cpp11::writable::doubles cpp11_sp_rowSums(
+    cpp11::doubles const & x,
+    cpp11::integers const & i,
+    int const & nrows,
+    int const & threads
+) {
+    return _sp_rowsums(x, i, nrows, static_cast<size_t>(x.size()), threads);
 }

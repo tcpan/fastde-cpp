@@ -229,3 +229,59 @@ sp_cbind <- function(spmats, threads = 1) {
 }
 
 
+#' R Sparse rowSums
+#'
+#' This implementation allows production of very large sparse matrices.
+#' 
+#' @rdname sp_rowSums
+#' @param spmats a list of sparse matrice
+#' @return a dense array of row sums.
+#' @name sp_rowSums
+#' @export
+sp_rowSums <- function(spmat, threads = 1) {
+    tic("[TIME] Row sums")
+    if (is(spmat, 'dgCMatrix')) {
+        if (threads == 1) {
+            m <- rowSums(spmat)
+        } else {
+            m <- cpp11_sp_rowSums(spmat@x, spmat@i, spmat@Dim[[2]], threads)
+        }
+    } else if (is(spmat, 'dgCMatrix64')) {
+        m <- cpp11_sp_rowSums(spmat@x, spmat@i, spmat@Dim[[2]], threads)
+    } else {
+        print("UNSUPPORTED.  Matrices must be sparse matrices")
+        return(NULL)
+    }
+    names(m) <- rownames(spmat)
+    toc()
+    return(m)
+}
+
+#' R Sparse rowSums
+#'
+#' This implementation allows production of very large sparse matrices.
+#' 
+#' @rdname sp_rowSums
+#' @param spmats a list of sparse matrice
+#' @return a dense array of row sums.
+#' @name sp_rowSums
+#' @export
+sp_colSums <- function(spmat, threads = 1) {
+    tic("[TIME] Row sums")
+    if (is(spmat, 'dgCMatrix')) {
+        if (threads == 1) {
+            m <- colSums(spmat)
+        } else {
+            m <- cpp11_sp_colSums(spmat@x, spmat@p, threads)
+        }
+    } else if (is(spmat, 'dgCMatrix64')) {
+        m <- cpp11_sp64_colSums(spmat@x, spmat@p, threads)
+    } else {
+        print("UNSUPPORTED.  Matrices must be sparse matrices")
+        return(NULL)
+    }
+    names(m) <- colnames(spmat)
+
+    toc()
+    return(m)
+}
