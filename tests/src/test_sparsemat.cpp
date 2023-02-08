@@ -132,10 +132,28 @@ int main(int argc, char* argv[]) {
 		FMT_ROOT_PRINT("transposed in {} sec, 4 threads\n", get_duration_s(stime, etime));
 
 		utils::write_hdf5_sparse_matrix(common_params.output + ".transpose.t4.h5", "sparse_matrix", ox, oi, op, rows, cols, true);
+
+
+
+		stime = getSysTime();
+		csc_transpose_csc_vec(x, i, p, rows, cols, ox, oi, op, 1);
+		etime = getSysTime();
+		FMT_ROOT_PRINT("transposed in {} sec\n", get_duration_s(stime, etime));
+
+		utils::write_hdf5_sparse_matrix(common_params.output + ".transpose_vec.t1.h5", "sparse_matrix", ox, oi, op, rows, cols, true);
+
+		stime = getSysTime();
+		csc_transpose_csc_vec(x, i, p, rows, cols, ox, oi, op, 4);
+		etime = getSysTime();
+		FMT_ROOT_PRINT("transposed in {} sec, 4 threads\n", get_duration_s(stime, etime));
+
+		utils::write_hdf5_sparse_matrix(common_params.output + ".transpose_vec.t4.h5", "sparse_matrix", ox, oi, op, rows, cols, true);
+
 	}
 
 	if ((app_params.test_method == app_parameters::test_type::to_dense) || 
 		(app_params.test_method == app_parameters::test_type::all)) {
+
 		std::vector<double> out(rows * cols, 0);
 
 		stime = getSysTime();
@@ -155,6 +173,20 @@ int main(int argc, char* argv[]) {
 
 
 		
+		stime = getSysTime();
+		csc_to_dense_c_vec(x, i, p,  rows, cols, out, 1);
+		etime = getSysTime();
+		FMT_ROOT_PRINT("to dense in {} sec\n", get_duration_s(stime, etime));
+
+		utils::write_hdf5_matrix(common_params.output + ".to_dense_vec.t1.h5", "matrix", out, rows, cols, true);
+		std::fill(out.begin(), out.end(), 0);
+
+		stime = getSysTime();
+		csc_to_dense_c_vec(x, i, p,  rows, cols, out, 4);
+		etime = getSysTime();
+		FMT_ROOT_PRINT("to dense in {} sec, 4 threads\n", get_duration_s(stime, etime));
+
+		utils::write_hdf5_matrix(common_params.output + ".to_dense_vec.t4.h5", "matrix", out, rows, cols, true);
 	}
 	if ((app_params.test_method == app_parameters::test_type::transpose_to_dense) || 
 		(app_params.test_method == app_parameters::test_type::all)) {
@@ -175,6 +207,22 @@ int main(int argc, char* argv[]) {
 
 		utils::write_hdf5_matrix(common_params.output + ".transpose_to_dense.t4.h5", "matrix", out, cols, rows, true);
 
+		
+		stime = getSysTime();
+		csc_to_dense_transposed_c_vec(x, i, p,  rows, cols, out, 1);
+		etime = getSysTime();
+		FMT_ROOT_PRINT("to dense transposed in {} sec\n", get_duration_s(stime, etime));
+
+		utils::write_hdf5_matrix(common_params.output + ".transpose_to_dense_vec.t1.h5", "matrix", out, cols, rows, true);
+		std::fill(out.begin(), out.end(), 0);
+
+		stime = getSysTime();
+		csc_to_dense_transposed_c_vec(x, i, p,  rows, cols, out, 4);
+		etime = getSysTime();
+		FMT_ROOT_PRINT("to dense transposed in {} sec, 4 threads\n", get_duration_s(stime, etime));
+
+		utils::write_hdf5_matrix(common_params.output + ".transpose_to_dense_vec.t4.h5", "matrix", out, cols, rows, true);
+
 	}
 	if ((app_params.test_method == app_parameters::test_type::cbind) || 
 		(app_params.test_method == app_parameters::test_type::all)) {
@@ -186,6 +234,13 @@ int main(int argc, char* argv[]) {
 		std::vector<std::vector<int>> ip(repeats);
 		std::vector<int> vrows(repeats, rows);
 		std::vector<int> vcols(repeats, cols);
+
+		for (int v = 0; v < repeats; ++v) {
+			ix[v] = x;
+			ii[v] = i;
+			ip[v] = p;
+		}
+
 
 		std::vector<double> ox(x.size() * repeats);
 		std::vector<int> oi(i.size() * repeats);
@@ -241,18 +296,19 @@ int main(int argc, char* argv[]) {
 		std::vector<std::vector<double>> ix(repeats);
 		std::vector<std::vector<int>> ii(repeats);
 		std::vector<std::vector<int>> ip(repeats);
+		
+		for (int v = 0; v < repeats; ++v) {
+			ix[v] = x;
+			ii[v] = i;
+			ip[v] = p;
+		}
+
 		std::vector<int> vrows(repeats, rows);
 		std::vector<int> vcols(repeats, cols);
 
 		std::vector<double> ox(x.size() * repeats);
 		std::vector<int> oi(i.size() * repeats);
 		std::vector<int> op(cols + 1, 0);
-
-		for (int v = 0; v < repeats; ++v) {
-			ix[v] = x;
-			ii[v] = i;
-			ip[v] = p;
-		}
 
 		stime = getSysTime();
 		csc_rbind_vec(ix, ii, ip, vrows, vcols, ox, oi, op, 1);

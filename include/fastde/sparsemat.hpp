@@ -52,6 +52,19 @@ extern void csc_transpose_csc(
     PITER2 tp, 
     int const & threads);
 
+template <typename XVEC, typename IVEC, typename PVEC, typename IT2,
+    typename XVEC2, typename IVEC2, typename PVEC2>
+extern void csc_transpose_csc_vec(
+    XVEC const & x, 
+    IVEC const & i, 
+    PVEC const & p, 
+    IT2 const & nrow, IT2 const & ncol,
+    XVEC2 & tx, 
+    IVEC2 & ti, 
+    PVEC2 & tp, 
+    int const & threads);
+
+
 
 // no names.
 template <typename OITER, typename XITER, typename IITER,
@@ -64,6 +77,18 @@ extern void csc_to_dense_c(
     OITER out,
     int const & threads);
 
+
+// no names.
+template <typename OVEC, typename XVEC, typename IVEC,
+    typename PVEC, typename IT2>
+extern void csc_to_dense_c_vec(
+    XVEC const & x, 
+    IVEC const & i,
+    PVEC const & p, 
+    IT2 const & nrow, IT2 const & ncol, 
+    OVEC & out,
+    int const & threads);
+
 template <typename OITER, typename XITER, typename IITER,
     typename PITER, typename IT2>
 extern void csc_to_dense_transposed_c(
@@ -72,6 +97,17 @@ extern void csc_to_dense_transposed_c(
     PITER p, 
     IT2 const & nrow, IT2 const & ncol, 
     OITER out,
+    int const & threads);
+
+
+template <typename OVEC, typename XVEC, typename IVEC,
+    typename PVEC, typename IT2>
+extern void csc_to_dense_transposed_c_vec(
+    XVEC const & x, 
+    IVEC const & i, 
+    PVEC const & p, 
+    IT2 const & nrow, IT2 const & ncol, 
+    OVEC & out,
     int const & threads);
 
 

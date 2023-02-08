@@ -418,6 +418,259 @@ extern void csc_transpose_csc(
 }
 
 
+
+
+// NOTE:  there is no formal definition of sparse matrix.
+// input is column major, so i has the row ids, and p is per column.
+// direct to stl vectors
+template <typename XVEC, typename IVEC, typename PVEC, typename IT2,
+    typename XVEC2, typename IVEC2, typename PVEC2>
+extern void csc_transpose_csc_vec(
+    XVEC const & x, 
+    IVEC const & i, 
+    PVEC const & p, 
+    IT2 const & nrow, IT2 const & ncol,
+    XVEC2 & tx,  // nelem
+    IVEC2 & ti,  // nelem
+    PVEC2 & tp,  // nrow+1
+    int const & threads) {
+
+
+    size_t nelem = p[ncol];
+
+    if (threads > 1) {
+
+        // https://www.r-bloggers.com/2020/03/what-is-a-dgcmatrix-object-made-of-sparse-matrix-format-in-r/
+        // ======= decompose the input matrix in CSC format, S4 object with slots:
+        // i :  int, row numbers, 0-based.
+        // p :  int, p[i] is the position offset in x for row i.  i has range [0-r] inclusive.
+        // x :  numeric, values
+        // Dim:  int, 2D, sizes of full matrix
+        // Dimnames:  2D, names.
+        // factors:  ignore.
+    
+        // either:  per thread summary,   this would still use less memory than sortiing the whole thing.
+        // bin by row in random (thread) order, then sort per row -  this would be n log n - n log t
+    
+        // start = std::chrono::steady_clock::now();
+
+        // set up per thread offsets.
+        // should have
+        //      r0      r1      r2      r3  ...
+        // t0   0       s1      s3
+        // t1   c1      s1+d1
+        // t2   c1+c2   s1+d1+d2
+        // ...
+        // tn   s1      s2
+
+        using PT = typename std::remove_cv<typename std::remove_reference<decltype(tp[0])>::type>::type;
+        std::vector<std::vector<PT>> lps(threads + 1);
+
+#pragma omp parallel num_threads(threads)
+{   
+        int tid = omp_get_thread_num();
+        lps[tid].resize(nrow + 1, 0);
+}
+        lps[threads].resize(nrow + 1, 0);
+
+        // Rprintf("[TIME] sp_transpose_par 2 Elapsed(ms)= %f\n", since(start).count());
+
+        // start = std::chrono::steady_clock::now();
+
+        // ======= do the transpose.
+        
+        // do the swap.  do random memory access instead of sorting.
+        // 1. iterate over i to get row (tcol) counts, store in new p[1..nrow].   these are offsets in new x
+        // 2. compute exclusive prefix sum as offsets in x.
+        // 3. use p to get range of elements in x belonging to the same column, scatter to new x
+        //     and increment offset in p.
+        // 4. shift p to the right by 1 element, and set p[0] = 0
+
+        // step 1: do local count.  store in thread + 1, row r (not r+1).  partition elements.
+        // i.e. compute
+        //      r0      r1      r2      r3  ...
+        // t0   0       0       0
+        // t1   c1      d1
+        // t2   c2      d2
+        // ...
+        // tn   cn      dn
+#pragma omp parallel num_threads(threads)
+{   
+        int tid = omp_get_thread_num();
+        size_t block = nelem / threads;
+        size_t rem = nelem - threads * block;
+        size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
+        int nid = tid + 1;
+        size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
+
+        for (size_t e = offset; e < end; ++e) {
+            ++lps[nid][static_cast<size_t>(i[e])];
+        }
+}
+        // Rprintf("[TIME] sp_transpose_par 3 Elapsed(ms)= %f\n", since(start).count());
+
+        // start = std::chrono::steady_clock::now();
+
+        // step 1.1:  for each row, prefix sum for threads, store in thread t+1, row r.  partition rows.
+        // i.e. compute
+        //      r0      r1      r2      r3  ...
+        // t0   0       0       0
+        // t1   c1      d1
+        // t2   c1+c2   d1+d2
+        // ...
+        // tn   c(1..n) d(1..n)
+#pragma omp parallel num_threads(threads)
+{   
+        int tid = omp_get_thread_num();
+        size_t block = (nrow+1) / threads;   // each thread handles a block of rows.
+        size_t rem = (nrow+1) - threads * block;
+        size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
+        int nid = tid + 1;
+        size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
+
+        for (int t = 0; t < threads; ++t) {  // linear scan, for hardware prefetching.
+            for (size_t r = offset; r < end; ++r) {
+                lps[t+1][r] += lps[t][r];
+            }
+        }
+        // at the end, lps[thread] has total counts per row.
+}
+        // Rprintf("[TIME] sp_transpose_par 4 Elapsed(ms)= %f\n", since(start).count());
+
+        // start = std::chrono::steady_clock::now();
+
+        // step 2: global prefix sum of lps[thread] by row r,  store output in lps[0], row r+1
+        // linear..
+        // also step 4. copy to output p array.
+        // step 1.1:  for each row, prefix sum for threads, store in thread t+1, row r.  partition rows.
+        // i.e. compute
+        //      r0      r1      r2      r3  ...
+        // t0   0       s1      s1+s2
+        // t1   c1      d1
+        // t2   c1+c2   d1+d2
+        // ...
+        // tn   s1      s2      s3
+        for (size_t r = 0; r < nrow; ++r) {
+            lps[0][r+1] = lps[0][r] + lps[threads][r];
+            tp[r] = lps[0][r];
+        }
+        tp[nrow] = lps[0][nrow];
+
+        // Rprintf("[TIME] sp_transpose_par 5 Elapsed(ms)= %f\n", since(start).count());
+
+        // start = std::chrono::steady_clock::now();
+
+        // step 2.1: add global prefix to local.  do in parallel.  each thread can do independently.
+        //      r0      r1      r2      r3  ...
+        // t0   0       s1      s3
+        // t1   c1      s1+d1
+        // t2   c1+c2   s1+d1+d2
+        // ...
+        // tn   s1      s1+s2
+#pragma omp parallel num_threads(threads)
+{   
+        int nid = omp_get_thread_num() + 1;
+        for (size_t r = 0; r < nrow; ++r) {
+            lps[nid][r] += lps[0][r];
+        }
+}
+        // per thread we now have the starting offset for writing.
+
+        // Rprintf("[TIME] sp_transpose_par 6 Elapsed(ms)= %f\n", since(start).count());
+
+        // start = std::chrono::steady_clock::now();
+
+        // step 3.  use the per thread offsets to write out.
+#pragma omp parallel num_threads(threads)
+{   
+        int tid = omp_get_thread_num();
+        size_t block = nelem / threads;
+        size_t rem = nelem - threads * block;
+        size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
+        int nid = tid + 1;
+        size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
+
+        size_t rid;   // column id needs to start with 0.  row ids start with 0
+        auto val = x[0];
+        // need to search for cid based on offset.
+        auto pptr = std::upper_bound(p.begin(), p.end(), offset);
+        size_t ppos = std::distance(p.begin(), pptr), cid;
+        size_t pos;
+        
+        for (size_t e = offset ; e < end; ++e) {
+            rid = i[e];   // current row id (starts with 0)
+            val = x[e];   // current value
+            // if the current element pos reaches first elem of next column (*pptr),
+            // then go to next column (increment cid and pptr).
+            for (; e >= static_cast<size_t>(p[ppos]); ++ppos);  // current column id
+            cid = ppos - 1;
+
+            // now copy and update.
+            // curr pos is the offset for the transposed row (new col), in tp.
+            // note we are using tp array to track current offset.
+            pos = lps[tid][rid];  // where to insert the data
+            tx[pos] = val;  // place the data
+            ti[pos] = cid;  // place the row id (original col id. 0-based)
+            ++lps[tid][rid];  // update the offset - 1 space consumed.
+        }
+}
+        // Rprintf("[TIME] sp_transpose_par 7 Elapsed(ms)= %f\n", since(start).count());
+
+    } else {  // single thread.
+
+        // initialize
+        tp.resize(nrow + 1, 0);
+        std::fill(tp.begin(), tp.end(), 0);
+
+        // do the swap.  do random memory access instead of sorting.
+        // 1. iterate over i to get row (tcol) counts, store in new p[1..nrow].   these are offsets in new x
+        // 2. compute exclusive prefix sum as offsets in x.
+        // 3. use p to get range of elements in x belonging to the same column, scatter to new x
+        //     and increment offset in p.
+        // 4. shift p to the right by 1 element, and set p[0] = 0
+        // step 1
+        for (size_t e = 0; e < nelem; ++e) {
+            ++tp[i[e] + 1];
+        }
+        // step 2 - create max offset + 1 for each transposed row ( == new column)
+        for (size_t c = 0; c < nrow; ++c) {
+            tp[c+1] += tp[c];
+        }
+        // step 3  scatter
+        size_t rid;   // column id needs to start with 0.  row ids start with 0
+        size_t cid = 0, ppos = 1;
+        auto val = x[0];
+        size_t pos;
+        for (size_t e = 0; e < nelem; ++e) {
+            rid = i[e];   // current row id (starts with 0)
+            val = x[e];   // current value
+            // if the current element pos reaches first elem of next column (*pptr),
+            // then go to next column (increment cid and pptr).
+            for (; e >= static_cast<size_t>(p[ppos]); ++ppos);  // current column id
+            cid = ppos - 1;
+
+            // now copy and update.
+            // curr pos is the offset for the transposed row (new col), in tp.
+            // note we are using tp array to track current offset.
+            pos = tp[rid];  // where to insert the data
+            tx[pos] = val;  // place the data
+            ti[pos] = cid;  // place the row id (original col id. 0-based)
+            ++tp[rid];  // update the offset - 1 space consumed.
+        }
+        // step 4.  shift the tp values forward by 1 position.
+        // std::copy_backward(tp, tp + nrow, tp + nrow + 1);
+        size_t temp = 0, temp2; 
+        for (size_t r = 0; r <= nrow; ++r) {
+            temp2 = tp[r];
+            tp[r] = temp;
+            temp = temp2;
+        }
+
+    }
+
+}
+
+
 // compressed sparse column to column major.
 template <typename OITER, typename XITER, typename IITER,
     typename PITER, typename IT2>
@@ -505,6 +758,81 @@ extern void csc_to_dense_c(
     }
 }
 
+
+// compressed sparse column to column major.
+template <typename OVEC, typename XVEC, typename IVEC,
+    typename PVEC, typename IT2>
+extern void csc_to_dense_c_vec(
+    XVEC const & x, 
+    IVEC const & i,
+    PVEC const & p, 
+    IT2 const & nrow, IT2 const & ncol, 
+    OVEC & out,
+    int const & threads) {
+
+
+    // https://www.r-bloggers.com/2020/03/what-is-a-dgcmatrix-object-made-of-sparse-matrix-format-in-r/
+    // ======= decompose the input matrix in CSC format, S4 object with slots:
+    // i :  int, row numbers, 0-based.
+    // p :  int, p[i] is the position offset in x for row i.  i has range [0-r] inclusive.
+    // x :  numeric, values
+    // Dim:  int, 2D, sizes of full matrix
+    // Dimnames:  2D, names.
+    // factors:  ignore.
+
+    // ======= create new output and initialize
+    out.clear();
+    out.resize(nrow * ncol);
+    std::fill(out.begin(), out.end(), 0);
+
+    // Rprintf("Sparse DIM: samples %lu x features %lu, non-zeros %lu\n", in.get_ncol(), in.get_nrow(), in.get_nelem()); 
+    
+    if (threads == 1) {
+        size_t istart, iend;
+        auto r = i[0];
+        size_t off = 0;
+
+        // auto optr = out;
+        for (size_t c = 0; c < ncol; ++c) {
+            istart = p[c];
+            iend = p[c+1];
+            off = c * nrow;
+
+            for (size_t e = istart; e < iend; ++e) {
+                r = i[e];
+                out[r + off] = x[e];
+            }
+        }
+
+    } else {
+    // now iterate and fill   
+#pragma omp parallel num_threads(threads)
+{   
+        int tid = omp_get_thread_num();
+        size_t block = ncol / threads;
+        size_t rem = ncol - threads * block;
+        size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
+        int nid = tid + 1;
+        size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
+
+        auto r = i[0];
+        size_t istart, iend;
+        size_t off;
+        // auto optr = out;
+        for (size_t c = offset; c < end; ++c) {
+            istart = p[c];
+            iend = p[c + 1];
+            off = c * nrow;
+
+            for (size_t e = istart; e < iend; ++e) {
+                r = i[e];
+                out[r + off] = x[e];
+            }
+        }
+}
+    }
+}
+
 template <typename OITER, typename XITER, typename IITER,
     typename PITER, typename IT2>
 extern void csc_to_dense_transposed_c(
@@ -585,6 +913,76 @@ extern void csc_to_dense_transposed_c(
             for (; iptr != ipend; ++xptr, ++iptr) {
                 r = *iptr;
                 *(optr + r * ncol) = *xptr;
+            }
+        }
+}
+    }
+}
+
+
+template <typename OVEC, typename XVEC, typename IVEC,
+    typename PVEC, typename IT2>
+extern void csc_to_dense_transposed_c_vec(
+    XVEC const & x, 
+    IVEC const & i, 
+    PVEC const & p, 
+    IT2 const & nrow, IT2 const & ncol, 
+    OVEC & out,
+    int const & threads) {
+
+
+    // https://www.r-bloggers.com/2020/03/what-is-a-dgcmatrix-object-made-of-sparse-matrix-format-in-r/
+    // ======= decompose the input matrix in CSC format, S4 object with slots:
+    // i :  int, row numbers, 0-based.
+    // p :  int, p[i] is the position offset in x for row i.  i has range [0-r] inclusive.
+    // x :  numeric, values
+    // Dim:  int, 2D, sizes of full matrix
+    // Dimnames:  2D, names.
+    // factors:  ignore.
+    
+
+    // ======= create new output and initialize
+    out.resize(nrow * ncol);
+    std::fill(out.begin(), out.end(), 0);
+
+    // Rprintf("Sparse DIM: samples %lu x features %lu, non-zeros %lu\n", in.get_ncol(), in.get_nrow(), in.get_nelem()); 
+    
+    if (threads == 1) {
+        size_t istart, iend;
+        auto r = i[0];
+
+        // auto optr = out;
+        for (size_t c = 0; c < ncol; ++c) {
+            istart = p[c];
+            iend = p[c+1];
+
+            for (size_t e = istart; e < iend; ++e) {
+                r = i[e];
+                out[c + r * ncol] = x[e];
+            }
+        }
+
+    } else {
+    // now iterate and fill   
+#pragma omp parallel num_threads(threads)
+{   
+        int tid = omp_get_thread_num();
+        size_t block = ncol / threads;
+        size_t rem = ncol - threads * block;
+        size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
+        int nid = tid + 1;
+        size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
+
+        auto r = i[0];
+        size_t istart, iend;
+        // auto optr = out;
+        for (size_t c = offset; c < end; ++c) {
+            istart = p[c];
+            iend = p[c + 1];
+
+            for (size_t e = istart; e < iend; ++e) {
+                r = i[e];
+                out[c + r * ncol] = x[e];
             }
         }
 }
@@ -949,7 +1347,8 @@ extern int csc_cbind_vec(
     for (int i = 0; i < n_vecs; ++i) {
         nc = ncols[i];
         c_offsets[i+1] = c_offsets[i] + nc;
-        p_offsets[i+1] = p_offsets[i] + static_cast<size_t>(pvecs[i][nc]);
+        p_offsets[i+1] = p_offsets[i];
+        p_offsets[i+1] += static_cast<size_t>(pvecs[i][nc]);
         // Rprintf("%d of %d : NC: %d  coff %d, poff %d\n", i, n_vecs, nc, c_offsets[i], p_offsets[i]);
     }
     size_t ncol = c_offsets[n_vecs];   // total column count
