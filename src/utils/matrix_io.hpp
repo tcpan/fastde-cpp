@@ -14,6 +14,7 @@
 #endif
 
 // #include "utils/HDF5MatrixWriter.hpp"
+#include "utils/HDF5Reader.hpp"
 #include "utils/HDF5Writer.hpp"
 
 namespace utils {
@@ -21,7 +22,7 @@ namespace utils {
 template <typename T, typename std::enable_if<std::is_integral<T>::value, int>::type dummy = 1 >
 std::vector<T> make_random_vector(
 	long const & seed, T const & rmin, T const & rmax,
-	size_t const & cols
+	size_t const & count
 ) {
 	// allocate input.
 
@@ -35,7 +36,7 @@ std::vector<T> make_random_vector(
                    return dist(mersenne_engine);
                };
 
-	std::vector<T> vec(cols);
+	std::vector<T> vec(count);
     std::generate(begin(vec), end(vec), gen);
 
 	return vec;
@@ -44,7 +45,7 @@ std::vector<T> make_random_vector(
 template <typename T, typename std::enable_if<std::is_floating_point<T>::value, int>::type dummy = 1 >
 std::vector<T> make_random_vector(
 	long const & seed, T const & rmin, T const & rmax,
-	size_t const & cols
+	size_t const & count
 ) {
 	// allocate input.
 
@@ -58,7 +59,7 @@ std::vector<T> make_random_vector(
                    return dist(mersenne_engine);
                };
 
-	std::vector<T> vec(cols);
+	std::vector<T> vec(count);
     std::generate(begin(vec), end(vec), gen);
 
 	return vec;
@@ -98,6 +99,87 @@ std::tuple<std::vector<T>, std::vector<int>, std::vector<S>> make_random_sparse_
 };
 
 
+
+template <typename T, typename S>
+std::vector<T> make_random_matrix(
+	long const & seed, T const & rmin, T const & rmax,
+	S const & rows, S const & cols
+) {
+	return make_random_vector(seed, rmin, rmax, rows * cols);
+};
+
+
+template <typename T, typename S>
+void read_hdf5_sparse_matrix(std::string const & filename, 
+	std::string const & datasetname,
+	std::vector<T> & x, std::vector<int> & i, std::vector<S> & p, size_t & rows, size_t & cols,
+	bool & is_transposed) {
+	if (filename.length() > 0) {
+		// write to file.  MPI enabled.  Not thread enabled.
+		// FMT_ROOT_PRINT("name sizes: {}, {}\n", row_names.size(), col_names.size());
+		// FMT_ROOT_PRINT("outputing matrix size: {}, {}\n", data.rows(), data.columns());
+		utils::HDF5Reader reader(filename);
+		// sequential writes only.
+		ssize_t nr = 0, nc = 0, nz = 0;
+		reader.getSparseMatrixSize(datasetname, nr, nc, nz);
+
+		rows = nr;
+		cols = nc;
+
+		x.resize(nz);
+		i.resize(nz);
+		p.resize(cols + 1, 0);
+		
+		reader.loadSparseMatrixData(datasetname, nr, nc, nz, x.data(), i.data(), p.data());
+
+	}
+};
+
+template <typename T>
+void read_hdf5_vector(std::string const & filename, 
+	std::string const & datasetname,
+	std::vector<T> & out, size_t & count) {
+	if (filename.length() > 0) {
+		// write to file.  MPI enabled.  Not thread enabled.
+		// FMT_ROOT_PRINT("name sizes: {}, {}\n", row_names.size(), col_names.size());
+		// FMT_ROOT_PRINT("outputing matrix size: {}, {}\n", data.rows(), data.columns());
+		utils::HDF5Reader reader(filename);
+		// sequential writes only.
+
+		ssize_t cnt;
+		reader.getVectorSize(datasetname, cnt);
+
+		out.resize(cnt);
+
+		count = cnt;
+		reader.loadVectorData(datasetname, count, out.data());
+
+	}
+};
+
+
+template <typename T>
+void read_hdf5_matrix(std::string const & filename, 
+	std::string const & datasetname,
+	std::vector<T> & data, size_t & rows, size_t & cols, bool & is_transposed) {
+	if (filename.length() > 0) {
+		// write to file.  MPI enabled.  Not thread enabled.
+		// FMT_ROOT_PRINT("name sizes: {}, {}\n", row_names.size(), col_names.size());
+		// FMT_ROOT_PRINT("outputing matrix size: {}, {}\n", data.rows(), data.columns());
+		utils::HDF5Reader reader(filename);
+
+		ssize_t nr, nc;
+		reader.getMatrixSize(datasetname, nr, nc);
+
+		data.resize(nr * nc);
+
+		rows = nr;
+		cols = nc;
+		reader.loadMatrixData(datasetname, nr, nc, data.data(), nc * sizeof(T));
+
+	}
+};
+
 template <typename T, typename S>
 void write_hdf5_sparse_matrix(std::string const & filename, 
 	std::string const & datasetname,
@@ -131,7 +213,8 @@ void write_hdf5_vector(std::string const & filename,
 template <typename T>
 void write_hdf5_matrix(std::string const & filename, 
 	std::string const & datasetname,
-	std::vector<T> const & data, size_t const & rows, size_t const & cols, bool const & is_transposed = true) {
+	std::vector<T> const & data, 
+	size_t const & rows, size_t const & cols, bool const & is_transposed = true) {
 	if (filename.length() > 0) {
 		// write to file.  MPI enabled.  Not thread enabled.
 		// FMT_ROOT_PRINT("name sizes: {}, {}\n", row_names.size(), col_names.size());

@@ -35,7 +35,7 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 endif()
 
 
-set(CORRELATION_APPS test_sparsemat)
+set(CORRELATION_APPS test_sparsemat test_io)
 
 foreach( exec IN LISTS CORRELATION_APPS)
 	add_executable(${exec} ${exec}.cpp)

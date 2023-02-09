@@ -531,7 +531,7 @@ public:
         stime = getSysTime();
 
         // ---------- write data.
-        writeVector(group_id, "x", x.size(), x.data());
+        writeVector(group_id, "block0_values", x.size(), x.data());
 
         // H5Gflush(group_id);  // here does not cause "HDF5: infinite loop closing library" with MPI-IO
         H5Gclose(group_id);  // close the group immediately
@@ -546,7 +546,7 @@ public:
     
     template <typename T>
     bool storeMatrixData(std::string const & path, size_t const & rows, size_t const & cols, 
-        T const * vectors, size_t const & stride_bytes, bool const & is_transposed = true) {
+        T const * vectors, size_t const & stride_bytes, bool const & row_major = true) {
         
         auto stime = getSysTime();
         hid_t file_id;
@@ -572,7 +572,7 @@ public:
             return false;
         }
         int64_t dims[2] = {static_cast<int64_t>(rows), static_cast<int64_t>(cols)};
-        writeMatrixDataGroupAttributes(group_id, 1, 2, dims, is_transposed);
+        writeMatrixDataGroupAttributes(group_id, 1, 2, dims, row_major);
 
         // // ------------- write the names.
         // writeStrings(group_id, "axis1", "genes", row_names);  // row names are in axis 1?
@@ -586,7 +586,7 @@ public:
         stime = getSysTime();
 
         // ---------- write data.
-        writeMatrix(group_id, "block0_values", rows, cols, vectors, stride_bytes, is_transposed);
+        writeMatrix(group_id, "block0_values", rows, cols, vectors, stride_bytes, !row_major);
 
         // H5Gflush(group_id);  // here does not cause "HDF5: infinite loop closing library" with MPI-IO
         H5Gclose(group_id);  // close the group immediately
