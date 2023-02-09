@@ -362,7 +362,9 @@ extern void csc_transpose_csc(
     } else {  // single thread.
 
         // initialize
-        std::fill(tp, tp + nrow + 1, 0);
+        auto tpptr = tp;
+        for (size_t r = 0; r <= nrow; ++r, ++tpptr) { *tpptr = 0; }
+        // std::fill(tp, tp + nrow + 1, 0);
 
         // do the swap.  do random memory access instead of sorting.
         // 1. iterate over i to get row (tcol) counts, store in new p[1..nrow].   these are offsets in new x
@@ -388,7 +390,7 @@ extern void csc_transpose_csc(
         IT2 cid = 0;
         XT val;
         iPT pos;
-        auto tpptr = tp;
+        tpptr = tp;
         for (iPT e = 0; e < nelem; ++e, ++i, ++x) {
             rid = *i;   // current row id (starts with 0)
             val = *x;   // current value
@@ -619,8 +621,9 @@ extern void csc_transpose_csc_vec(
     } else {  // single thread.
 
         // initialize
-        tp.resize(nrow + 1, 0);
-        std::fill(tp.begin(), tp.end(), 0);
+        for (size_t r = 0; r <= nrow; ++r) { tp[r] = 0; }
+        // tp.resize(nrow + 1, 0);
+        // std::fill(tp.begin(), tp.end(), 0);
 
         // do the swap.  do random memory access instead of sorting.
         // 1. iterate over i to get row (tcol) counts, store in new p[1..nrow].   these are offsets in new x
@@ -695,7 +698,10 @@ extern void csc_to_dense_c(
     using iPT = typename std::conditional<std::is_same<PT, double>::value, long, int>::type;
 
     // ======= create new output and initialize
-    std::fill(out, out + nrow * ncol, 0);
+    // std::fill(out, out + nrow * ncol, 0);
+    size_t nz = nrow * ncol;
+    auto optr = out;
+    for (size_t e = 0; e < nz; ++e, ++optr) {*optr = 0; }
 
     // Rprintf("Sparse DIM: samples %lu x features %lu, non-zeros %lu\n", in.get_ncol(), in.get_nrow(), in.get_nelem()); 
 
@@ -781,20 +787,21 @@ extern void csc_to_dense_c_vec(
     // factors:  ignore.
 
     // ======= create new output and initialize
-    out.clear();
-    out.resize(nrow * ncol);
-    std::fill(out.begin(), out.end(), 0);
+    size_t nz = nrow * ncol;
+    for (size_t e = 0; e < nz; ++e) { out[e] = 0; }
+    // out.clear();
+    // out.resize(nrow * ncol, 0);
 
     // Rprintf("Sparse DIM: samples %lu x features %lu, non-zeros %lu\n", in.get_ncol(), in.get_nrow(), in.get_nelem()); 
     
     if (threads == 1) {
-        size_t istart, iend;
+        size_t istart, iend = p[0];
         auto r = i[0];
         size_t off = 0;
 
         // auto optr = out;
         for (size_t c = 0; c < ncol; ++c) {
-            istart = p[c];
+            istart = iend;
             iend = p[c+1];
             off = c * nrow;
 
@@ -816,11 +823,11 @@ extern void csc_to_dense_c_vec(
         size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
 
         auto r = i[0];
-        size_t istart, iend;
+        size_t istart, iend = p[offset];
         size_t off;
         // auto optr = out;
         for (size_t c = offset; c < end; ++c) {
-            istart = p[c];
+            istart = iend;
             iend = p[c + 1];
             off = c * nrow;
 
@@ -856,7 +863,10 @@ extern void csc_to_dense_transposed_c(
     using iPT = typename std::conditional<std::is_same<PT, double>::value, long, int>::type;
 
     // ======= create new output and initialize
-    std::fill(out, out + nrow * ncol, 0);
+    // std::fill(out, out + nrow * ncol, 0);
+    size_t nz = nrow * ncol;
+    auto optr = out;
+    for (size_t e = 0; e < nz; ++e, ++optr) {*optr = 0; }
 
     // Rprintf("Sparse DIM: samples %lu x features %lu, non-zeros %lu\n", in.get_ncol(), in.get_nrow(), in.get_nelem()); 
 
@@ -942,18 +952,20 @@ extern void csc_to_dense_transposed_c_vec(
     
 
     // ======= create new output and initialize
-    out.resize(nrow * ncol);
-    std::fill(out.begin(), out.end(), 0);
+    size_t nz = nrow * ncol;
+    for (size_t e = 0; e < nz; ++e) { out[e] = 0; }
+    // out.clear();
+    // out.resize(nrow * ncol, 0);
 
     // Rprintf("Sparse DIM: samples %lu x features %lu, non-zeros %lu\n", in.get_ncol(), in.get_nrow(), in.get_nelem()); 
     
     if (threads == 1) {
-        size_t istart, iend;
+        size_t istart, iend = p[0];
         auto r = i[0];
 
         // auto optr = out;
         for (size_t c = 0; c < ncol; ++c) {
-            istart = p[c];
+            istart = iend;
             iend = p[c+1];
 
             for (size_t e = istart; e < iend; ++e) {
@@ -974,10 +986,10 @@ extern void csc_to_dense_transposed_c_vec(
         size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
 
         auto r = i[0];
-        size_t istart, iend;
+        size_t istart, iend = p[offset];
         // auto optr = out;
         for (size_t c = offset; c < end; ++c) {
-            istart = p[c];
+            istart = iend;
             iend = p[c + 1];
 
             for (size_t e = istart; e < iend; ++e) {
@@ -1175,9 +1187,9 @@ extern int csc_rbind_vec(
     // size_t nz = 0;
     for (int j = 0; j < n_vecs; ++j) {
 
-        auto ix = xvecs[j];
-        auto ii = ivecs[j];
-        auto ip = pvecs[j];
+        XVEC const & ix = xvecs[j];
+        IVEC const & ii = ivecs[j];
+        PVEC const & ip = pvecs[j];
         auto off = i_offsets[j];
 
         for (size_t i = 0; i < ncol; ++i) {
@@ -1367,9 +1379,9 @@ extern int csc_cbind_vec(
 
     for (int j = 0; j < n_vecs; ++j) {
 
-        auto ix = xvecs[j];
-        auto ii = ivecs[j];
-        auto ip = pvecs[j];
+        XVEC const & ix = xvecs[j];
+        IVEC const & ii = ivecs[j];
+        PVEC const & ip = pvecs[j];
 
         nc = ncols[j];
         nz = ip[nc];  // get the currnet vec's non-zero count
@@ -1422,7 +1434,9 @@ extern void csc_colsums_iter(
         ++p;
         iPT end2;
 
-        std::fill(out, out + ncol, 0);   // absolutely needed here.
+        auto optr = out;
+        for (size_t c = 0; c < ncol; ++c, ++optr) {*optr = 0; }
+        // std::fill(out, out + ncol, 0);   // absolutely needed here.
         for (; p != pend; ++p, ++out) {
             end2 = *p;
 
@@ -1454,7 +1468,10 @@ extern void csc_colsums_iter(
         auto xptr = x;
         auto xend = x + *pptr;
 
-        std::fill(out + offset, out + end, 0);
+        auto oend = out + end;
+        for (; optr != oend; ++optr) { *optr = 0; }
+        // std::fill(out + offset, out + end, 0);
+        optr = out + offset;
         for (; pptr != pend; ++optr) {
             xptr = xend;
             ++pptr;
@@ -1542,14 +1559,20 @@ extern void csc_rowsums_iter(
     using XT = typename std::iterator_traits<XITER>::value_type;
 
     if (threads == 1) {
-        std::vector<XT> sums(nrow, 0);
+        // std::vector<XT> sums(nrow, 0);
 
+        size_t r;
+        OITER oend = out + nrow;
+        for (OITER optr = out; optr != oend; ++optr) {
+            *optr = 0;
+        }
         IITER end = i + nzcount;
         for (; i != end; ++i, ++x) {
-            sums[*i] += *x;
+            r = *i;
+            *(out + r) += *x;
         }
 
-        std::copy(sums.begin(), sums.end(), out);
+        // std::copy(sums.begin(), sums.end(), out);
     } else {
 
         // alloc temp storage.

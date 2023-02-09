@@ -99,10 +99,10 @@ int main(int argc, char* argv[]) {
 			common_params.sparsity);
 	}
 	etime = getSysTime();
-	FMT_ROOT_PRINT("Load data in {} sec\n", get_duration_s(stime, etime));
+	FMT_ROOT_PRINT_RT("[TIME] Load data in {} sec\n", get_duration_s(stime, etime));
 	// input.print("INPUT: ");
 
-	utils::write_hdf5_sparse_matrix(common_params.output + ".colsum_iter.t4.h5", "vector", x, i, p, rows, cols, true);
+	utils::write_hdf5_sparse_matrix(common_params.output + ".input.h5", "sparse_matrix", x, i, p, rows, cols, true);
 
 
 	if (mpi_params.rank == 0) {
@@ -122,30 +122,30 @@ int main(int argc, char* argv[]) {
 		stime = getSysTime();
 		csc_transpose_csc(x.cbegin(), i.cbegin(), p.cbegin(), rows, cols, ox.begin(), oi.begin(), op.begin(), 1);
 		etime = getSysTime();
-		FMT_ROOT_PRINT("transposed in {} sec\n", get_duration_s(stime, etime));
+		FMT_ROOT_PRINT_RT("[TIME] transposed iter in {} sec\n", get_duration_s(stime, etime));
 
-		utils::write_hdf5_sparse_matrix(common_params.output + ".transpose.t1.h5", "sparse_matrix", ox, oi, op, rows, cols, true);
+		utils::write_hdf5_sparse_matrix(common_params.output + ".transpose_iter.t1.h5", "sparse_matrix", ox, oi, op, rows, cols, true);
 
 		stime = getSysTime();
 		csc_transpose_csc(x.cbegin(), i.cbegin(), p.cbegin(),  rows, cols, ox.begin(), oi.begin(), op.begin(), 4);
 		etime = getSysTime();
-		FMT_ROOT_PRINT("transposed in {} sec, 4 threads\n", get_duration_s(stime, etime));
+		FMT_ROOT_PRINT_RT("[TIME] transposed iter in {} sec, 4 threads\n", get_duration_s(stime, etime));
 
-		utils::write_hdf5_sparse_matrix(common_params.output + ".transpose.t4.h5", "sparse_matrix", ox, oi, op, rows, cols, true);
+		utils::write_hdf5_sparse_matrix(common_params.output + ".transpose_iter.t4.h5", "sparse_matrix", ox, oi, op, rows, cols, true);
 
 
 
 		stime = getSysTime();
 		csc_transpose_csc_vec(x, i, p, rows, cols, ox, oi, op, 1);
 		etime = getSysTime();
-		FMT_ROOT_PRINT("transposed in {} sec\n", get_duration_s(stime, etime));
+		FMT_ROOT_PRINT_RT("[TIME] transposed vec in {} sec\n", get_duration_s(stime, etime));
 
 		utils::write_hdf5_sparse_matrix(common_params.output + ".transpose_vec.t1.h5", "sparse_matrix", ox, oi, op, rows, cols, true);
 
 		stime = getSysTime();
 		csc_transpose_csc_vec(x, i, p, rows, cols, ox, oi, op, 4);
 		etime = getSysTime();
-		FMT_ROOT_PRINT("transposed in {} sec, 4 threads\n", get_duration_s(stime, etime));
+		FMT_ROOT_PRINT_RT("[TIME] transposed vec in {} sec, 4 threads\n", get_duration_s(stime, etime));
 
 		utils::write_hdf5_sparse_matrix(common_params.output + ".transpose_vec.t4.h5", "sparse_matrix", ox, oi, op, rows, cols, true);
 
@@ -159,24 +159,24 @@ int main(int argc, char* argv[]) {
 		stime = getSysTime();
 		csc_to_dense_c(x.cbegin(), i.cbegin(), p.cbegin(),  rows, cols, out.begin(), 1);
 		etime = getSysTime();
-		FMT_ROOT_PRINT("to dense in {} sec\n", get_duration_s(stime, etime));
+		FMT_ROOT_PRINT_RT("[TIME] to dense in {} sec\n", get_duration_s(stime, etime));
 
-		utils::write_hdf5_matrix(common_params.output + ".to_dense.t1.h5", "matrix", out, rows, cols, true);
+		utils::write_hdf5_matrix(common_params.output + ".to_dense_iter.t1.h5", "matrix", out, rows, cols, true);
 		std::fill(out.begin(), out.end(), 0);
 
 		stime = getSysTime();
 		csc_to_dense_c(x.cbegin(), i.cbegin(), p.cbegin(),  rows, cols, out.begin(), 4);
 		etime = getSysTime();
-		FMT_ROOT_PRINT("to dense in {} sec, 4 threads\n", get_duration_s(stime, etime));
+		FMT_ROOT_PRINT_RT("[TIME] to dense in {} sec, 4 threads\n", get_duration_s(stime, etime));
 
-		utils::write_hdf5_matrix(common_params.output + ".to_dense.t4.h5", "matrix", out, rows, cols, true);
+		utils::write_hdf5_matrix(common_params.output + ".to_dense_iter.t4.h5", "matrix", out, rows, cols, true);
 
 
 		
 		stime = getSysTime();
 		csc_to_dense_c_vec(x, i, p,  rows, cols, out, 1);
 		etime = getSysTime();
-		FMT_ROOT_PRINT("to dense in {} sec\n", get_duration_s(stime, etime));
+		FMT_ROOT_PRINT_RT("[TIME] to dense vec in {} sec\n", get_duration_s(stime, etime));
 
 		utils::write_hdf5_matrix(common_params.output + ".to_dense_vec.t1.h5", "matrix", out, rows, cols, true);
 		std::fill(out.begin(), out.end(), 0);
@@ -184,7 +184,7 @@ int main(int argc, char* argv[]) {
 		stime = getSysTime();
 		csc_to_dense_c_vec(x, i, p,  rows, cols, out, 4);
 		etime = getSysTime();
-		FMT_ROOT_PRINT("to dense in {} sec, 4 threads\n", get_duration_s(stime, etime));
+		FMT_ROOT_PRINT_RT("[TIME] to dense vec in {} sec, 4 threads\n", get_duration_s(stime, etime));
 
 		utils::write_hdf5_matrix(common_params.output + ".to_dense_vec.t4.h5", "matrix", out, rows, cols, true);
 	}
@@ -195,23 +195,23 @@ int main(int argc, char* argv[]) {
 		stime = getSysTime();
 		csc_to_dense_transposed_c(x.cbegin(), i.cbegin(), p.cbegin(), rows, cols, out.begin(), 1);
 		etime = getSysTime();
-		FMT_ROOT_PRINT("to dense transposed in {} sec\n", get_duration_s(stime, etime));
+		FMT_ROOT_PRINT_RT("[TIME] to dense transposed in {} sec\n", get_duration_s(stime, etime));
 
-		utils::write_hdf5_matrix(common_params.output + ".transpose_to_dense.t1.h5", "matrix", out, cols, rows, true);
+		utils::write_hdf5_matrix(common_params.output + ".transpose_to_dense_iter.t1.h5", "matrix", out, cols, rows, true);
 		std::fill(out.begin(), out.end(), 0);
 
 		stime = getSysTime();
 		csc_to_dense_transposed_c(x.cbegin(), i.cbegin(), p.cbegin(), rows, cols, out.begin(), 4);
 		etime = getSysTime();
-		FMT_ROOT_PRINT("to dense transposed in {} sec, 4 threads\n", get_duration_s(stime, etime));
+		FMT_ROOT_PRINT_RT("[TIME] to dense transposed in {} sec, 4 threads\n", get_duration_s(stime, etime));
 
-		utils::write_hdf5_matrix(common_params.output + ".transpose_to_dense.t4.h5", "matrix", out, cols, rows, true);
+		utils::write_hdf5_matrix(common_params.output + ".transpose_to_dense_iter.t4.h5", "matrix", out, cols, rows, true);
 
 		
 		stime = getSysTime();
 		csc_to_dense_transposed_c_vec(x, i, p,  rows, cols, out, 1);
 		etime = getSysTime();
-		FMT_ROOT_PRINT("to dense transposed in {} sec\n", get_duration_s(stime, etime));
+		FMT_ROOT_PRINT_RT("[TIME] to dense transposed vec in {} sec\n", get_duration_s(stime, etime));
 
 		utils::write_hdf5_matrix(common_params.output + ".transpose_to_dense_vec.t1.h5", "matrix", out, cols, rows, true);
 		std::fill(out.begin(), out.end(), 0);
@@ -219,7 +219,7 @@ int main(int argc, char* argv[]) {
 		stime = getSysTime();
 		csc_to_dense_transposed_c_vec(x, i, p,  rows, cols, out, 4);
 		etime = getSysTime();
-		FMT_ROOT_PRINT("to dense transposed in {} sec, 4 threads\n", get_duration_s(stime, etime));
+		FMT_ROOT_PRINT_RT("[TIME] to dense transposed vec in {} sec, 4 threads\n", get_duration_s(stime, etime));
 
 		utils::write_hdf5_matrix(common_params.output + ".transpose_to_dense_vec.t4.h5", "matrix", out, cols, rows, true);
 
@@ -249,14 +249,14 @@ int main(int argc, char* argv[]) {
 		stime = getSysTime();
 		csc_cbind_vec(ix, ii, ip, vrows, vcols, ox, oi, op, 1);
 		etime = getSysTime();
-		FMT_ROOT_PRINT("cbind in {} sec\n", get_duration_s(stime, etime));
+		FMT_ROOT_PRINT_RT("[TIME] cbind vec in {} sec\n", get_duration_s(stime, etime));
 
 		utils::write_hdf5_sparse_matrix(common_params.output + ".cbind_vec.t1.h5", "sparse_matrix", ox, oi, op, rows, cols * repeats, true);
 
 		stime = getSysTime();
 		csc_cbind_vec(ix, ii, ip, vrows, vcols, ox, oi, op, 4);
 		etime = getSysTime();
-		FMT_ROOT_PRINT("cbind in {} sec, 4 threads\n", get_duration_s(stime, etime));
+		FMT_ROOT_PRINT_RT("[TIME] cbind vec in {} sec, 4 threads\n", get_duration_s(stime, etime));
 
 		utils::write_hdf5_sparse_matrix(common_params.output + ".cbind_vec.t4.h5", "sparse_matrix", ox, oi, op, rows, cols * repeats, true);
 
@@ -275,14 +275,14 @@ int main(int argc, char* argv[]) {
 		stime = getSysTime();
 		csc_cbind(ixp, iip, ipp, vrows, vcols, ox.begin(), oi.begin(), op.begin(), 1);
 		etime = getSysTime();
-		FMT_ROOT_PRINT("cbind iter in {} sec\n", get_duration_s(stime, etime));
+		FMT_ROOT_PRINT_RT("[TIME] cbind iter in {} sec\n", get_duration_s(stime, etime));
 
 		utils::write_hdf5_sparse_matrix(common_params.output + ".cbind_iter.t1.h5", "sparse_matrix", ox, oi, op, rows, cols * repeats, true);
 
 		stime = getSysTime();
 		csc_cbind(ixp, iip, ipp,  vrows, vcols, ox.begin(), oi.begin(), op.begin(), 4);
 		etime = getSysTime();
-		FMT_ROOT_PRINT("cbind iter in {} sec, 4 threads\n", get_duration_s(stime, etime));
+		FMT_ROOT_PRINT_RT("[TIME] cbind iter in {} sec, 4 threads\n", get_duration_s(stime, etime));
 
 		utils::write_hdf5_sparse_matrix(common_params.output + ".cbind_iter.t4.h5", "sparse_matrix", ox, oi, op, rows, cols * repeats, true);
 
@@ -313,14 +313,14 @@ int main(int argc, char* argv[]) {
 		stime = getSysTime();
 		csc_rbind_vec(ix, ii, ip, vrows, vcols, ox, oi, op, 1);
 		etime = getSysTime();
-		FMT_ROOT_PRINT("rbind in {} sec\n", get_duration_s(stime, etime));
+		FMT_ROOT_PRINT_RT("[TIME] rbind vec in {} sec\n", get_duration_s(stime, etime));
 
 		utils::write_hdf5_sparse_matrix(common_params.output + ".rbind_vec.t1.h5", "sparse_matrix", ox, oi, op, rows * repeats, cols, true);
 
 		stime = getSysTime();
 		csc_rbind_vec(ix, ii, ip, vrows, vcols, ox, oi, op, 4);
 		etime = getSysTime();
-		FMT_ROOT_PRINT("rbind in {} sec, 4 threads\n", get_duration_s(stime, etime));
+		FMT_ROOT_PRINT_RT("[TIME] rbind vec in {} sec, 4 threads\n", get_duration_s(stime, etime));
 
 		utils::write_hdf5_sparse_matrix(common_params.output + ".rbind_vec.t4.h5", "sparse_matrix", ox, oi, op, rows * repeats, cols, true);
 
@@ -337,14 +337,14 @@ int main(int argc, char* argv[]) {
 		stime = getSysTime();
 		csc_rbind(ixp, iip, ipp,  vrows, vcols, ox.begin(), oi.begin(), op.begin(), 1);
 		etime = getSysTime();
-		FMT_ROOT_PRINT("rbind iter in {} sec\n", get_duration_s(stime, etime));
+		FMT_ROOT_PRINT_RT("[TIME] rbind iter in {} sec\n", get_duration_s(stime, etime));
 
 		utils::write_hdf5_sparse_matrix(common_params.output + ".rbind_iter.t1.h5", "sparse_matrix", ox, oi, op, rows * repeats, cols, true);
 
 		stime = getSysTime();
 		csc_rbind(ixp, iip, ipp,  vrows, vcols, ox.begin(), oi.begin(), op.begin(), 4);
 		etime = getSysTime();
-		FMT_ROOT_PRINT("rbind iter in {} sec, 4 threads\n", get_duration_s(stime, etime));
+		FMT_ROOT_PRINT_RT("[TIME] rbind iter in {} sec, 4 threads\n", get_duration_s(stime, etime));
 
 		utils::write_hdf5_sparse_matrix(common_params.output + ".rbind_iter.t4.h5", "sparse_matrix", ox, oi, op, rows * repeats, cols, true);
 
@@ -358,28 +358,28 @@ int main(int argc, char* argv[]) {
 		stime = getSysTime();
 		csc_colsums_vec(x, p, cols, out, 1);
 		etime = getSysTime();
-		FMT_ROOT_PRINT("colsums vec in {} sec\n", get_duration_s(stime, etime));
+		FMT_ROOT_PRINT_RT("[TIME] colsums vec in {} sec\n", get_duration_s(stime, etime));
 
 		utils::write_hdf5_vector(common_params.output + ".colsum_vec.t1.h5", "vector", out, cols);
 
 		stime = getSysTime();
 		csc_colsums_vec(x, p, cols, out, 4);
 		etime = getSysTime();
-		FMT_ROOT_PRINT("colsums vec in {} sec, 4 threads\n", get_duration_s(stime, etime));
+		FMT_ROOT_PRINT_RT("[TIME] colsums vec in {} sec, 4 threads\n", get_duration_s(stime, etime));
 
 		utils::write_hdf5_vector(common_params.output + ".colsum_vec.t4.h5", "vector", out, cols);
 
 		stime = getSysTime();
 		csc_colsums_iter(x.cbegin(), p.cbegin(), cols, out.begin(), 1);
 		etime = getSysTime();
-		FMT_ROOT_PRINT("colsums iter in {} sec\n", get_duration_s(stime, etime));
+		FMT_ROOT_PRINT_RT("[TIME] colsums iter in {} sec\n", get_duration_s(stime, etime));
 
 		utils::write_hdf5_vector(common_params.output + ".colsum_iter.t1.h5", "vector", out, cols);
 
 		stime = getSysTime();
 		csc_colsums_iter(x.cbegin(), p.cbegin(), cols, out.begin(), 4);
 		etime = getSysTime();
-		FMT_ROOT_PRINT("colsums iter in {} sec, 4 threads\n", get_duration_s(stime, etime));
+		FMT_ROOT_PRINT_RT("[TIME] colsums iter in {} sec, 4 threads\n", get_duration_s(stime, etime));
 
 		utils::write_hdf5_vector(common_params.output + ".colsum_iter.t4.h5", "vector", out, cols);
 
@@ -393,25 +393,25 @@ int main(int argc, char* argv[]) {
 		stime = getSysTime();
 		csc_rowsums_vec(x, i, rows, out, 1);
 		etime = getSysTime();
-		FMT_ROOT_PRINT("rowsums vec in {} sec\n", get_duration_s(stime, etime));
+		FMT_ROOT_PRINT_RT("[TIME] rowsums vec in {} sec\n", get_duration_s(stime, etime));
 		utils::write_hdf5_vector(common_params.output + ".rowsum_vec.t1.h5", "vector", out, rows);
 
 		stime = getSysTime();
 		csc_rowsums_vec(x, i, rows, out, 4);
 		etime = getSysTime();
-		FMT_ROOT_PRINT("rowsums vec in {} sec, 4 threads\n", get_duration_s(stime, etime));
+		FMT_ROOT_PRINT_RT("[TIME] rowsums vec in {} sec, 4 threads\n", get_duration_s(stime, etime));
 		utils::write_hdf5_vector(common_params.output + ".rowsum_vec.t4.h5", "vector", out, rows);
 
 		stime = getSysTime();
 		csc_rowsums_iter(x.cbegin(), i.cbegin(), rows, nz, out.begin(), 1);
 		etime = getSysTime();
-		FMT_ROOT_PRINT("rowsums iter in {} sec\n", get_duration_s(stime, etime));
+		FMT_ROOT_PRINT_RT("[TIME] rowsums iter in {} sec\n", get_duration_s(stime, etime));
 		utils::write_hdf5_vector(common_params.output + ".rowsum_iter.t1.h5", "vector", out, rows);
 
 		stime = getSysTime();
 		csc_rowsums_iter(x.cbegin(), i.cbegin(), rows, nz, out.begin(), 4);
 		etime = getSysTime();
-		FMT_ROOT_PRINT("rowsums iter in {} sec, 4 threads\n", get_duration_s(stime, etime));
+		FMT_ROOT_PRINT_RT("[TIME] rowsums iter in {} sec, 4 threads\n", get_duration_s(stime, etime));
 		utils::write_hdf5_vector(common_params.output + ".rowsum_iter.t4.h5", "vector", out, rows);
 	}
 
