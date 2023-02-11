@@ -75,20 +75,23 @@ std::tuple<std::vector<T>, std::vector<int>, std::vector<S>> make_random_sparse_
 	// first figure out how many per row.
 	std::vector<S> p(cols+1, 0);
 
+	// average number of elements per column.
 	size_t col_target = static_cast<size_t>(static_cast<double>(rows) * sparsity);
 	
 	std::random_device rd;
 	std::mt19937 gen(rd());
-	std::poisson_distribution<S> d(col_target);
+	std::poisson_distribution<S> d(col_target);  // poisson, mean is col_target.
 
+	// per column count, partial summed.
 	for (size_t c = 1; c <= cols; ++c) {
 		p[c] = p[c-1] + d(gen);
 	}
 
+	// total count is p[cols]
 	// generate x
-	std::vector<T> x = make_random_vector(seed, rmin, rmax, rows * cols);
+	std::vector<T> x = make_random_vector(seed, rmin, rmax, p[cols] );
 	// generate row id
-	std::vector<int> i = make_random_vector(seed, static_cast<int>(0), static_cast<int>(rows-1), rows*cols);
+	std::vector<int> i = make_random_vector(seed, static_cast<int>(0), static_cast<int>(rows-1), p[cols]);
 	// sort the row id within each columns
 
 	for (size_t c = 0; c < cols; ++c) {

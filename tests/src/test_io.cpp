@@ -168,7 +168,7 @@ int main(int argc, char* argv[]) {
 				common_params.sparsity);
 		}
 		etime = getSysTime();
-		FMT_ROOT_PRINT_RT("[TIME] Load data in {} sec\n", get_duration_s(stime, etime));
+		FMT_ROOT_PRINT_RT("[TIME] Load data with elements {} in {} sec\n", x.size(), get_duration_s(stime, etime));
 		// input.print("INPUT: ");
 
 		utils::write_hdf5_sparse_matrix("temp_spmat.h5", "sparse_matrix", x, i, p, rows, cols, dummy);
