@@ -1,6 +1,6 @@
 # CMakeLists.txt template
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.14)
 
 
 # project settings
@@ -15,15 +15,20 @@ INCLUDE(CMakeDependentOption)
 
 ##### General Compilation Settings
 
-### REQUIRE C++11
+### REQUIRE C++11. (c++ 14 for google test?  definitely for Catch2)
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_C_STANDARD 11)  # no c14.   valid are 99, 11, 17, 2x
+
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 # Initialize CXXFLAGS.
 set(BASE_OPT_FLAGS "-ffast-math -funroll-loops")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wuninitialized --std=c++11 -fPIC")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wuninitialized")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${BASE_OPT_FLAGS}")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${BASE_OPT_FLAGS}")
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wuninitialized --std=c11 -fPIC")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wuninitialized")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${BASE_OPT_FLAGS}")
 set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} ${BASE_OPT_FLAGS}")
@@ -167,6 +172,8 @@ include("${CMAKE_MODULE_DIR}/HDF5.cmake")
 include("${CMAKE_MODULE_DIR}/CodeAnalysis.cmake")
 include("${CMAKE_MODULE_DIR}/Sanitizer.cmake")
 
+# include("${CMAKE_MODULE_DIR}/GTest.cmake")
+include("${CMAKE_MODULE_DIR}/Catch2.cmake")
 
 ###### EXECUTABLE CATEGORIES
 #  organization:  3 levels:  benchmark (coarse grain), profile (fine grain), debug (include coverage and sanitizer).  profile and debug are mutually exclusive.
@@ -198,7 +205,6 @@ include_directories("${PROJECT_SOURCE_DIR}/src")
 include_directories("${EXT_PROJECTS_DIR}") 
 include_directories("${EXT_PROJECTS_DIR}/CLI11/include") 
 include_directories("${EXT_PROJECTS_DIR}/fmt/include") 
-
 
 # if (BUILD_APPLICATIONS)
 #   add_subdirectory(apps)
