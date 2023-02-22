@@ -2,8 +2,14 @@ if (BUILD_TESTS)
 
 
 set(fastde_test_compile_defs "-DVERBOSE")
-set(fastde_test_compile_flags "")
-set(fastde_test_link_flags "")
+
+if (ENABLE_SANITIZER)
+	set(fastde_test_compile_flags ${SANITIZER_COMPILE_FLAGS})
+	set(fastde_test_link_flags ${SANITIZER_LINK_FLAGS})
+else()
+	set(fastde_test_compile_flags "")
+	set(fastde_test_link_flags "")
+endif()
 set(fastde_test_link_libs "m")
 
 
@@ -35,9 +41,9 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 endif()
 
 
-set(CORRELATION_APPS test_sparsemat test_io)
+set(TEST_APPS gen_data_io)
 
-foreach( exec IN LISTS CORRELATION_APPS)
+foreach( exec IN LISTS TEST_APPS)
 	add_executable(${exec} ${exec}.cpp)
 	foreach (cdef IN LISTS fastde_test_compile_defs)
 		target_compile_definitions(${exec} PRIVATE ${cdef})
@@ -47,11 +53,35 @@ foreach( exec IN LISTS CORRELATION_APPS)
 	endforeach(cflgs)
 	target_link_libraries(${exec} ${fastde_test_link_flags} ${fastde_test_link_libs} ${EXTRA_LIBS})
 
+	target_compile_definitions(${exec} PRIVATE -DFDE_TEST_DATA_DIR="${PROJECT_SOURCE_DIR}/tests/data")
+
 	if (USE_MPI)
 		target_compile_definitions(${exec} PRIVATE -DUSE_MPI)
 		# MPI_LIBRARIES already in EXTRA_LIBS
 	endif(USE_MPI)
 endforeach(exec)
+
+
+set(CATCH2_TEST_APPS test_io test_sparsemat)
+
+foreach( exec IN LISTS CATCH2_TEST_APPS)
+	add_executable(${exec} ${exec}.cpp)
+	foreach (cdef IN LISTS fastde_test_compile_defs)
+		target_compile_definitions(${exec} PRIVATE ${cdef})
+	endforeach(cdef)
+	foreach (cflgs IN LISTS fastde_test_compile_flags)
+		target_compile_options(${exec} PRIVATE ${cflgs})
+	endforeach(cflgs)
+	target_link_libraries(${exec} PRIVATE Catch2::Catch2WithMain ${fastde_test_link_flags} ${fastde_test_link_libs} ${EXTRA_LIBS} )
+
+	target_compile_definitions(${exec} PRIVATE -DFDE_TEST_DATA_DIR="${PROJECT_SOURCE_DIR}/tests/data")
+
+	if (USE_MPI)
+		target_compile_definitions(${exec} PRIVATE -DUSE_MPI)
+		# MPI_LIBRARIES already in EXTRA_LIBS
+	endif(USE_MPI)
+endforeach(exec)
+
 
 
 

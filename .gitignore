@@ -46,3 +46,7 @@ man/*.Rd
 src/*.rds
 
 .vscode
+
+*.pyc
+
+*.h5
