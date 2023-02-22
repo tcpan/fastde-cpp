@@ -31,11 +31,6 @@
 
 
 
-#ifdef USE_MPI
-#include <mpi.h>
-#include "utils/mpi_types.hpp"
-#endif  // with mpi
-
 #include <hdf5.h>
 #include "utils/hdf5_types.hpp"
 
@@ -48,8 +43,8 @@ class HDF5Reader {
 	protected:
 		std::string filename;
 
-
-		bool readVectorSize(hid_t obj_id, std::string const & path, ssize_t & count) {
+		template <typename T>
+		bool readVectorSize(hid_t obj_id, std::string const & path, T & count) {
 			// https://stackoverflow.com/questions/15786626/get-the-dimensions-of-a-hdf5-dataset#:~:text=First%20you%20need%20to%20get,int%20ndims%20%3D%20H5Sget_simple_extent_ndims(dspace)%3B
 			auto exists = H5Lexists(obj_id, path.c_str(), H5P_DEFAULT);
 			if (exists <= 0) return false;
@@ -69,8 +64,8 @@ class HDF5Reader {
 			return true;
 		}
 
-		template <typename T>
-		bool readSparseMatrixSize(hid_t obj_id, std::string const & path, T & rows, T & cols, T& elements) {
+		template <typename T, typename S>
+		bool readSparseMatrixSize(hid_t obj_id, std::string const & path, T & rows, T & cols, S& elements) {
 			// https://stackoverflow.com/questions/15786626/get-the-dimensions-of-a-hdf5-dataset#:~:text=First%20you%20need%20to%20get,int%20ndims%20%3D%20H5Sget_simple_extent_ndims(dspace)%3B
 			auto exists = H5Lexists(obj_id, path.c_str(), H5P_DEFAULT);
 			if (exists <= 0) return false;
@@ -87,7 +82,7 @@ class HDF5Reader {
 
 			hid_t atype  = H5Aget_type(attr_id);
   			hid_t space_id = H5Aget_space(attr_id);
-  			size_t npoints    = H5Sget_simple_extent_npoints(space_id);
+  			size_t npoints  = H5Sget_simple_extent_npoints(space_id);
 			int64_t *dims = (int64_t *)malloc(sizeof(int64_t) * npoints);
 			H5Aread(attr_id, atype, dims);
 
@@ -105,32 +100,124 @@ class HDF5Reader {
 			return true;
 		}
 
-		bool readMatrixSize(hid_t obj_id, std::string const & path, ssize_t & rows, ssize_t & cols) {
+		// template <typename T>
+		// bool readMatrixSize(hid_t obj_id, std::string const & path, T & rows, T & cols) {
+		// 	// https://stackoverflow.com/questions/15786626/get-the-dimensions-of-a-hdf5-dataset#:~:text=First%20you%20need%20to%20get,int%20ndims%20%3D%20H5Sget_simple_extent_ndims(dspace)%3B
+		// 	auto exists = H5Lexists(obj_id, path.c_str(), H5P_DEFAULT);
+		// 	if (exists <= 0) return false;
+
+		// 	hid_t dataset_id = H5Dopen(obj_id, path.c_str(), H5P_DEFAULT);
+
+		// 	hid_t dataspace_id = H5Dget_space(dataset_id);
+		// 	const int ndims = H5Sget_simple_extent_ndims(dataspace_id);
+		// 	hsize_t dims[ndims];
+		// 	H5Sget_simple_extent_dims(dataspace_id, dims, NULL);
+
+		// 	rows = dims[0]; // rows
+		// 	cols = dims[1]; // cols.
+
+		// 	H5Sclose(dataspace_id);
+		// 	H5Dclose(dataset_id);
+
+		// 	return true;
+		// }
+
+		template <typename T>
+		bool readMatrixSize(hid_t obj_id, std::string const & path, T & rows, T & cols) {
 			// https://stackoverflow.com/questions/15786626/get-the-dimensions-of-a-hdf5-dataset#:~:text=First%20you%20need%20to%20get,int%20ndims%20%3D%20H5Sget_simple_extent_ndims(dspace)%3B
 			auto exists = H5Lexists(obj_id, path.c_str(), H5P_DEFAULT);
 			if (exists <= 0) return false;
 
-			hid_t dataset_id = H5Dopen(obj_id, path.c_str(), H5P_DEFAULT);
+			// get the group
+			hid_t group_id = H5Gopen(obj_id, path.c_str(), H5P_DEFAULT);
 
-			hid_t dataspace_id = H5Dget_space(dataset_id);
-			const int ndims = H5Sget_simple_extent_ndims(dataspace_id);
-			hsize_t dims[ndims];
-			H5Sget_simple_extent_dims(dataspace_id, dims, NULL);
+			// then get the attribute of the group
+			exists = H5Aexists(group_id, "shape");
+        	if (exists <= 0)  return false;
 
-			rows = dims[0]; // rows
-			cols = dims[1]; // cols.
+           	// open
+            hid_t attr_id = H5Aopen(group_id, "shape", H5P_DEFAULT);
 
-			H5Sclose(dataspace_id);
-			H5Dclose(dataset_id);
+			hid_t atype  = H5Aget_type(attr_id);
+  			hid_t space_id = H5Aget_space(attr_id);
+  			size_t npoints  = H5Sget_simple_extent_npoints(space_id);
+			int64_t *dims = (int64_t *)malloc(sizeof(int64_t) * npoints);
+			H5Aread(attr_id, atype, dims);
+
+			rows = dims[0]; 
+			cols = dims[1];
+
+			free(dims);
+
+			H5Tclose(atype);
+			H5Aclose(attr_id);
+			H5Sclose(space_id);
+			H5Gclose(group_id);
 
 			return true;
 		}
+
 
 		// max length is set.
 		inline size_t strnlen(char * str, size_t n) {
 			size_t i = 0;
 			while ((i < n) && (str[i] != 0)) ++i;
 			return i;
+		}
+
+		//https://support.hdfgroup.org/ftp/HDF5/examples/misc-examples/attrvstr.c
+		bool readStringAttribute(hid_t obj_id, std::string const & name, std::string & value) {
+			auto exists = H5Aexists(obj_id, name.c_str());
+			if (exists <= 0) return false;
+
+			// open
+			hid_t attr_id = H5Aopen(obj_id, name.c_str(), H5P_DEFAULT);
+			hid_t type_id = H5Aget_type(attr_id);
+		
+
+			// string could be fixed length or variable. 
+			//  variable length would have H5Tget_size(type) == sizeof(char *)
+			//  fixed length would have H5Tget_size(type) == actual size.
+			//  H5Aget_storage_size would also return actual size.
+			// not sure what to do when the sizes all equal....
+
+
+			hsize_t ptrsize = H5Tget_size(type_id);
+
+			hsize_t sz = H5Aget_storage_size(attr_id);
+			// FMT_PRINT("size found {} {} \n", ptrsize, sz);
+
+			if (ptrsize == sz) {
+				// fixed length (unless sz is same as sizeof(char *)) in which case I am not sure....
+				char * val = new char[sz + 1];  val[sz] = 0;
+				H5Aread(attr_id, type_id, val);
+				value = std::string(val);
+				delete [] val;
+			} else {
+				// variable length.  ptrsize is the size of sizeof(char *)
+				char * val =0;
+				H5Aread(attr_id, type_id, &val);
+				value = std::string(val);
+				H5free_memory(val);
+			}
+
+
+			// H5T_class_t type_class = H5Tget_class (type_id);   
+
+			// if (type_class == H5T_STRING) printf ("File datatype has class H5T_STRING\n");
+			// size_t size = H5Tget_size(type_id);
+		    // printf(" Size is of the file datatype returned by H5Tget_size %d \n This is a size of char pointer\n Use H5Tis_variable_str call instead \n", size);
+
+			// htri_t size_var;
+			// if((size_var = H5Tis_variable_str(type_id)) == 1)  printf(" to find if string has variable size \n");
+
+		    // hid_t type = H5Tget_native_type(type_id, H5T_DIR_ASCEND);
+
+			H5Tclose(type_id);
+			H5Aclose(attr_id);
+			// H5Tclose(type);
+
+			return true;
 		}
 
 		bool readStrings(hid_t obj_id, std::string const & path, std::vector<std::string> & out ) {
@@ -186,9 +273,9 @@ class HDF5Reader {
 		}
 
 		// specify number of rows and cols to read.
-		template <typename T>
+		template <typename T, typename S>
 		bool readVector(hid_t obj_id, std::string const & path,
-			size_t const & count, T * vector) {
+			S const & count, T * vector) {
 
 			// open data set
 			auto exists = H5Lexists(obj_id, path.c_str(), H5P_DEFAULT);
@@ -206,11 +293,11 @@ class HDF5Reader {
 			hsize_t mem_dims[ndims] = {static_cast<hsize_t>(count)};
 			hid_t memspace_id = H5Screate_simple(ndims, mem_dims, NULL);
 			// select hyperslab of memory, for row by row traversal
-			hsize_t mstart = 0;  // element offset for first block
-			hsize_t mcount = count; // # of blocks
-			hsize_t mstride = 1;  // element stride to get to next block
-			hsize_t mblock = 1;  // block size  1xcols
-			H5Sselect_hyperslab(memspace_id, H5S_SELECT_SET, &mstart, &mstride, &mcount, &mblock);
+			hsize_t mstart[ndims] = {0};  // element offset for first block
+			hsize_t mcount[ndims] = {1}; // # of blocks
+			hsize_t mstride[ndims] = {static_cast<hsize_t>(count)};  // element stride to get to next block
+			hsize_t mblock[ndims] = {static_cast<hsize_t>(count)};  // block size  1xcols
+			H5Sselect_hyperslab(memspace_id, H5S_SELECT_SET, mstart, mstride, mcount, mblock);
 
 			// float type
 			utils::hdf5::datatype<T> type;
@@ -229,47 +316,61 @@ class HDF5Reader {
 
 
 		// specify number of rows and cols to read.
-		template <typename T>
+		template <typename T, typename S>
 		bool readMatrix(hid_t obj_id, std::string const & path,
-			size_t const & rows, size_t const & cols, 
-			T * vectors, size_t const & stride_bytes) {
-
-			if ((stride_bytes % sizeof(T)) > 0) {
-				// unsupported.  This means having to write row by row, and some procs may have to write 0 bytes - complicating PHDF5 write.
-            	FMT_PRINT_ERR("ERROR: column stride not a multiple of element data type.  This is not support and will be deprecated.\n");
-            	return false;
-			}
+			S const & rows, S const & cols, bool const & rowMajor, 
+			T * vectors) {
 			
+			// FMT_PRINT("READING MATRIX in {} major\n", (rowMajor ? "row" : "column"));
+
 			// open data set
 			auto exists = H5Lexists(obj_id, path.c_str(), H5P_DEFAULT);
 			if (exists <= 0) return false;
 
 			hid_t dataset_id = H5Dopen(obj_id, path.c_str(), H5P_DEFAULT);
 			
-			// open data space and get dimensions
+			// open data space and get dimensions.  should be row major always.
 			hid_t filespace_id = H5Dget_space(dataset_id);
 			const int ndims = H5Sget_simple_extent_ndims(filespace_id);
 			hsize_t file_dims[ndims];
 			H5Sget_simple_extent_dims(filespace_id, file_dims, NULL);
 			
-			// create target space
-			hsize_t mem_dims[ndims] = {rows, stride_bytes / sizeof(T)};
-			hid_t memspace_id = H5Screate_simple(ndims, mem_dims, NULL);
-			// select hyperslab of memory, for row by row traversal
-			hsize_t mstart[2] = {0, 0};  // element offset for first block
-			hsize_t mcount[2] = {rows, 1}; // # of blocks
-			hsize_t mstride[2] = {1, stride_bytes / sizeof(T)};  // element stride to get to next block
-			hsize_t mblock[2] = {1, cols};  // block size  1xcols
-			H5Sselect_hyperslab(memspace_id, H5S_SELECT_SET, mstart, mstride, mcount, mblock);
+			// create target space.  determined by the rowMajor flag.
+			// see http://davis.lbl.gov/Manuals/HDF5-1.8.7/UG/12_Dataspaces.html
+			hid_t memspace_id;
+			if (rowMajor) {
+				hsize_t mem_dims[ndims] = {static_cast<hsize_t>(rows), static_cast<hsize_t>(cols)};
+				memspace_id = H5Screate_simple(ndims, mem_dims, NULL);
+				// select hyperslab of memory, for row by row traversal
+				hsize_t mstart[2] = {0, 0};  // element offset for first block
+				hsize_t mcount[2] = {static_cast<hsize_t>(rows), 1}; // # of blocks
+				hsize_t mstride[2] = {1, static_cast<hsize_t>(cols)};  // element stride to get to next block
+				hsize_t mblock[2] = {1, static_cast<hsize_t>(cols)};  // block size  1xcols
+				H5Sselect_hyperslab(memspace_id, H5S_SELECT_SET, mstart, mstride, mcount, mblock);
+			} else {
+				hsize_t mem_dims[ndims] = {static_cast<hsize_t>(cols), static_cast<hsize_t>(rows)};
+				memspace_id = H5Screate_simple(ndims, mem_dims, NULL);
+				// select hyperslab of memory, for row by row traversal
+				hsize_t mstart[2] = {0, 0};  // element offset for first block
+				hsize_t mcount[2] = {1, static_cast<hsize_t>(rows)}; // # of blocks
+				hsize_t mstride[2] = {static_cast<hsize_t>(cols), 1};  // element stride to get to next block
+				hsize_t mblock[2] = {static_cast<hsize_t>(cols), 1};  // block size  rows x 1
+				// hsize_t mcount[2] = {1, static_cast<hsize_t>(rows)}; // # of blocks
+				// hsize_t mstride[2] = {static_cast<hsize_t>(cols), 1};  // element stride to get to next block
+				// hsize_t mblock[2] = {static_cast<hsize_t>(cols), 1};  // block size  rows x 1
+				H5Sselect_hyperslab(memspace_id, H5S_SELECT_SET, mstart, mstride, mcount, mblock);
+			}
 
 			// float type
 			utils::hdf5::datatype<T> type;
 			hid_t type_id = type.value;
-
+			// hid_t file_type_id = H5Dget_type(dataset_id);
+			// FMT_PRINT("mem type {} file type {}.  same? {}\n", type_id, file_type_id, H5Tequal(type_id, file_type_id) ? "yes" : "no");				
+			
 			// read data.  use mem_type is variable length string.  memspace is same as file space. 
 			//auto status = 
 			H5Dread(dataset_id, type_id, memspace_id, filespace_id, H5P_DEFAULT, vectors);
-
+			// H5Tclose(file_type_id);
 			H5Sclose(memspace_id);
 			H5Sclose(filespace_id);
 			H5Dclose(dataset_id);
@@ -277,73 +378,6 @@ class HDF5Reader {
 			return true;
 		}
 
-#ifdef USE_MPI
-		template <typename T>
-		bool readMatrix(hid_t obj_id, std::string const & path,
-			size_t const & rows, size_t const & cols, 
-			T * vectors, size_t const & stride_bytes,
-			MPI_Comm const & comm) {
-
-			if ((stride_bytes % sizeof(T)) > 0) {
-				// unsupported.  This means having to write row by row, and some procs may have to write 0 bytes - complicating PHDF5 write.
-            	FMT_PRINT_ERR("ERROR: column stride not a multiple of element data type.  This is not support and will be deprecated.\n");
-            	return false;
-			}
-
-			int procs, rank;
-			MPI_Comm_size(comm, &procs);
-			MPI_Comm_rank(comm, &rank);
-			
-			size_t row_offset = rows;
-			MPI_Exscan(MPI_IN_PLACE, &row_offset, 1, MPI_UNSIGNED_LONG, MPI_SUM, comm);
-			if (rank == 0) row_offset = 0;
-
-			// open data set
-			auto exists = H5Lexists(obj_id, path.c_str(), H5P_DEFAULT);
-			if (exists <= 0) return false;
-
-			hid_t dataset_id = H5Dopen(obj_id, path.c_str(), H5P_DEFAULT);
-
-			// open data space and get dimensions
-			hid_t filespace_id = H5Dget_space(dataset_id);
-			const int ndims = H5Sget_simple_extent_ndims(filespace_id);
-			hsize_t file_dims[ndims];
-			H5Sget_simple_extent_dims(filespace_id, file_dims, NULL);
-			
-			// each process defines dataset in memory and hyperslab in file.
-			hsize_t start[2] = {row_offset, 0};  // starting offset, row, then col.
-			hsize_t count[2] = {rows, cols};   // number of row and col blocks.
-			H5Sselect_hyperslab(filespace_id, H5S_SELECT_SET, start, NULL, count, NULL);
-
-			hsize_t mem_dims[ndims] = {rows, stride_bytes / sizeof(T) };
-			hid_t memspace_id = H5Screate_simple(ndims, mem_dims, NULL);
-			// select hyperslab of memory, for row by row traversal
-			hsize_t mstart[2] = {0, 0};  // element offset for first block
-			hsize_t mcount[2] = {rows, 1}; // # of blocks
-			hsize_t mstride[2] = {1, stride_bytes / sizeof(T)};  // element stride to get to next block
-			hsize_t mblock[2] = {1, cols};  // block size  1xcols
-			H5Sselect_hyperslab(memspace_id, H5S_SELECT_SET, mstart, mstride, mcount, mblock);
-
-			// float type
-			utils::hdf5::datatype<T> type;
-			hid_t type_id = type.value;
-
-			// read data.  use mem_type is variable length string.  memspace is same as file space. 
-			hid_t plist_id = H5Pcreate(H5P_DATASET_XFER);
-			H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
-			//auto status = 
-			H5Dread(dataset_id, type_id, memspace_id, filespace_id, plist_id, vectors);
-
-			// convert to string objects
-			H5Sclose(memspace_id);
-			H5Sclose(filespace_id);
-			H5Dclose(dataset_id);
-
-			H5Pclose(plist_id);
-
-			return true;
-		}
-#endif
 
 
 	public:
@@ -356,8 +390,9 @@ class HDF5Reader {
 
 
 		/*get gene expression matrix size*/
-		bool getVectorSize(std::string const & path, ssize_t& count) {
-			auto stime = getSysTime();
+		template <typename T>
+		bool getVectorSize(std::string const & path, T& count) {
+			// auto stime = getSysTime();
 
 			// open the file for reading only.
 			hid_t file_id = H5Fopen(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
@@ -378,12 +413,13 @@ class HDF5Reader {
 			H5Gclose(group_id);
 			H5Fclose(file_id);
 
-			auto etime = getSysTime();
-			FMT_ROOT_PRINT("get vector size {} in {} sec\n", count, get_duration_s(stime, etime));
+			// auto etime = getSysTime();
+			// FMT_ROOT_PRINT("get vector size {} in {} sec\n", count, get_duration_s(stime, etime));
 			return res;
 		}
-		bool getSparseMatrixSize(std::string const & path, ssize_t& rows, ssize_t& cols, ssize_t& nelements) {
-						auto stime = getSysTime();
+		template <typename T, typename S>
+		bool getSparseMatrixSize(std::string const & path, T& rows, T& cols, S& nelements, std::string &format) {
+			// auto stime = getSysTime();
 
 			// open the file for reading only.
 			hid_t file_id = H5Fopen(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
@@ -391,21 +427,6 @@ class HDF5Reader {
 			
 			bool res = readSparseMatrixSize(file_id, path.c_str(), rows, cols, nelements);
 
-
-			H5Fclose(file_id);
-
-			auto etime = getSysTime();
-			FMT_ROOT_PRINT("get sparse matrix size {}x{} in {} sec\n", rows, cols, get_duration_s(stime, etime));
-			return res;
-
-		}
-		bool getMatrixSize(std::string const & path, ssize_t& rows, ssize_t& cols) {
-			auto stime = getSysTime();
-
-			// open the file for reading only.
-			hid_t file_id = H5Fopen(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
-			if (file_id < 0) return false;
-			
 			hid_t group_id;
             auto status = H5Lexists(file_id, path.c_str(), H5P_DEFAULT);
             if (status > 0) {
@@ -416,20 +437,38 @@ class HDF5Reader {
                 return false;
             }
 
-			bool res = readMatrixSize(group_id, "block0_values", rows, cols);
-
-
+			// read the data.
+			readStringAttribute(group_id, "format", format);
+			
 			H5Gclose(group_id);
+
 			H5Fclose(file_id);
 
-			auto etime = getSysTime();
-			FMT_ROOT_PRINT("get matrix size {}x{} in {} sec\n", rows, cols, get_duration_s(stime, etime));
+			// auto etime = getSysTime();
+			// FMT_ROOT_PRINT("get sparse matrix size {}x{}, nz {} in {} sec\n", rows, cols, nelements, get_duration_s(stime, etime));
+			return res;
+
+		}
+		template <typename T>
+		bool getMatrixSize(std::string const & path, T& rows, T& cols) {
+			// auto stime = getSysTime();
+
+			// open the file for reading only.
+			hid_t file_id = H5Fopen(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+			if (file_id < 0) return false;
+			
+			bool res = readMatrixSize(file_id, path.c_str(), rows, cols);
+
+			H5Fclose(file_id);
+
+			// auto etime = getSysTime();
+			// FMT_ROOT_PRINT("get matrix size {}x{} in {} sec\n", rows, cols, get_duration_s(stime, etime));
 			return res;
 		}
 
-		template <typename T>
+		template <typename T, typename S>
 		bool loadVectorData(std::string const & path, 
-			ssize_t const & count, 
+			S const & count, 
 			T* vectors) {
 
 			// open the file for reading only.
@@ -454,9 +493,9 @@ class HDF5Reader {
 			return true;
 		}
 
-		template <typename T, typename I, typename P>
+		template <typename T, typename I, typename P, typename S, typename SS>
 		bool loadSparseMatrixData(std::string const & path,
-			const ssize_t rows, const ssize_t cols, const ssize_t nz,
+			S const & rows, S const & cols, SS const & nz, std::string const & format, 
 			T* x, I* i, P* p) {
 
 			// open the file for reading only.
@@ -474,21 +513,24 @@ class HDF5Reader {
             }
 
 			// read the data.
-
 			readVector(group_id, "x", nz, x);
+			
 			readVector(group_id, "i", nz, i);
-			readVector(group_id, "p", cols + 1, p);
-
+			size_t nptrs = 0;
+			if (format == "csc")  nptrs = cols + 1;
+			else if (format == "csr")  nptrs = rows + 1;
+			readVector(group_id, "p", nptrs, p);
+			
 			H5Gclose(group_id);
 			H5Fclose(file_id);
 			return true;
 		}
 
 
-		template <typename T>
-		bool loadMatrixData(std::string const & path, ssize_t const & rows,
-			ssize_t const & cols, 
-			T* vectors, ssize_t const & stride_bytes) {
+		template <typename T, typename S>
+		bool loadMatrixData(std::string const & path, 
+			S const & rows, S const & cols, bool & rowMajor, 
+			T* vectors) {
 
 			// open the file for reading only.
 			hid_t file_id = H5Fopen(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
@@ -509,7 +551,11 @@ class HDF5Reader {
 			// readStrings(group_id, "axis0", samples);
 
 			// read the data.
-			readMatrix(group_id, "block0_values", rows, cols, vectors, stride_bytes);
+			std::string format;
+			readStringAttribute(group_id, "order", format);
+			rowMajor = (format == "C");
+			
+			readMatrix(group_id, "block0_values", rows, cols, rowMajor, vectors);
 
 			H5Gclose(group_id);
 			H5Fclose(file_id);

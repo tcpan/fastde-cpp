@@ -23,9 +23,6 @@
 #include "utils/benchmark.hpp"
 #include "utils/report.hpp"
 
-#ifdef USE_MPI
-#include <mpi.h>
-#endif
 
 #include <hdf5.h>
 #include "utils/hdf5_types.hpp"
@@ -90,8 +87,8 @@ protected:
         H5Aclose(attr_id);
     }
 
-    template <typename T>
-    void writeAttributes(hid_t obj_id, std::string const & name, T const * values, size_t const & count) {
+    template <typename T, typename S>
+    void writeAttributes(hid_t obj_id, std::string const & name, T const * values, S const & count) {
         utils::hdf5::datatype<T> type;
         hid_t type_id = type.value;
         hsize_t cnt = count;
@@ -172,10 +169,19 @@ protected:
         writeAttributes(group_id, "shape", &dim, ndim);
     }
 
+
+    void writeSparseMatrixDataGroupAttributes(hid_t group_id, int64_t const & nblocks, int64_t const & ndim, int64_t const * dims, std::string const & format) {
+        _writeDataGroupAttributes(group_id, nblocks, ndim);
+        writeAttribute(group_id, "axis1_variety", "regular");
+        writeAttribute(group_id, "format", format);
+        writeAttributes(group_id, "shape", dims, ndim);
+    }
+
+
     void writeMatrixDataGroupAttributes(hid_t group_id, int64_t const & nblocks, int64_t const & ndim, int64_t const * dims, bool row_major) {
         _writeDataGroupAttributes(group_id, nblocks, ndim);
         writeAttribute(group_id, "axis1_variety", "regular");
-        writeAttribute(group_id, "major", row_major ? "csr" : "csc");
+        writeAttribute(group_id, "order", row_major ? "C" : "F");
         writeAttributes(group_id, "shape", dims, ndim);
     }
 
@@ -195,7 +201,7 @@ protected:
 
 
     void writeAxisAttributes(hid_t dataset_id, std::string const & kind, std::string const & name, bool const & ascii_name = true) {
-        writeMatrixDatasetAttributes(dataset_id, true);
+        writeMatrixDatasetAttributes(dataset_id, false);
         writeAttribute(dataset_id, "kind", kind);
         writeAttribute(dataset_id, "name", name, ascii_name); 
     }
@@ -304,23 +310,33 @@ protected:
     // may specify cols to be fewer than stride_bytes can support....
     template <typename T>
     void writeMatrix(hid_t file_id, std::string const & path, size_t const & rows, size_t const & cols, 
-        T const * vectors, size_t const & stride_bytes, bool const & is_transposed = true) {
+        T const * vectors, bool const & row_major) {
 
-        if ((stride_bytes % sizeof(T)) > 0) {
-            // unsupported.  This means having to write row by row, and some procs may have to write 0 bytes - complicating PHDF5 write.
-            FMT_PRINT_ERR("ERROR: column stride not a multiple of element data type.  This is not support and will be deprecated.\n");
-            return;
-        }
+        // FMT_PRINT("WRITE MATRIX in {} major\n", (row_major ? "row" : "column"));
 
         utils::hdf5::datatype<T> h5type;
         hid_t type_id = h5type.value;
 
-        hsize_t filespace_dim[2] = { rows, cols };  // what the file will contain.
-        hid_t filespace_id = H5Screate_simple(2, filespace_dim, NULL);
-        // select hyperslab of memory, for row by row traversal
-        hsize_t start[2] = {0, 0};  // element offset for first block
-        hsize_t count[2] = {rows, cols}; // # of blocks
-        H5Sselect_hyperslab(filespace_id, H5S_SELECT_SET, start, NULL, count, NULL);
+        hid_t filespace_id;
+        if (row_major) {
+            hsize_t filespace_dim[2] = { rows, cols };  // what the file will contain.
+            filespace_id = H5Screate_simple(2, filespace_dim, NULL);
+            // select hyperslab of memory, for row by row traversal
+            hsize_t start[2] = {0, 0};  // element offset for first block
+            hsize_t count[2] = {rows, 1}; // # of blocks in he whole space
+            hsize_t stride[2] = {1, cols}; // # of elements to walk to get from block to block
+            hsize_t block[2] = {1, cols}; // # block size
+            H5Sselect_hyperslab(filespace_id, H5S_SELECT_SET, start, stride, count, block);
+        } else {
+            hsize_t filespace_dim[2] = { cols, rows };  // what the file will contain.
+            filespace_id = H5Screate_simple(2, filespace_dim, NULL);
+            // select hyperslab of memory, for row by row traversal
+            hsize_t start[2] = {0, 0};  // element offset for first block
+            hsize_t count[2] = {1, rows}; // # of blocks in he whole space
+            hsize_t stride[2] = {cols, 1}; // # of elements to walk to get from block to block
+            hsize_t block[2] = {cols, 1}; // # block size
+            H5Sselect_hyperslab(filespace_id, H5S_SELECT_SET, start, stride, count, block);
+        }
 
         // try opening the group first.  
         // NOTE: cannot delete dataset or replace dataset with smaller one.
@@ -334,18 +350,31 @@ protected:
         }
 
         // what the memory contains.  assume continuous.
-        hsize_t memspace_dim[2] = { rows, stride_bytes / sizeof(T) };
-        hid_t memspace_id = H5Screate_simple(2, memspace_dim, NULL);
-        // select hyperslab of memory, for row by row traversal
-        hsize_t mstart[2] = {0, 0};  // element offset for first block
-        hsize_t mcount[2] = {rows, 1}; // # of blocks
-        hsize_t mstride[2] = {1, stride_bytes / sizeof(T)};  // element stride to get to next block
-        hsize_t mblock[2] = {1, cols};  // block size  1xcols
-        H5Sselect_hyperslab(memspace_id, H5S_SELECT_SET, mstart, mstride, mcount, mblock);
+        // see http://davis.lbl.gov/Manuals/HDF5-1.8.7/UG/12_Dataspaces.html
+        hid_t memspace_id;
+        if (row_major) {
+            hsize_t memspace_dim[2] = { rows, cols };
+            memspace_id = H5Screate_simple(2, memspace_dim, NULL);
+            // select hyperslab of memory, for row by row traversal
+            hsize_t mstart[2] = {0, 0};  // element offset for first block
+            hsize_t mcount[2] = {rows, 1}; // # of blocks
+            hsize_t mstride[2] = {1, cols};  // element stride to get to next block
+            hsize_t mblock[2] = {1, cols};  // block size  1xcols
+            H5Sselect_hyperslab(memspace_id, H5S_SELECT_SET, mstart, mstride, mcount, mblock);
+        } else {
+            hsize_t memspace_dim[2] = { cols, rows };
+            memspace_id = H5Screate_simple(2, memspace_dim, NULL);
+            // select hyperslab of memory, for row by row traversal
+            hsize_t mstart[2] = {0, 0};  // element offset for first block
+            hsize_t mcount[2] = {cols, 1}; // # of blocks
+            hsize_t mstride[2] = {1, rows};  // element stride to get to next block
+            hsize_t mblock[2] = {1, rows};  // block size  1xcols
+            H5Sselect_hyperslab(memspace_id, H5S_SELECT_SET, mstart, mstride, mcount, mblock);
+        }
         
         // may need to use hyperslab....
         H5Dwrite(dataset_id, type_id, memspace_id, filespace_id, H5P_DEFAULT, vectors);
-        writeMatrixDatasetAttributes(dataset_id, is_transposed);
+        writeMatrixDatasetAttributes(dataset_id, false);
 
         // H5Dflush(dataset_id);  // here does not cause "HDF5: infinite loop closing library" with MPI-IO
         H5Sclose(memspace_id);
@@ -354,81 +383,6 @@ protected:
 
     }
 
-#ifdef USE_MPI
-    template <typename T>
-    void writeMatrix(hid_t file_id, std::string const & path, size_t const & rows, size_t const & cols, 
-        T const * vectors, size_t const & stride_bytes, MPI_Comm const & comm, bool const & is_transposed = true) {
-
-        if ((stride_bytes % sizeof(T)) > 0) {
-            // unsupported.  This means having to write row by row, and some procs may have to write 0 bytes - complicating PHDF5 write.
-            FMT_PRINT_ERR("ERROR: column stride not a multiple of element data type.  This is not support and will be deprecated.\n");
-            return;
-        }
-
-        int procs, rank;
-        MPI_Comm_size(comm, &procs);
-        MPI_Comm_rank(comm, &rank);
-
-
-        hid_t plist_id = H5Pcreate(H5P_DATASET_XFER);
-        H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
-
-        // get total and offsets.
-        // get offsets.
-        size_t row_offset = rows;
-        MPI_Exscan(MPI_IN_PLACE, &row_offset, 1, MPI_UNSIGNED_LONG, MPI_SUM, comm);
-        if (rank == 0) row_offset = 0;
-        size_t row_total = rows;
-        MPI_Allreduce(MPI_IN_PLACE, &row_total, 1, MPI_UNSIGNED_LONG, MPI_SUM, comm);
-        size_t cols_max = cols;
-        MPI_Allreduce(MPI_IN_PLACE, &cols_max, 1, MPI_UNSIGNED_LONG, MPI_MAX, comm);
-
-        // get data type
-        utils::hdf5::datatype<T> h5type;
-        hid_t type_id = h5type.value;
-
-        // create file space
-        hsize_t filespace_dim[2] = { row_total, cols_max };
-        hid_t filespace_id = H5Screate_simple(2, filespace_dim, NULL);
-
-        // try opening the group first.  
-        // NOTE: cannot delete dataset or replace dataset with smaller one.
-        // check if opened.  if not, create it.
-        hid_t dataset_id = H5Dcreate(file_id, path.c_str(), type_id, filespace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-        if (dataset_id < 0) {
-            // failed.  print error and return
-            FMT_PRINT_RT("ERROR: unable to create dataset.\n");
-            H5Sclose(filespace_id);
-            H5Pclose(plist_id);
-            return;
-        }
-
-        // each process defines dataset in memory and hyperslab in file.
-        hsize_t start[2] = {row_offset, 0};  // starting offset, row, then col.
-        hsize_t count[2] = {rows, cols};   // number of row and col blocks.
-        H5Sselect_hyperslab(filespace_id, H5S_SELECT_SET, start, NULL, count, NULL);
-
-        hsize_t memspace_dim[2] = {rows, stride_bytes / sizeof(T)};
-        hid_t memspace_id = H5Screate_simple(2, memspace_dim, NULL);
-        // select hyperslab of memory, for row by row traversal
-        hsize_t mstart[2] = {0, 0};  // element offset for first block
-        hsize_t mcount[2] = {rows, 1}; // # of blocks
-        hsize_t mstride[2] = {1, stride_bytes / sizeof(T)};  // element stride to get to next block
-        hsize_t mblock[2] = {1, cols};  // block size  1xcols
-        H5Sselect_hyperslab(memspace_id, H5S_SELECT_SET, mstart, mstride, mcount, mblock);
-        
-
-        H5Dwrite(dataset_id, type_id, memspace_id, filespace_id, plist_id, vectors);
-        writeMatrixDatasetAttributes(dataset_id, is_transposed);  // ALL PROCS WRITE?
-
-        // H5Dflush(dataset_id);  // KNOWN to cause "HDF5: infinite loop closing library" with MPI-IO
-        H5Sclose(memspace_id);
-        H5Sclose(filespace_id);
-        H5Dclose(dataset_id);
-        H5Pclose(plist_id);
-
-    }
-#endif
 
 public:
 
@@ -442,7 +396,7 @@ public:
         std::vector<T> const & x, 
         std::vector<I> const & i, 
         std::vector<P> const & p,
-        bool const & row_major = true) {
+        std::string const & format) {
         
         auto stime = getSysTime();
         hid_t file_id;
@@ -468,7 +422,7 @@ public:
             return false;
         }
         int64_t dims[2] = {rows, cols};
-        writeMatrixDataGroupAttributes(group_id, 1, 2, dims, row_major);
+        writeSparseMatrixDataGroupAttributes(group_id, 1, 2, dims, format);
 
         // // ------------- write the names.
 
@@ -546,7 +500,7 @@ public:
     
     template <typename T>
     bool storeMatrixData(std::string const & path, size_t const & rows, size_t const & cols, 
-        T const * vectors, size_t const & stride_bytes, bool const & row_major = true) {
+        T const * vectors, bool const & row_major) {
         
         auto stime = getSysTime();
         hid_t file_id;
@@ -586,7 +540,7 @@ public:
         stime = getSysTime();
 
         // ---------- write data.
-        writeMatrix(group_id, "block0_values", rows, cols, vectors, stride_bytes, !row_major);
+        writeMatrix(group_id, "block0_values", rows, cols, vectors, row_major);
 
         // H5Gflush(group_id);  // here does not cause "HDF5: infinite loop closing library" with MPI-IO
         H5Gclose(group_id);  // close the group immediately

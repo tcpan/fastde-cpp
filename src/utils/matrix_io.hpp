@@ -96,6 +96,17 @@ std::tuple<std::vector<T>, std::vector<int>, std::vector<S>> make_random_sparse_
 
 	for (size_t c = 0; c < cols; ++c) {
 		std::sort(i.begin() + p[c], i.begin() + p[c+1]);
+		// perturb repeated elements so we don't have duplicates in i.
+		for (auto r = p[c] + 1; r < p[c+1]; ++r) {
+			if (i[r-1] >= i[r]) i[r] = i[r-1] + 1;  // forward shift.
+		}
+		// if perturbation caused the last element to exceed the number of rows, then we need to shift back.
+		if (i[p[c+1] - 1] >= static_cast<int>(rows)) {
+			i[p[c+1] - 1] = rows - 1;
+			for (auto r = p[c+1] - 1; r > p[c]; --r) {
+				if (i[r-1] >= i[r]) i[r-1] = i[r] - 1;   // backward shift.
+			}
+		}
 	}
 
 	return std::make_tuple(x, i, p);
@@ -116,7 +127,7 @@ template <typename T, typename S>
 void read_hdf5_sparse_matrix(std::string const & filename, 
 	std::string const & datasetname,
 	std::vector<T> & x, std::vector<int> & i, std::vector<S> & p, size_t & rows, size_t & cols,
-	bool & is_transposed) {
+	std::string & format) {
 	if (filename.length() > 0) {
 		// write to file.  MPI enabled.  Not thread enabled.
 		// FMT_ROOT_PRINT("name sizes: {}, {}\n", row_names.size(), col_names.size());
@@ -124,16 +135,21 @@ void read_hdf5_sparse_matrix(std::string const & filename,
 		utils::HDF5Reader reader(filename);
 		// sequential writes only.
 		ssize_t nr = 0, nc = 0, nz = 0;
-		reader.getSparseMatrixSize(datasetname, nr, nc, nz);
+		reader.getSparseMatrixSize(datasetname, nr, nc, nz, format);
 
 		rows = nr;
 		cols = nc;
-
-		x.resize(nz);
-		i.resize(nz);
-		p.resize(cols + 1, 0);
-		
-		reader.loadSparseMatrixData(datasetname, nr, nc, nz, x.data(), i.data(), p.data());
+		x.clear();
+		x.resize(nz, 0);
+		i.clear();
+		i.resize(nz, 0);
+		p.clear();
+		if (format == "csc") 
+			p.resize(cols + 1, 0);
+		else if (format == "csr") 
+			p.resize(rows + 1, 0);
+			
+		reader.loadSparseMatrixData(datasetname, nr, nc, nz, format, x.data(), i.data(), p.data());
 
 	}
 };
@@ -149,10 +165,11 @@ void read_hdf5_vector(std::string const & filename,
 		utils::HDF5Reader reader(filename);
 		// sequential writes only.
 
-		ssize_t cnt;
+		ssize_t cnt = 0;
 		reader.getVectorSize(datasetname, cnt);
 
-		out.resize(cnt);
+		out.clear();
+		out.resize(cnt, 0);
 
 		count = cnt;
 		reader.loadVectorData(datasetname, count, out.data());
@@ -164,21 +181,22 @@ void read_hdf5_vector(std::string const & filename,
 template <typename T>
 void read_hdf5_matrix(std::string const & filename, 
 	std::string const & datasetname,
-	std::vector<T> & data, size_t & rows, size_t & cols, bool & is_transposed) {
+	std::vector<T> & data, size_t & rows, size_t & cols, bool & rowMajor) {
 	if (filename.length() > 0) {
 		// write to file.  MPI enabled.  Not thread enabled.
 		// FMT_ROOT_PRINT("name sizes: {}, {}\n", row_names.size(), col_names.size());
 		// FMT_ROOT_PRINT("outputing matrix size: {}, {}\n", data.rows(), data.columns());
 		utils::HDF5Reader reader(filename);
 
-		ssize_t nr, nc;
+		size_t nr = 0, nc = 0;
 		reader.getMatrixSize(datasetname, nr, nc);
 
-		data.resize(nr * nc);
+		data.clear();
+		data.resize(nr * nc, 0);
 
 		rows = nr;
 		cols = nc;
-		reader.loadMatrixData(datasetname, nr, nc, data.data(), nc * sizeof(T));
+		reader.loadMatrixData(datasetname, nr, nc, rowMajor, data.data());
 
 	}
 };
@@ -186,15 +204,16 @@ void read_hdf5_matrix(std::string const & filename,
 template <typename T, typename S>
 void write_hdf5_sparse_matrix(std::string const & filename, 
 	std::string const & datasetname,
-	std::vector<T> const & x, std::vector<int> const & i, std::vector<S> const & p, size_t const & rows, size_t const & cols,
-	bool const & is_transposed = true) {
+	std::vector<T> const & x, std::vector<int> const & i, std::vector<S> const & p, 
+	size_t const & rows, size_t const & cols,
+	std::string const & format = "csc") {
 	if (filename.length() > 0) {
 		// write to file.  MPI enabled.  Not thread enabled.
 		// FMT_ROOT_PRINT("name sizes: {}, {}\n", row_names.size(), col_names.size());
 		// FMT_ROOT_PRINT("outputing matrix size: {}, {}\n", data.rows(), data.columns());
 		utils::HDF5Writer writer(filename);
 		// sequential writes only.
-		writer.storeSparseMatrixData(datasetname, rows, cols, x, i, p, is_transposed);
+		writer.storeSparseMatrixData(datasetname, rows, cols, x, i, p, format);
 	}
 };
 
@@ -217,14 +236,14 @@ template <typename T>
 void write_hdf5_matrix(std::string const & filename, 
 	std::string const & datasetname,
 	std::vector<T> const & data, 
-	size_t const & rows, size_t const & cols, bool const & is_transposed = true) {
+	size_t const & rows, size_t const & cols, bool const & rowMajor) {
 	if (filename.length() > 0) {
 		// write to file.  MPI enabled.  Not thread enabled.
 		// FMT_ROOT_PRINT("name sizes: {}, {}\n", row_names.size(), col_names.size());
 		// FMT_ROOT_PRINT("outputing matrix size: {}, {}\n", data.rows(), data.columns());
 		utils::HDF5Writer writer(filename);
 
-		writer.storeMatrixData(datasetname, rows, cols, data.data(), cols * sizeof(T), false);
+		writer.storeMatrixData(datasetname, rows, cols, data.data(), rowMajor);
 
 	}
 };
