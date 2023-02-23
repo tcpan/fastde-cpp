@@ -50,3 +50,5 @@ src/*.rds
 *.pyc
 
 *.h5
+
+__pycache__

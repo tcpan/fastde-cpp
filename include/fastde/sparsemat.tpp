@@ -1471,7 +1471,7 @@ extern void csc_colsums_iter(
         auto oend = out + end;
         for (; optr != oend; ++optr) { *optr = 0; }
         // std::fill(out + offset, out + end, 0);
-        optr = out + offset;
+        optr = out; optr += offset;
         for (; pptr != pend; ++optr) {
             xptr = xend;
             ++pptr;
