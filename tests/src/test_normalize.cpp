@@ -121,7 +121,7 @@ TEST_CASE( "lognorm_vec", "[normalize]" ) {
 
 
 
-TEST_CASE( "clr_iter", "[normalize]" ) {
+TEST_CASE( "clr_col_iter", "[normalize]" ) {
 
 	// source
 	std::vector<double> x;
@@ -168,7 +168,7 @@ TEST_CASE( "clr_iter", "[normalize]" ) {
 
 
 
-TEST_CASE( "clr_vec", "[normalize]" ) {
+TEST_CASE( "clr_col_vec", "[normalize]" ) {
 
 	// source
 	std::vector<double> x;
@@ -207,6 +207,100 @@ TEST_CASE( "clr_vec", "[normalize]" ) {
 
 	ox.clear(); ox.resize(x.size(), 0);
 	csc_clr_cols_vec(x, i, p, rows, cols, ox, 4);
+
+	// compare
+    REQUIRE_THAT(ox, Catch::Matchers::Approx(goldx));
+
+}
+
+
+
+TEST_CASE( "clr_row_iter", "[normalize]" ) {
+
+	// source
+	std::vector<double> x;
+	std::vector<int> i;
+	std::vector<int> p;
+	size_t rows, cols;
+	std::string format;
+	utils::read_hdf5_sparse_matrix(std::string(FDE_TEST_DATA_DIR) + "/test_spmat_csc.h5", "sparse_matrix", x, i, p, rows, cols, format);
+
+	REQUIRE(rows > 0);
+	REQUIRE(cols > 0);
+	REQUIRE(format == "csc");
+	REQUIRE(x.size() > 0);
+	REQUIRE(i.size() > 0);
+	REQUIRE(p.size() > 0);
+
+	// gold
+	std::vector<double> goldx;
+	std::vector<int> goldi;
+	std::vector<int> goldp;
+	size_t goldrows, goldcols;
+	std::string goldformat;
+	utils::read_hdf5_sparse_matrix(std::string(FDE_TEST_DATA_DIR) + "/test_spmat_csc_clr_r.h5", "sparse_matrix", goldx, goldi, goldp, goldrows, goldcols, goldformat);
+
+	REQUIRE(goldrows == rows);
+	REQUIRE(goldcols == cols);
+	REQUIRE(goldi == i);
+	REQUIRE(goldp == p);
+	REQUIRE(goldformat == format);
+
+	std::vector<double> ox(x.size(), 0);
+	csc_clr_rows_iter(x.cbegin(), i.cbegin(), p.cbegin(), rows, cols, ox.data(), 1);
+
+	// compare
+    REQUIRE_THAT(ox, Catch::Matchers::Approx(goldx));
+
+	ox.clear(); ox.resize(x.size(), 0);
+	csc_clr_rows_iter(x.cbegin(), i.cbegin(), p.cbegin(), rows, cols, ox.data(), 4);
+
+	// compare
+    REQUIRE_THAT(ox, Catch::Matchers::Approx(goldx));
+
+}
+
+
+
+TEST_CASE( "clr_row_vec", "[normalize]" ) {
+
+	// source
+	std::vector<double> x;
+	std::vector<int> i;
+	std::vector<int> p;
+	size_t rows, cols;
+	std::string format;
+	utils::read_hdf5_sparse_matrix(std::string(FDE_TEST_DATA_DIR) + "/test_spmat_csc.h5", "sparse_matrix", x, i, p, rows, cols, format);
+
+	REQUIRE(rows > 0);
+	REQUIRE(cols > 0);
+	REQUIRE(format == "csc");
+	REQUIRE(x.size() > 0);
+	REQUIRE(i.size() > 0);
+	REQUIRE(p.size() > 0);
+
+	// gold
+	std::vector<double> goldx;
+	std::vector<int> goldi;
+	std::vector<int> goldp;
+	size_t goldrows, goldcols;
+	std::string goldformat;
+	utils::read_hdf5_sparse_matrix(std::string(FDE_TEST_DATA_DIR) + "/test_spmat_csc_clr_r.h5", "sparse_matrix", goldx, goldi, goldp, goldrows, goldcols, goldformat);
+
+	REQUIRE(goldrows == rows);
+	REQUIRE(goldcols == cols);
+	REQUIRE(goldi == i);
+	REQUIRE(goldp == p);
+	REQUIRE(goldformat == format);
+
+	std::vector<double> ox(x.size(), 0);
+	csc_clr_rows_vec(x, i, p, rows, cols, ox, 1);
+
+	// compare
+    REQUIRE_THAT(ox, Catch::Matchers::Approx(goldx));
+
+	ox.clear(); ox.resize(x.size(), 0);
+	csc_clr_rows_vec(x, i, p, rows, cols, ox, 4);
 
 	// compare
     REQUIRE_THAT(ox, Catch::Matchers::Approx(goldx));

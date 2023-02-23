@@ -16,6 +16,7 @@ import h5py
 m = h5_io.read_h5_spmat("../data/test_spmat_csc.h5", "csc")
 scale_factor = 0.5
 rows = m.shape[0]
+cols = m.shape[1]
 
 
 # %%
@@ -50,4 +51,16 @@ colsumMat = np.tile(colsums, (rows, 1))
 out = np.log1p(sparse.csc_matrix(m / colsumMat))
 
 h5_io.write_h5_spmat("../data/test_spmat_csc_clr.h5", out)
+
+
+# %%
+# log1p(x / ( exp( sum(log1p(x[x > 0]), na.rm = TRUE) / length(x) ) ) )
+rowsums = np.exp(np.asarray(logm.sum(axis = 1) / cols))
+
+rowsumMat = np.tile(rowsums, (1, cols))
+
+out = np.log1p(sparse.csc_matrix(m / rowsumMat))
+
+h5_io.write_h5_spmat("../data/test_spmat_csc_clr_r.h5", out)
+# %%
 # %%

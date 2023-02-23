@@ -179,17 +179,17 @@ extern void csc_clr_rows_iter(XIT x, IIT i, PIT p, size_t const & rows, size_t c
     std::vector<double> rsumlog(rows, 0);
 
     if (threads <= 1) {
-        auto nz = *(p + cols);
+        size_t nz = *(p + cols);
         auto iptr = i;
         auto xptr = x;
         // compute partial row log sums.  partitioned by columns.
-        for (auto c = 0; c < nz; ++c, ++iptr, ++xptr) {
+        for (size_t c = 0; c < nz; ++c, ++iptr, ++xptr) {
          
             rsumlog[*iptr] += log1p(static_cast<double>(*xptr));
         }
 
         // compute the factors
-        for (auto c = 0; c < rows; ++c) {
+        for (size_t c = 0; c < rows; ++c) {
             rsumlog[c] = 1.0 / exp( rsumlog[c] / static_cast<double>(cols));
         }
 
@@ -198,7 +198,7 @@ extern void csc_clr_rows_iter(XIT x, IIT i, PIT p, size_t const & rows, size_t c
         xptr = x;
         auto optr = out;
 
-        for (auto c = 0; c < nz; ++c, ++iptr, ++xptr, ++optr) {
+        for (size_t c = 0; c < nz; ++c, ++iptr, ++xptr, ++optr) {
             *optr = log1p(*xptr * rsumlog[*iptr]);
         }
     } else {
@@ -233,10 +233,10 @@ extern void csc_clr_rows_iter(XIT x, IIT i, PIT p, size_t const & rows, size_t c
 
         // now merge, partition rows by thread, then work on a different block at a time with barrier in between.
         size_t rblock = rows / threads;
-        size_t rrem = rows - threads * block;
+        size_t rrem = rows - threads * rblock;
         for (auto t = 0; t < threads; ++t) {
             // {threads} number of blocks.  rotate through all blocks.  One thread per block at a time.
-            int rtid = (tid + t) >= threads ? (tid + t - threads) : (tid + t);
+            int rtid = ((tid + t) >= threads) ? (tid + t - threads) : (tid + t);
             int rnid = rtid + 1;
             size_t roffset = rtid * rblock + (static_cast<size_t>(rtid) > rrem ? rrem : rtid);
             size_t rend = rnid * rblock + (static_cast<size_t>(rnid) > rrem ? rrem : rnid);
@@ -288,17 +288,17 @@ extern void csc_clr_rows_vec(XVEC const & x, IVEC const & i, PVEC const & p, siz
         size_t nz = p[cols];
 
         // compute partial row log sums.  partitioned by columns.
-        for (auto c = 0; c < nz; ++c) {                       
+        for (size_t c = 0; c < nz; ++c) {                       
             rsumlog[i[c]] += log1p(static_cast<double>(x[c]));
         }
 
         // compute the factors
-        for (auto c = 0; c < rows; ++c) {
+        for (size_t c = 0; c < rows; ++c) {
             rsumlog[c] = 1.0 / exp( rsumlog[c] / static_cast<double>(cols));
         }
 
         // compute the output
-        for (auto c = 0; c < nz; ++c) {
+        for (size_t c = 0; c < nz; ++c) {
             out[c] = log1p(x[c] * rsumlog[i[c]]);
         }
 
@@ -330,10 +330,10 @@ extern void csc_clr_rows_vec(XVEC const & x, IVEC const & i, PVEC const & p, siz
 
         // now merge, partition rows by thread, then work on a different block at a time with barrier in between.
         size_t rblock = rows / threads;
-        size_t rrem = rows - threads * block;
+        size_t rrem = rows - threads * rblock;
         for (auto t = 0; t < threads; ++t) {
             // {threads} number of blocks.  rotate through all blocks.  One thread per block at a time.
-            int rtid = (tid + t) >= threads ? (tid + t - threads) : (tid + t);
+            int rtid = ((tid + t) >= threads) ? (tid + t - threads) : (tid + t);
             int rnid = rtid + 1;
             size_t roffset = rtid * rblock + (static_cast<size_t>(rtid) > rrem ? rrem : rtid);
             size_t rend = rnid * rblock + (static_cast<size_t>(rnid) > rrem ? rrem : rnid);
