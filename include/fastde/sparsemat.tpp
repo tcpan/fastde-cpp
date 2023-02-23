@@ -1465,13 +1465,13 @@ extern void csc_colsums_iter(
         auto pptr = p + offset;
         auto pend = p + end;
         OITER optr(out + offset);
+        OITER optr2(optr);
         auto xptr = x;
         auto xend = x + *pptr;
 
         auto oend = out + end;
-        for (; optr != oend; ++optr) { *optr = 0; }
+        for (; optr2 != oend; ++optr2) { *optr2 = 0; }
         // std::fill(out + offset, out + end, 0);
-        optr = out; optr += offset;
         for (; pptr != pend; ++optr) {
             xptr = xend;
             ++pptr;
