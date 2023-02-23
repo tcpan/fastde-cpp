@@ -73,8 +73,8 @@ extern void csc_log_normalize_vec(XVEC const & x, PVEC const & p, size_t const &
         for (auto c = offset; c < end; ++c) {
             colsum = 0;
             
-            auto pstart = p[c];
-            auto pend = p[c+1];
+            size_t pstart = p[c];
+            size_t pend = p[c+1];
 
             // compute column sum
             for (auto pp = pstart; pp < pend; ++pp) {
@@ -154,8 +154,8 @@ extern void csc_clr_cols_vec(XVEC const & x, IVEC const & i, PVEC const & p, siz
         for (auto c = offset; c < end; ++c) {
             sumlog = 0;
             
-            auto pstart = p[c];
-            auto pend = p[c+1];
+            size_t pstart = p[c];
+            size_t pend = p[c+1];
 
             // compute column sum
             for (auto pp = pstart; pp < pend; ++pp) {
@@ -285,7 +285,7 @@ extern void csc_clr_rows_vec(XVEC const & x, IVEC const & i, PVEC const & p, siz
     std::vector<double> rsumlog(rows, 0);
 
     if (threads <= 1) {
-        auto nz = p[cols];
+        size_t nz = p[cols];
 
         // compute partial row log sums.  partitioned by columns.
         for (auto c = 0; c < nz; ++c) {                       
@@ -318,8 +318,8 @@ extern void csc_clr_rows_vec(XVEC const & x, IVEC const & i, PVEC const & p, siz
         // compute partial row log sums.  partitioned by columns.
         for (auto c = offset; c < end; ++c) {
                         
-            auto pstart = p[c];
-            auto pend = p[c+1];
+            size_t pstart = p[c];
+            size_t pend = p[c+1];
             // compute column sum
             for (auto pp = pstart; pp < pend; ++pp) {
                 sumlog[i[pp]] += log1p(static_cast<double>(x[pp]));
@@ -358,8 +358,8 @@ extern void csc_clr_rows_vec(XVEC const & x, IVEC const & i, PVEC const & p, siz
 
 // now compute by column again.  
         for (auto c = offset; c < end; ++c) {
-            auto pstart = p[c];
-            auto pend = p[c+1];
+            size_t pstart = p[c];
+            size_t pend = p[c+1];
 
             // compute log norm
             for (auto pp = pstart; pp < pend; ++pp) {
@@ -435,8 +435,8 @@ extern void csc_relative_count_vec(XVEC const & x, PVEC const & p, size_t const 
         for (auto c = offset; c < end; ++c) {
             colsum = 0;
             
-            auto pstart = p[c];
-            auto pend = p[c+1];
+            size_t pstart = p[c];
+            size_t pend = p[c+1];
 
             // compute column sum
             for (auto pp = pstart; pp < pend; ++pp) {
