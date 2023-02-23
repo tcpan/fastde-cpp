@@ -1,5 +1,14 @@
+#pragma once
+
 #include "normalize.hpp"
 
+
+#include <algorithm>
+#include <cstring>
+
+#include <omp.h>
+
+#include "fastde/benchmark_utils.hpp"
 
 template <typename OIT, typename XIT, typename PIT>
 extern void csc_log_normalize_iter(XIT x, PIT p, size_t const & cols, double const & scale_factor, OIT out, int const & threads) {
