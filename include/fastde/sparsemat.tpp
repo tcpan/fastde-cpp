@@ -1,3 +1,5 @@
+#pragma once
+
 #include "fastde/sparsemat.hpp"
 
 /*
@@ -11,6 +13,7 @@
 #include <omp.h>
 
 #include "fastde/benchmark_utils.hpp"
+
 
 
 // #include <atomic>

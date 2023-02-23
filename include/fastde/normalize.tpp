@@ -5,7 +5,7 @@
 
 #include <algorithm>
 #include <cstring>
-
+#include <cmath>
 #include <omp.h>
 
 #include "fastde/benchmark_utils.hpp"
