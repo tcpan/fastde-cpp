@@ -35,6 +35,11 @@
 #include "utils/hdf5_types.hpp"
 
 
+// HDF5 stores data in ROW MAJOR order:
+// HDF5 uses C storage conventions, assuming that the last listed dimension is the fastest-changing dimension and the first-listed dimension is the slowest changing.
+// from the HDF5 User's Guide.
+// ACTUALLY, the output is exactly matching to memory, either col major or row major.  so we need some annotation of "C" and "F"
+
 namespace utils { 
 
 
@@ -329,7 +334,7 @@ class HDF5Reader {
 
 			hid_t dataset_id = H5Dopen(obj_id, path.c_str(), H5P_DEFAULT);
 			
-			// open data space and get dimensions.  should be row major always.
+			// open data space and get FILE dimensions.  this is contiguous.
 			hid_t filespace_id = H5Dget_space(dataset_id);
 			const int ndims = H5Sget_simple_extent_ndims(filespace_id);
 			hsize_t file_dims[ndims];
@@ -352,9 +357,9 @@ class HDF5Reader {
 				memspace_id = H5Screate_simple(ndims, mem_dims, NULL);
 				// select hyperslab of memory, for row by row traversal
 				hsize_t mstart[2] = {0, 0};  // element offset for first block
-				hsize_t mcount[2] = {1, static_cast<hsize_t>(rows)}; // # of blocks
-				hsize_t mstride[2] = {static_cast<hsize_t>(cols), 1};  // element stride to get to next block
-				hsize_t mblock[2] = {static_cast<hsize_t>(cols), 1};  // block size  rows x 1
+				hsize_t mcount[2] = {static_cast<hsize_t>(cols), 1}; // # of blocks
+				hsize_t mstride[2] = {1, static_cast<hsize_t>(rows)};  // element stride to get to next block
+				hsize_t mblock[2] = {1, static_cast<hsize_t>(rows)};  // block size  rows x 1
 				// hsize_t mcount[2] = {1, static_cast<hsize_t>(rows)}; // # of blocks
 				// hsize_t mstride[2] = {static_cast<hsize_t>(cols), 1};  // element stride to get to next block
 				// hsize_t mblock[2] = {static_cast<hsize_t>(cols), 1};  // block size  rows x 1

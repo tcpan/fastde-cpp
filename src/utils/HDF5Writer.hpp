@@ -27,6 +27,11 @@
 #include <hdf5.h>
 #include "utils/hdf5_types.hpp"
 
+// HDF5 stores data in ROW MAJOR order:
+// HDF5 uses C storage conventions, assuming that the last listed dimension is the fastest-changing dimension and the first-listed dimension is the slowest changing.
+// from the HDF5 User's Guide.
+// ACTUALLY, the output is exactly matching to memory, either col major or row major.  so we need some annotation of "C" and "F"
+
 namespace utils { 
 
 class HDF5Writer {
@@ -332,9 +337,9 @@ protected:
             filespace_id = H5Screate_simple(2, filespace_dim, NULL);
             // select hyperslab of memory, for row by row traversal
             hsize_t start[2] = {0, 0};  // element offset for first block
-            hsize_t count[2] = {1, rows}; // # of blocks in he whole space
-            hsize_t stride[2] = {cols, 1}; // # of elements to walk to get from block to block
-            hsize_t block[2] = {cols, 1}; // # block size
+            hsize_t count[2] = {cols, 1}; // # of blocks in he whole space
+            hsize_t stride[2] = {1, rows}; // # of elements to walk to get from block to block
+            hsize_t block[2] = {1, rows}; // # block size
             H5Sselect_hyperslab(filespace_id, H5S_SELECT_SET, start, stride, count, block);
         }
 

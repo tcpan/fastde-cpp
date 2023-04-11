@@ -42,7 +42,9 @@ h5_io.write_h5_matrix("../data/test_spmat_csc_to_dense_c.h5", mt)
 
 # %%
 #to dense
-mt = m.todense().copy(order='C')   # column major ordering.
+mt2 = np.zeros(m.shape, dtype = m.dtype, order='C')
+m.todense(out = mt2)
+# mt = m.todense().transpose().copy(order='C')   # column major ordering.
 # print(mt[0:10, 0:10])
 # print(mt.shape)
 # print(mt.flags.c_contiguous)
@@ -53,5 +55,5 @@ mt = m.todense().copy(order='C')   # column major ordering.
 
 # %%
 # write out the transposed matrix.
-h5_io.write_h5_matrix("../data/test_spmat_csc_to_dense_r.h5", mt)
+h5_io.write_h5_matrix("../data/test_spmat_csc_to_dense_r.h5", mt2)
 

@@ -42,14 +42,14 @@ def read_h5_matrix(filename, dtype=np.float64):
     if order == 'F':
         M2 = M.transpose().copy(order = 'F')
     else:
-        M2 = M.copy(order='C')
+        M2 = M.copy(order ='C')
 
     f.close()
     return M2
 
 def write_h5_matrix(filename, M):
     # this seems to like to write row by row, rather than via contiguous memory.
-    # current fastde code expects column major storage in file and in memory.
+    # current fastde code (csc and _c versions) expects column major storage in memory.
     f = h5py.File(filename,'w')
     g = f.create_group('matrix')
     # 
