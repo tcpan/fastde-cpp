@@ -21,6 +21,11 @@ template <typename LABEL_ITER,
 void count_clusters(LABEL_ITER labels, size_t const & count,
   std::unordered_map<LABEL, size_t> & clust_counts, int const & threads = 1);
 
+template <typename LABEL_VEC,
+  typename LABEL = decltype(std::declval<LABEL_VEC>()[0]) >
+void count_clusters_vec(LABEL_VEC const & labels, size_t const & count,
+  std::unordered_map<LABEL, size_t> & clust_counts, int const & threads = 1);
+
 template <typename LABEL >
 void count_clusters(std::vector<LABEL> const & labels,
   std::unordered_map<LABEL, size_t> & clust_counts, int const & threads = 1);
@@ -38,6 +43,12 @@ template <typename LABEL_ITER,
   typename LABEL = typename std::iterator_traits<LABEL_ITER>::value_type >
 void count_clusters(LABEL_ITER labels, size_t const & count,
   std::vector<std::pair<LABEL, size_t> > & clust_counts, int const & threads = 1);
+
+template <typename LABEL_VEC,
+  typename LABEL = decltype(std::declval<LABEL_VEC>()[0]) >
+void count_clusters_vec(LABEL_VEC const & labels, size_t const & count,
+  std::vector<std::pair<LABEL, size_t> > & clust_counts, int const & threads = 1);
+
 
 template <typename LABEL >
 void count_clusters(std::vector<LABEL> const & labels, 
