@@ -88,3 +88,67 @@ void omp_sparse_wmw(
     std::vector<double> &pv,
     std::vector<std::pair<int, size_t> > &sorted_cluster_counts,
     int threads);
+
+
+//  VEC version -------------------------
+
+
+
+// ids points to start of the column's positive element row ids
+// x  points to the start fo the columns positive element values
+// count is hte number of positive elements in the column.
+template <typename XVEC, typename IVEC, typename LVEC,
+  typename XT = decltype(std::declval<XVEC>()[0]),
+  typename LT = decltype(std::declval<LVEC>()[0])>
+void sparse_wmw_summary_vec(XVEC const & in, IVEC const & ids,
+  size_t const & nz_offset, 
+  size_t const & nz_count, 
+  LVEC const & labels, size_t const & count, XT const & zero_val,
+  std::vector<std::pair<LT, size_t> > const & cl_counts,
+  std::unordered_map<LT, size_t> & rank_sums, double & tie_sum) ;
+
+// rank_sums output:  map cluster to rank_sum.
+// counts zeros and skip sorting of those.  this is faster than sorting all.
+template <typename XVEC, typename LVEC,
+  typename XT = decltype(std::declval<XVEC>()[0]),
+  typename LT = decltype(std::declval<LVEC>()[0])>
+void pseudosparse_wmw_summary_vec(
+  XVEC const & in, size_t const & offset, 
+  LVEC const & labels, size_t const & count, XT const & zero_val,
+  std::vector<std::pair<LT, size_t> > const & cl_counts,
+  std::unordered_map<LT, size_t> & rank_sums, double & tie_sum);
+
+
+template <typename LT, typename PVVEC,
+  typename OT = decltype(std::declval<PVVEC>()[0])>
+void wmw_vec(
+  std::vector<std::pair<LT, size_t> > const & cl_counts, 
+  std::unordered_map<LT, size_t> const & rank_sums, 
+  double const & tie_sum,
+  size_t const & count,
+  PVVEC & out, size_t const & offset, size_t const & label_count,
+  int const & test_type, bool const & continuity) ;
+
+
+template < typename XVEC, typename LVEC, typename PVVEC, typename LT = decltype(std::declval<LVEC>()[0])>
+void csc_dense_wmw_vec(
+    XVEC const & mat, size_t const & nsamples, size_t const & nfeatures,
+    LVEC const & lab, 
+    int const & rtype, 
+    bool const & continuity_correction, 
+    PVVEC & pv,
+    std::vector<std::pair<LT, size_t> > &sorted_cluster_counts,
+    int const & threads);
+
+
+// =================================
+template <typename XVEC, typename IVEC, typename PVEC, 
+    typename LVEC, typename PVVEC, typename LT = decltype(std::declval<LVEC>()[0])>
+void csc_sparse_wmw_vec(
+    XVEC const & x, IVEC const & i, PVEC const & p, size_t nsamples, size_t nfeatures,
+    LVEC const & lab,
+    int const & rtype, 
+    bool const & continuity_correction, 
+    PVVEC & pv,
+    std::vector<std::pair<LT, size_t> > &sorted_cluster_counts,
+    int const & threads);

@@ -422,7 +422,7 @@ void wmw(
   double c1 = static_cast<double>(count + 1);
   double tie_mean = tie_sum; // / static_cast<double>(count * (count - 1));
   constexpr double inv12 = 1.0 / 12.0;
-  size_t i = 0;
+
   LABEL key;
   size_t val;
   auto out_ptr = out;
@@ -612,4 +612,371 @@ void omp_sparse_wmw(
   // Rprintf("[TIME] WMW Elapsed(ms)= %f\n", since(start).count());
 
 }
+
+
+
+// --------------- VEC version
+
+
+// ids points to start of the column's positive element row ids
+// x  points to the start fo the columns positive element values
+// count is hte number of positive elements in the column.
+template <typename XVEC, typename IVEC, typename LVEC,
+  typename XT = decltype(std::declval<XVEC>()[0]),
+  typename LT = decltype(std::declval<LVEC>()[0])>
+void sparse_wmw_summary_vec(XVEC const & in, IVEC const & ids,
+  size_t const & nz_offset, 
+  size_t const & nz_count, 
+  LVEC const & labels, size_t const & count, XT const & zero_val,
+  std::vector<std::pair<LT, size_t> > const & cl_counts,
+  std::unordered_map<LT, size_t> & rank_sums, double & tie_sum){
+
+  rank_sums.clear();
+  tie_sum = 0.0;
+
+  // tuplize x and labels.
+  if (count == 0) return;
+  assert((count < 20) && "ERROR: count is too small (< 20) for a normal approximation\n");
+
+
+  // initialize ranksums, also need per cluster zero counts.
+  std::unordered_map<LT, size_t> z_cl_counts;
+  LT key;
+  for (auto item : cl_counts) {
+    z_cl_counts[item.first] = item.second;
+  }
+
+  // comparator.
+  // auto first_less = 
+  //   [](std::pair<IT, LABEL> const & a, std::pair<IT, LABEL> const & b){
+  //     return a.first < b.first;
+  //     return (a.first == b.first) ? (a.second < b.second) : (a.first < b.first);
+
+  //   };
+
+  // ============== populate the sort structure and Sort ONLY NON-ZERO ENTRIES.  if any input is actually 0.0, skip
+  std::vector<std::pair<XT, LT> > temp;
+  temp.reserve(nz_count);
+  size_t in_pos = nz_offset;
+  for (size_t i = 0; i < nz_count; ++i, ++in_pos) {
+    // EXCLUDE values with 0, as they would and should tie with the elements not present.
+    if (in[in_pos] != zero_val) {
+      key = labels[ids[in_pos]];
+      temp.emplace_back(in[in_pos], key);
+      --z_cl_counts[key];   // get the zero counts by subtracting non-zero entries
+    }  
+  }
+  // sort by label...
+  std::sort(temp.begin(), temp.end(), 
+    [](std::pair<XT, LT> const & a, std::pair<XT, LT> const & b){
+      return (a.first == b.first) ? (a.second < b.second) : (a.first < b.first);
+    });
+
+  // to handle ties, we need 0.5.  here is an approach:  
+  // walk once from front to add rank, and once from back and add rank.
+  //  when ties, forward walk uses the starting rank, reverse walk uses the end rank
+  //  each sum /2 would give correct rank
+  //    at end of tie, reset to use array index as rank.
+  // alternative is likely not better:  
+  //    any tie detection would need 1x iteration.  
+  //    each tie would need another pass to get median so may break prefetching.  ties common?
+  //    should minimize writes in the big array as well.
+
+
+  // ** NEED TO SEPARATELY HANDLE ZEROS.  
+  //    note that ALL ZEROS are tied for all elements.
+
+  // == local zero crossing in the sorted list (temp), 
+  //   then process 2 halves separately.
+  sparse_sum_rank(temp.data(), temp.size(), count, zero_val, z_cl_counts, rank_sums, tie_sum);
+
+
+  }
+
+// rank_sums output:  map cluster to rank_sum.
+// counts zeros and skip sorting of those.  this is faster than sorting all.
+template <typename XVEC, typename LVEC,
+  typename XT = decltype(std::declval<XVEC>()[0]),
+  typename LT = decltype(std::declval<LVEC>()[0])>
+void pseudosparse_wmw_summary_vec(
+  XVEC const & in, size_t const & offset, LVEC const & labels, size_t const & count, XT const & zero_val,
+  std::vector<std::pair<LT, size_t> > const & cl_counts,
+  std::unordered_map<LT, size_t> & rank_sums, double & tie_sum) {
+
+
+  // tuplize in and labels.   
+  rank_sums.clear();
+  tie_sum = 0.0;
+
+  if (count == 0) return;
+  assert((count < 20) && "ERROR: count is too small (< 20) for a normal approximation\n");
+
+  std::unordered_map<LT, size_t> z_cl_counts;
+  LT key;
+  for (auto item : cl_counts) {
+    z_cl_counts[item.first] = item.second;
+  }
+
+
+  // ============== populate the sort structure and Sort
+  std::vector<std::pair<XT, LT> > temp;
+  temp.reserve(count);
+  size_t in_pos = offset * count; 
+  for (size_t i = 0; i < count; ++i, ++in_pos) {
+    // EXCLUDE values with 0, as they would and should tie with the elements not present.
+    if (in[in_pos] != zero_val) {
+      key = labels[i];
+      temp.emplace_back(in[in_pos], key);
+      --z_cl_counts[key];   // get the zero counts by subtracting non-zero entries
+    }  
+  }
+
+  // sort by value...
+  std::sort(temp.begin(), temp.end(), 
+    [](std::pair<XT, LT> const & a, std::pair<XT, LT> const & b){
+      return (a.first == b.first) ? (a.second < b.second) : (a.first < b.first);
+  });
+
+  // assign rank and accumulate count and rank
+
+  // to handle ties, we need 0.5.  To make comparison easier and not float based, double the rank value here and divide later.
+  // actually, we may need to have median of the tie ranks.
+  // here is an approach:  keep undoubled rank, walk once from front, and once from back.  if ties, do not change rank until value changes.  each sum /2 would give correct rank
+  //    at end of tie, reset to use array index as rank.
+  // any tie detection would need 1x iteration.   each tie would need another pass to get median so may break prefetching, but this may not be common?
+  // should minimize writes in the big array as well.
+
+  sparse_sum_rank(temp.data(), temp.size(), count, zero_val, z_cl_counts, rank_sums, tie_sum);
+
+
+  }
+
+
+
+template <typename LT, typename PVVEC,
+  typename OT = decltype(std::declval<PVVEC>()[0])>
+void wmw_vec(
+  std::vector<std::pair<LT, size_t> > const & cl_counts, 
+  std::unordered_map<LT, size_t> const & rank_sums, 
+  double const & tie_sum,
+  size_t const & count,
+  PVVEC & out, size_t const & offset, size_t const & label_count,
+  int const & test_type, bool const & continuity) {
+
+     // tuplize in and labels.
+  if (count == 0) return;
+  assert((count < 20) && "ERROR: count is too small (< 20) for a normal approximation\n");
+
+  if (cl_counts.size() == 0) return;
+
+  // dealing with ties amongst multiple classes?
+  // since final differential comparisons are one vs all others, and the ties are split so 0.5 is added for all.
+
+  // compute the 1 to other U stats, storing the minimum U
+  double R, U1, U2, U, prod, mu, sigma, z;
+  size_t n1;
+  double c1 = static_cast<double>(count + 1);
+  double tie_mean = tie_sum; // / static_cast<double>(count * (count - 1));
+  constexpr double inv12 = 1.0 / 12.0;
+  LT key;
+  size_t val;
+
+  size_t out_pos = offset * label_count;
+
+  for (auto item : cl_counts) {
+      key = item.first;
+      n1 = item.second;
+      val = rank_sums.at(key);
+      R = static_cast<double>(val) * 0.5;  // since val was computed from both forward and reverse walk, we need to half it.
+
+      // compute U stats
+      prod = static_cast<double>(n1 * (count - n1));
+      U1 = R - static_cast<double>((n1 * (n1 + 1)) >> 1);  // same as STATISTIC in 
+      //  https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/wilcox.test.R
+      U2 = prod - U1; 
+      if (test_type == PVAL_GREATER) { // greater
+          U = U1;
+      } else if (test_type == PVAL_LESS) {  // less
+          U = U2;
+      } else if (test_type == PVAL_TWO_SIDED) {  // two sided
+          U = std::max(U1, U2);
+      }
+      // normal approximation
+      mu = prod * 0.5;
+      // sigma = sqrt((prod / 12.0) * ((count + 1) - tie_sum / (count * (count - 1))));
+      sigma = sqrt(prod * inv12 * (c1 - tie_mean));
+      z = U1 - mu;
+      if (continuity) {
+        if (test_type == PVAL_GREATER) { // greater
+            z -= 0.5;
+        } else if (test_type == PVAL_LESS) {  // less
+            z += 0.5;
+        } else if (test_type == PVAL_TWO_SIDED) {  // two sided
+            z -= (z > 0) ? 0.5 : ((z < 0) ? -0.5 : 0.0);
+        }
+      } 
+      z /= sigma;
+
+      // convert to p-value
+      // https://stackoverflow.com/questions/2328258/cumulative-normal-distribution-function-in-c-c
+      // use erfc function  This is 2-tailed.
+      double res;
+      if (test_type == PVAL_TWO_SIDED)  // 2 sided
+        res = erfc( fabs(z) * M_SQRT1_2 );   // this is correct.  erf is has stdev of 1/sqrt(2), and return prob(-x < X < x).   erfc = 1- erf(x)
+      else if (test_type == PVAL_LESS)
+        res = 0.5 * erfc( -z * M_SQRT1_2 );
+      else if (test_type == PVAL_GREATER)  // greater or less - U is changed (either U1 or U2), thus z is changed.  still calculating 1-CDF = survival
+        res = 1.0 - 0.5 * erfc( -z * M_SQRT1_2 );
+      else if (test_type == TEST_VAL)
+        res = U1;
+      else
+        res = z;
+      
+      out[out_pos] = res;
+      ++out_pos;
+
+  }
+
+
+}
+
+// output has nfeatures rows, and nlabel columns (in row major).
+// if writing directly to R, this would be in column major?
+template < typename XVEC, typename LVEC, typename PVVEC, typename LT = decltype(std::declval<LVEC>()[0])>
+void csc_dense_wmw_vec(
+    XVEC const & mat, size_t const & nsamples, size_t const & nfeatures,
+    LVEC const & lab, 
+    int const & rtype, 
+    bool const & continuity_correction, 
+    PVVEC & pv,
+    std::vector<std::pair<LT, size_t> > &sorted_cluster_counts,
+    int const & threads) {
+  std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start = std::chrono::steady_clock::now();
+
+  // get the number of unique labels.
+  sorted_cluster_counts.clear();
+  count_clusters_vec(lab, nsamples, sorted_cluster_counts, threads);
+  size_t label_count = sorted_cluster_counts.size();
+  // Rprintf("[DEBUG] WMW DN label count %ld \n", label_count);
+
+  // ---- output pval matrix - NEED TO BE PREALLOCATED
+  // pv.clear(); pv.resize(nfeatures * label_count);
+  // Rprintf("[DEBUG] WMW DN pv size %ld \n", pv.size());
+
+
+  // ------------------------ parameter
+  // int rtype, threads;
+  // bool as_dataframe, continuity_correction;
+  // import_de_common_params(rtype, continuity_correction, rtype, continuity_correction);
+  // import_r_common_params(as_dataframe, threads,
+  //   as_dataframe, threads);
+
+  // ------------------------ compute
+  omp_set_num_threads(threads);
+  // Rprintf("THREADING: using %d threads\n", threads);
+
+
+#pragma omp parallel num_threads(threads)
+  {
+    int tid = omp_get_thread_num();
+    size_t block = nfeatures / threads;
+    size_t rem = nfeatures - threads * block;
+    size_t offset = tid * block + (tid > rem ? rem : tid);
+    int nid = tid + 1;
+    size_t end = nid * block + (nid > rem ? rem : nid);
+
+    std::unordered_map<int, size_t> rank_sums;
+    double tie_sum;
+
+    for(; offset < end; ++offset) {
+      // directly compute matrix and res pointers.
+      // Rprintf("thread %d processing feature %d\n", omp_get_thread_num(), i);
+      pseudosparse_wmw_summary_vec(mat, offset, 
+        lab, nsamples, 
+        static_cast<double>(0),
+        sorted_cluster_counts, rank_sums, tie_sum);
+      wmw_vec(sorted_cluster_counts, rank_sums, tie_sum, nsamples, 
+        pv, offset, label_count, rtype, continuity_correction);
+    }
+    // Rprintf("[DEBUG] WMW DN thread %d %ld ranksums %ld,\n", tid, end, rank_sums.size() );
+
+  }
+
+}
+
+
+
+// output has nfeatures rows, and nlabel columns (in row major).
+// if writing directly to R, this would be in column major?
+// =================================
+template <typename XVEC, typename IVEC, typename PVEC, 
+    typename LVEC, typename PVVEC, typename LT = decltype(std::declval<LVEC>()[0])>
+void csc_sparse_wmw_vec(
+    XVEC const & x, IVEC const & i, PVEC const & p, size_t nsamples, size_t nfeatures,
+    LVEC const & lab,
+    int const & rtype, 
+    bool const & continuity_correction, 
+    PVVEC & pv,
+    std::vector<std::pair<LT, size_t> > &sorted_cluster_counts,
+    int const & threads) {
+  // Rprintf("here 1\n");
+
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start;
+
+  start = std::chrono::steady_clock::now();
+
+
+  // get the number of unique labels.
+  sorted_cluster_counts.clear();
+  count_clusters_vec(lab, nsamples, sorted_cluster_counts, threads);
+  size_t label_count = sorted_cluster_counts.size();
+
+
+  // ---- output pval matrix  NEED TO BE PREALLOCATED
+  // pv.clear(); pv.resize(nfeatures * label_count);
+
+  // ------------------------ parameter
+  // int rtype, threads;
+  // bool as_dataframe, continuity_correction;
+  // import_de_common_params(rtype, continuity_correction, rtype, continuity_correction);
+  // import_r_common_params(as_dataframe, threads,
+  //   as_dataframe, threads);
+
+
+  // ------------------------- compute
+  omp_set_num_threads(threads);
+  // Rprintf("THREADING: using %d threads\n", threads);
+
+
+#pragma omp parallel num_threads(threads)
+  {
+    int tid = omp_get_thread_num();
+    size_t block = nfeatures / threads;
+    size_t rem = nfeatures - threads * block;
+    size_t offset = tid * block + (tid > rem ? rem : tid);
+    int nid = tid + 1;
+    size_t end = nid * block + (nid > rem ? rem : nid);
+
+    long nz_offset, nz_count;
+    std::unordered_map<int, size_t> rank_sums;
+    double tie_sum;
+
+    for(; offset < end; ++offset) {
+      nz_offset = p[offset];
+      nz_count = p[offset+1] - nz_offset;
+
+      // directly compute matrix and res pointers.
+      // Rprintf("thread %d processing feature %d\n", omp_get_thread_num(), i);
+      sparse_wmw_summary_vec(x, i, nz_offset, nz_count,
+        lab, nsamples, 
+        static_cast<double>(0),
+        sorted_cluster_counts, rank_sums, tie_sum);
+      wmw_vec(sorted_cluster_counts, rank_sums, tie_sum, nsamples, 
+        pv, offset, label_count, rtype, continuity_correction);
+    }
+  }
+  // Rprintf("[TIME] WMW Elapsed(ms)= %f\n", since(start).count());
+
+}
+
 
