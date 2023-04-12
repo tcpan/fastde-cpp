@@ -126,12 +126,12 @@ void wmw_vec(
   std::unordered_map<LT, size_t> const & rank_sums, 
   double const & tie_sum,
   size_t const & count,
-  PVVEC & out, size_t const & offset, size_t const & label_count,
+  PVVEC & out, size_t const & offset,
   int const & test_type, bool const & continuity) ;
 
 
 template < typename XVEC, typename LVEC, typename PVVEC, typename LT = decltype(std::declval<LVEC>()[0])>
-void csc_dense_wmw_vec(
+void vecsc_wmw_vecsc(
     XVEC const & mat, size_t const & nsamples, size_t const & nfeatures,
     LVEC const & lab, 
     int const & rtype, 
@@ -140,10 +140,9 @@ void csc_dense_wmw_vec(
     std::vector<std::pair<LT, size_t> > const & sorted_cluster_counts,
     int const & threads);
 
-// assume mat has [] operator to get a slice, then [] on slice to get element.
-template < typename XMAT, typename LVEC, typename PVVEC, typename LT = decltype(std::declval<LVEC>()[0])>
-void csc_dense_wmw_mat(
-    XMAT const & mat, size_t const & nsamples, size_t const & nfeatures,
+template < typename XVEC, typename LVEC, typename PVVEC, typename LT = decltype(std::declval<LVEC>()[0])>
+void matc_wmw_vecsc(
+    XVEC const & mat, size_t const & nsamples, size_t const & nfeatures,
     LVEC const & lab, 
     int const & rtype, 
     bool const & continuity_correction, 
@@ -152,14 +151,37 @@ void csc_dense_wmw_mat(
     int const & threads);
 
 
+// assume mat has [] operator to get a slice, then [] on slice to get element.
+template < typename XMAT, typename LVEC, typename PVMAT, typename LT = decltype(std::declval<LVEC>()[0])>
+void matc_wmw_matc(
+    XMAT const & mat, size_t const & nsamples, size_t const & nfeatures,
+    LVEC const & lab, 
+    int const & rtype, 
+    bool const & continuity_correction, 
+    PVMAT & pv,
+    std::vector<std::pair<LT, size_t> > const & sorted_cluster_counts,
+    int const & threads);
+
+
 // =================================
 template <typename XVEC, typename IVEC, typename PVEC, 
     typename LVEC, typename PVVEC, typename LT = decltype(std::declval<LVEC>()[0])>
-void csc_sparse_wmw_vec(
+void csc_wmw_vecsc(
     XVEC const & x, IVEC const & i, PVEC const & p, size_t nsamples, size_t nfeatures,
     LVEC const & lab,
     int const & rtype, 
     bool const & continuity_correction, 
     PVVEC & pv,
+    std::vector<std::pair<LT, size_t> > const & sorted_cluster_counts,
+    int const & threads);
+
+template <typename XVEC, typename IVEC, typename PVEC, 
+    typename LVEC, typename PVMAT, typename LT = decltype(std::declval<LVEC>()[0])>
+void csc_wmw_matc(
+    XVEC const & x, IVEC const & i, PVEC const & p, size_t nsamples, size_t nfeatures,
+    LVEC const & lab,
+    int const & rtype, 
+    bool const & continuity_correction, 
+    PVMAT & pv,
     std::vector<std::pair<LT, size_t> > const & sorted_cluster_counts,
     int const & threads);
