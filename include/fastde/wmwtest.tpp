@@ -721,7 +721,7 @@ void pseudosparse_wmw_summary_vec(
   // ============== populate the sort structure and Sort
   std::vector<std::pair<XT, LT> > temp;
   temp.reserve(count);
-  size_t in_pos = offset * count; 
+  size_t in_pos = offset;   // this is the element offset in the full matrix.
   for (size_t i = 0; i < count; ++i, ++in_pos) {
     // EXCLUDE values with 0, as they would and should tie with the elements not present.
     if (in[in_pos] != zero_val) {
@@ -749,8 +749,7 @@ void pseudosparse_wmw_summary_vec(
   sparse_sum_rank(temp.data(), temp.size(), count, zero_val, z_cl_counts, rank_sums, tie_sum);
 
 
-  }
-
+}
 
 
 template <typename LT, typename PVVEC,
@@ -849,13 +848,11 @@ void csc_dense_wmw_vec(
     int const & rtype, 
     bool const & continuity_correction, 
     PVVEC & pv,
-    std::vector<std::pair<LT, size_t> > &sorted_cluster_counts,
+    std::vector<std::pair<LT, size_t> > const & sorted_cluster_counts,
     int const & threads) {
   std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start = std::chrono::steady_clock::now();
 
   // get the number of unique labels.
-  sorted_cluster_counts.clear();
-  count_clusters_vec(lab, nsamples, sorted_cluster_counts, threads);
   size_t label_count = sorted_cluster_counts.size();
   // Rprintf("[DEBUG] WMW DN label count %ld \n", label_count);
 
@@ -891,7 +888,71 @@ void csc_dense_wmw_vec(
     for(; offset < end; ++offset) {
       // directly compute matrix and res pointers.
       // Rprintf("thread %d processing feature %d\n", omp_get_thread_num(), i);
-      pseudosparse_wmw_summary_vec(mat, offset, 
+      pseudosparse_wmw_summary_vec(mat, offset * nsamples, 
+        lab, nsamples, 
+        static_cast<double>(0),
+        sorted_cluster_counts, rank_sums, tie_sum);
+      wmw_vec(sorted_cluster_counts, rank_sums, tie_sum, nsamples, 
+        pv, offset, label_count, rtype, continuity_correction);
+    }
+    // Rprintf("[DEBUG] WMW DN thread %d %ld ranksums %ld,\n", tid, end, rank_sums.size() );
+
+  }
+
+}
+
+
+
+// output has nfeatures rows, and nlabel columns (in row major).
+// if writing directly to R, this would be in column major?
+template < typename XMAT, typename LVEC, typename PVVEC, typename LT = decltype(std::declval<LVEC>()[0])>
+void csc_dense_wmw_mat(
+    XMAT const & mat, size_t const & nsamples, size_t const & nfeatures,
+    LVEC const & lab, 
+    int const & rtype, 
+    bool const & continuity_correction, 
+    PVVEC & pv,
+    std::vector<std::pair<LT, size_t> > const & sorted_cluster_counts,
+    int const & threads) {
+  std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start = std::chrono::steady_clock::now();
+
+  // get the number of unique labels.
+  size_t label_count = sorted_cluster_counts.size();
+  // Rprintf("[DEBUG] WMW DN label count %ld \n", label_count);
+
+  // ---- output pval matrix - NEED TO BE PREALLOCATED
+  // pv.clear(); pv.resize(nfeatures * label_count);
+  // Rprintf("[DEBUG] WMW DN pv size %ld \n", pv.size());
+
+
+  // ------------------------ parameter
+  // int rtype, threads;
+  // bool as_dataframe, continuity_correction;
+  // import_de_common_params(rtype, continuity_correction, rtype, continuity_correction);
+  // import_r_common_params(as_dataframe, threads,
+  //   as_dataframe, threads);
+
+  // ------------------------ compute
+  omp_set_num_threads(threads);
+  // Rprintf("THREADING: using %d threads\n", threads);
+
+
+#pragma omp parallel num_threads(threads)
+  {
+    int tid = omp_get_thread_num();
+    size_t block = nfeatures / threads;
+    size_t rem = nfeatures - threads * block;
+    size_t offset = tid * block + (tid > rem ? rem : tid);
+    int nid = tid + 1;
+    size_t end = nid * block + (nid > rem ? rem : nid);
+
+    std::unordered_map<int, size_t> rank_sums;
+    double tie_sum;
+
+    for(; offset < end; ++offset) {
+      // directly compute matrix and res pointers.
+      // Rprintf("thread %d processing feature %d\n", omp_get_thread_num(), i);
+      pseudosparse_wmw_summary_vec(mat[offset], 0, 
         lab, nsamples, 
         static_cast<double>(0),
         sorted_cluster_counts, rank_sums, tie_sum);
@@ -917,7 +978,7 @@ void csc_sparse_wmw_vec(
     int const & rtype, 
     bool const & continuity_correction, 
     PVVEC & pv,
-    std::vector<std::pair<LT, size_t> > &sorted_cluster_counts,
+    std::vector<std::pair<LT, size_t> > const & sorted_cluster_counts,
     int const & threads) {
   // Rprintf("here 1\n");
 
@@ -925,12 +986,7 @@ void csc_sparse_wmw_vec(
 
   start = std::chrono::steady_clock::now();
 
-
-  // get the number of unique labels.
-  sorted_cluster_counts.clear();
-  count_clusters_vec(lab, nsamples, sorted_cluster_counts, threads);
   size_t label_count = sorted_cluster_counts.size();
-
 
   // ---- output pval matrix  NEED TO BE PREALLOCATED
   // pv.clear(); pv.resize(nfeatures * label_count);

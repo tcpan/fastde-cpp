@@ -137,7 +137,18 @@ void csc_dense_wmw_vec(
     int const & rtype, 
     bool const & continuity_correction, 
     PVVEC & pv,
-    std::vector<std::pair<LT, size_t> > &sorted_cluster_counts,
+    std::vector<std::pair<LT, size_t> > const & sorted_cluster_counts,
+    int const & threads);
+
+// assume mat has [] operator to get a slice, then [] on slice to get element.
+template < typename XMAT, typename LVEC, typename PVVEC, typename LT = decltype(std::declval<LVEC>()[0])>
+void csc_dense_wmw_mat(
+    XMAT const & mat, size_t const & nsamples, size_t const & nfeatures,
+    LVEC const & lab, 
+    int const & rtype, 
+    bool const & continuity_correction, 
+    PVVEC & pv,
+    std::vector<std::pair<LT, size_t> > const & sorted_cluster_counts,
     int const & threads);
 
 
@@ -150,5 +161,5 @@ void csc_sparse_wmw_vec(
     int const & rtype, 
     bool const & continuity_correction, 
     PVVEC & pv,
-    std::vector<std::pair<LT, size_t> > &sorted_cluster_counts,
+    std::vector<std::pair<LT, size_t> > const & sorted_cluster_counts,
     int const & threads);
