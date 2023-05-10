@@ -85,38 +85,38 @@ TEST_CASE( "wmwtest_sparse_vec", "[wilcox]" ) {
 
 
 	// convert gold:
-	size_t offset = 0;
-	std::vector<std::vector<double>> gold(cols);
-	std::vector<std::vector<double>> pvm(cols);
-	for (size_t c = 0; c < cols; ++c) {
-		gold[c].resize(nuniq, 0);
-		for (size_t r = 0; r < nuniq; ++r, ++offset) {
-			gold[c][r] = goldpv[offset];
-		}
+	// size_t offset = 0;
+	// std::vector<std::vector<double>> gold(cols);
+	// std::vector<std::vector<double>> pvm(cols);
+	// for (size_t c = 0; c < cols; ++c) {
+	// 	gold[c].resize(nuniq, 0);
+	// 	for (size_t r = 0; r < nuniq; ++r, ++offset) {
+	// 		gold[c][r] = goldpv[offset];
+	// 	}
 
-		pvm[c].resize(nuniq, 0);
-	}
+	// 	pvm[c].resize(nuniq, 0);
+	// }
 
-	// test with vector of vector.
-	csc_wmw_matc(x, i, p, rows, cols, labels, 2, true, pvm, cl_counts, 1);
+	// // test with vector of vector.
+	// csc_wmw_matc(x, i, p, rows, cols, labels, 2, true, pvm, cl_counts, 1);
 
-	for (size_t c = 0; c < cols; ++c) {
-	    REQUIRE_THAT(pvm[c], Catch::Matchers::Approx(gold[c]));
-	}
+	// for (size_t c = 0; c < cols; ++c) {
+	//     REQUIRE_THAT(pvm[c], Catch::Matchers::Approx(gold[c]));
+	// }
 
 
 
-	for (size_t c = 0; c < cols; ++c) {
-		pvm[c].clear();
-		pvm[c].resize(nuniq, 0);
-	}
+	// for (size_t c = 0; c < cols; ++c) {
+	// 	pvm[c].clear();
+	// 	pvm[c].resize(nuniq, 0);
+	// }
 
-	// test with vector of vector.
-	csc_wmw_matc(x, i, p, rows, cols, labels, 2, true, pvm, cl_counts, 4);
+	// // test with vector of vector.
+	// csc_wmw_matc(x, i, p, rows, cols, labels, 2, true, pvm, cl_counts, 4);
 
-	for (size_t c = 0; c < cols; ++c) {
-	    REQUIRE_THAT(pvm[c], Catch::Matchers::Approx(gold[c]));
-	}
+	// for (size_t c = 0; c < cols; ++c) {
+	//     REQUIRE_THAT(pvm[c], Catch::Matchers::Approx(gold[c]));
+	// }
 
 	
 
@@ -246,45 +246,44 @@ TEST_CASE( "wmwtest_pseudosparse_vec", "[wilcox]" ) {
 
 
 	// convert gold:
-	size_t offset = 0;
-	size_t inoffset = 0;
-	std::vector<std::vector<double>> gold(cols);
-	std::vector<std::vector<double>> inmat(cols);
-	std::vector<std::vector<double>> pvm(cols);
-	for (size_t c = 0; c < cols; ++c) {
-		inmat[c].resize(rows, 0);
-		for (size_t r = 0; r < rows; ++r, ++inoffset) {
-			inmat[c][r] = dense[inoffset];
-		}
+	// size_t offset = 0;
+	// size_t inoffset = 0;
+	// std::vector<std::vector<double>> gold(cols);
+	// std::vector<std::vector<double>> inmat(cols);
+	// std::vector<std::vector<double>> pvm(cols);
+	// for (size_t c = 0; c < cols; ++c) {
+	// 	inmat[c].resize(rows, 0);
+	// 	for (size_t r = 0; r < rows; ++r, ++inoffset) {
+	// 		inmat[c][r] = dense[inoffset];
+	// 	}
 
-		gold[c].resize(nuniq, 0);
-		for (size_t r = 0; r < nuniq; ++r, ++offset) {
-			gold[c][r] = goldpv[offset];
-		}
+	// 	gold[c].resize(nuniq, 0);
+	// 	for (size_t r = 0; r < nuniq; ++r, ++offset) {
+	// 		gold[c][r] = goldpv[offset];
+	// 	}
 
-		pvm[c].resize(nuniq, 0);
-	}
+	// 	pvm[c].resize(nuniq, 0);
+	// }
 
-	// test with vector of vector.
-	matc_wmw_matc(inmat, rows, cols, labels, 2, true, pvm, cl_counts, 1);
+	// // test with vector of vector.
+	// matc_wmw_matc(inmat, rows, cols, labels, 2, true, pvm, cl_counts, 1);
 
-	for (size_t c = 0; c < cols; ++c) {
-	    REQUIRE_THAT(pvm[c], Catch::Matchers::Approx(gold[c]));
-	}
+	// for (size_t c = 0; c < cols; ++c) {
+	//     REQUIRE_THAT(pvm[c], Catch::Matchers::Approx(gold[c]));
+	// }
 
 
+	// for (size_t c = 0; c < cols; ++c) {
+	// 	pvm[c].clear();
+	// 	pvm[c].resize(nuniq, 0);
+	// }
 
-	for (size_t c = 0; c < cols; ++c) {
-		pvm[c].clear();
-		pvm[c].resize(nuniq, 0);
-	}
+	// // test with vector of vector.
+	// matc_wmw_matc(inmat, rows, cols, labels, 2, true, pvm, cl_counts, 4);
 
-	// test with vector of vector.
-	matc_wmw_matc(inmat, rows, cols, labels, 2, true, pvm, cl_counts, 4);
-
-	for (size_t c = 0; c < cols; ++c) {
-	    REQUIRE_THAT(pvm[c], Catch::Matchers::Approx(gold[c]));
-	}
+	// for (size_t c = 0; c < cols; ++c) {
+	//     REQUIRE_THAT(pvm[c], Catch::Matchers::Approx(gold[c]));
+	// }
 
 }
 

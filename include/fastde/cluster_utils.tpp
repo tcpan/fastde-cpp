@@ -36,9 +36,9 @@ void count_clusters(LABEL_ITER labels, size_t const & count,
     int tid = omp_get_thread_num();
     size_t block = count / threads;
     size_t rem = count - threads * block;
-    size_t offset = tid * block + (tid > rem ? rem : tid);
+    size_t offset = tid * block + ((tid > static_cast<int>(rem)) ? rem : tid);
     int nid = tid + 1;
-    size_t end = nid * block + (nid > rem ? rem : nid);  
+    size_t end = nid * block + ((nid > static_cast<int>(rem)) ? rem : nid);  
 
     LABEL key;
     // count per thread.
@@ -88,9 +88,9 @@ void count_clusters_vec(LABEL_VEC const & labels, size_t const & count,
     int tid = omp_get_thread_num();
     size_t block = count / threads;
     size_t rem = count - threads * block;
-    size_t offset = tid * block + (tid > rem ? rem : tid);
+    size_t offset = tid * block + ((tid > static_cast<int>(rem)) ? rem : tid);
     int nid = tid + 1;
-    size_t end = nid * block + (nid > rem ? rem : nid);  
+    size_t end = nid * block + ((nid > static_cast<int>(rem)) ? rem : nid);  
 
     LABEL key;
     // count per thread.
