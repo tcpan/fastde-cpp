@@ -424,7 +424,7 @@ void omp_dense_wmw(
 
   // ---- output pval matrix
   pv.clear(); pv.resize(nfeatures * label_count);
-  printf("[DEBUG] WMW DN count labels %f secs \n", since(start).count());
+  // Rprintf("[DEBUG] WMW DN count labels %f secs \n", since(start).count());
 
 
   // ------------------------ parameter
@@ -500,7 +500,7 @@ void omp_sparse_wmw(
 
   // ---- output pval matrix
   pv.clear(); pv.resize(nfeatures * label_count);
-  printf("[DEBUG] WMW DN count labels %f secs \n", since(start).count());
+  // Rprintf("[DEBUG] WMW DN count labels %f secs \n", since(start).count());
 
   // ------------------------ parameter
   // int rtype, threads;
