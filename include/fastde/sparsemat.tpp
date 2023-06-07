@@ -51,8 +51,8 @@
 // #pragma omp parallel num_threads(threads)
 // {   
 //     int tid = omp_get_thread_num();
-//     size_t block = ncol / threads;
-//     size_t rem = ncol - threads * block;
+//     int block = ncol / threads;
+//     int rem = ncol - threads * block;
 //     size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
 //     int nid = tid + 1;
 //     size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
@@ -85,8 +85,8 @@
 // #pragma omp parallel num_threads(threads)
 // {   
 //     int tid = omp_get_thread_num();
-//     size_t block = nelem / threads;
-//     size_t rem = nelem - threads * block;
+//     int block = nelem / threads;
+//     int rem = nelem - threads * block;
 //     size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
 
 //     boundaries[tid] = {std::get<0>(temp[offset]), offset};
@@ -120,8 +120,8 @@
 // #pragma omp parallel num_threads(threads)
 // {   
 //     int tid = omp_get_thread_num();
-//     size_t block = nelem / threads;
-//     size_t rem = nelem - threads * block;
+//     int block = nelem / threads;
+//     int rem = nelem - threads * block;
 //     size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
 //     int nid = tid + 1;
 //     size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
@@ -239,8 +239,8 @@ extern void csc_transpose_csc(
 #pragma omp parallel num_threads(threads)
 {   
         int tid = omp_get_thread_num();
-        size_t block = nelem / threads;
-        size_t rem = nelem - threads * block;
+        int block = nelem / threads;
+        int rem = nelem - threads * block;
         size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
         int nid = tid + 1;
         size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
@@ -266,8 +266,8 @@ extern void csc_transpose_csc(
 #pragma omp parallel num_threads(threads)
 {   
         int tid = omp_get_thread_num();
-        size_t block = (nrow+1) / threads;   // each thread handles a block of rows.
-        size_t rem = (nrow+1) - threads * block;
+        int block = (nrow+1) / threads;   // each thread handles a block of rows.
+        int rem = (nrow+1) - threads * block;
         size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
         int nid = tid + 1;
         size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
@@ -328,8 +328,8 @@ extern void csc_transpose_csc(
 #pragma omp parallel num_threads(threads)
 {   
         int tid = omp_get_thread_num();
-        size_t block = nelem / threads;
-        size_t rem = nelem - threads * block;
+        int block = nelem / threads;
+        int rem = nelem - threads * block;
         size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
         int nid = tid + 1;
         size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
@@ -502,8 +502,8 @@ extern void csc_transpose_csc_vec(
 #pragma omp parallel num_threads(threads)
 {   
         int tid = omp_get_thread_num();
-        size_t block = nelem / threads;
-        size_t rem = nelem - threads * block;
+        int block = nelem / threads;
+        int rem = nelem - threads * block;
         size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
         int nid = tid + 1;
         size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
@@ -527,8 +527,8 @@ extern void csc_transpose_csc_vec(
 #pragma omp parallel num_threads(threads)
 {   
         int tid = omp_get_thread_num();
-        size_t block = (nrow+1) / threads;   // each thread handles a block of rows.
-        size_t rem = (nrow+1) - threads * block;
+        int block = (nrow+1) / threads;   // each thread handles a block of rows.
+        int rem = (nrow+1) - threads * block;
         size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
         int nid = tid + 1;
         size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
@@ -589,8 +589,8 @@ extern void csc_transpose_csc_vec(
 #pragma omp parallel num_threads(threads)
 {   
         int tid = omp_get_thread_num();
-        size_t block = nelem / threads;
-        size_t rem = nelem - threads * block;
+        int block = nelem / threads;
+        int rem = nelem - threads * block;
         size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
         int nid = tid + 1;
         size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
@@ -736,8 +736,8 @@ extern void csc_to_dense_c(
 #pragma omp parallel num_threads(threads)
 {   
         int tid = omp_get_thread_num();
-        size_t block = ncol / threads;
-        size_t rem = ncol - threads * block;
+        int block = ncol / threads;
+        int rem = ncol - threads * block;
         size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
         int nid = tid + 1;
         size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
@@ -819,8 +819,8 @@ extern void csc_to_dense_c_vec(
 #pragma omp parallel num_threads(threads)
 {   
         int tid = omp_get_thread_num();
-        size_t block = ncol / threads;
-        size_t rem = ncol - threads * block;
+        int block = ncol / threads;
+        int rem = ncol - threads * block;
         size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
         int nid = tid + 1;
         size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
@@ -901,8 +901,8 @@ extern void csc_to_dense_transposed_c(
 #pragma omp parallel num_threads(threads)
 {   
         int tid = omp_get_thread_num();
-        size_t block = ncol / threads;
-        size_t rem = ncol - threads * block;
+        int block = ncol / threads;
+        int rem = ncol - threads * block;
         size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
         int nid = tid + 1;
         size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
@@ -982,8 +982,8 @@ extern void csc_to_dense_transposed_c_vec(
 #pragma omp parallel num_threads(threads)
 {   
         int tid = omp_get_thread_num();
-        size_t block = ncol / threads;
-        size_t rem = ncol - threads * block;
+        int block = ncol / threads;
+        int rem = ncol - threads * block;
         size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
         int nid = tid + 1;
         size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
@@ -1107,8 +1107,8 @@ extern IT2 csc_rbind(
 #pragma omp parallel num_threads(threads)
 {   
     int tid = omp_get_thread_num();
-    size_t block = ncol / threads;   // each thread handles a block of rows.
-    size_t rem = ncol - threads * block;
+    int block = ncol / threads;   // each thread handles a block of rows.
+    int rem = ncol - threads * block;
     size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
     int nid = tid + 1;
     size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
@@ -1160,8 +1160,8 @@ extern int csc_rbind_vec(
 #pragma omp parallel num_threads(threads)
 {   
     int tid = omp_get_thread_num();
-    size_t block = (ncol+1) / threads;   // each thread handles a block of rows.
-    size_t rem = (ncol+1) - threads * block;
+    int block = (ncol+1) / threads;   // each thread handles a block of rows.
+    int rem = (ncol+1) - threads * block;
     size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
     int nid = tid + 1;
     size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
@@ -1219,8 +1219,8 @@ extern int csc_rbind_vec(
 // #pragma omp parallel num_threads(threads)
 // {   
 //     int tid = omp_get_thread_num();
-//     size_t block = ncol / threads;   // each thread handles a block of rows.
-//     size_t rem = ncol - threads * block;
+//     int block = ncol / threads;   // each thread handles a block of rows.
+//     int rem = ncol - threads * block;
 //     size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
 //     int nid = tid + 1;
 //     size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
@@ -1438,7 +1438,7 @@ extern void csc_colsums_iter(
         iPT end2;
 
         auto optr = out;
-        for (size_t c = 0; c < ncol; ++c, ++optr) {*optr = 0; }
+        for (IT2 c = 0; c < ncol; ++c, ++optr) {*optr = 0; }
         // std::fill(out, out + ncol, 0);   // absolutely needed here.
         for (; p != pend; ++p, ++out) {
             end2 = *p;
@@ -1459,8 +1459,8 @@ extern void csc_colsums_iter(
 #pragma omp parallel num_threads(threads)
 {   
         int tid = omp_get_thread_num();
-        size_t block = ncol / threads;
-        size_t rem = ncol - threads * block;
+        int block = ncol / threads;
+        int rem = ncol - threads * block;
         size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
         int nid = tid + 1;
         size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
@@ -1524,8 +1524,8 @@ extern void csc_colsums_vec(
 #pragma omp parallel num_threads(threads)
 {   
         int tid = omp_get_thread_num();
-        size_t block = ncol / threads;
-        size_t rem = ncol - threads * block;
+        int block = ncol / threads;
+        int rem = ncol - threads * block;
         size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
         int nid = tid + 1;
         size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
@@ -1535,7 +1535,7 @@ extern void csc_colsums_vec(
         size_t xstart = xend; 
         auto sum = x[offset];   // assign just to get hte type
 
-        for (IT2 c = offset; c < end; ++c) {
+        for (size_t c = offset; c < end; ++c) {
             xstart = xend;
             xend = p[c+1];
 
@@ -1584,8 +1584,8 @@ extern void csc_rowsums_iter(
 #pragma omp parallel num_threads(threads)
 {   
         int tid = omp_get_thread_num();
-        size_t block = nzcount / threads;
-        size_t rem = nzcount - threads * block;
+        int block = nzcount / threads;
+        int rem = nzcount - threads * block;
         size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
         int nid = tid + 1;
         size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
@@ -1606,8 +1606,8 @@ extern void csc_rowsums_iter(
 #pragma omp parallel num_threads(threads)
 {   
         int tid = omp_get_thread_num();
-        size_t block = nrow / threads;
-        size_t rem = nrow - threads * block;
+        int block = nrow / threads;
+        int rem = nrow - threads * block;
         size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
         int nid = tid + 1;
         size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
@@ -1658,8 +1658,8 @@ extern void csc_rowsums_vec(
 #pragma omp parallel num_threads(threads)
 {   
         int tid = omp_get_thread_num();
-        size_t block = nzcount / threads;
-        size_t rem = nzcount - threads * block;
+        int block = nzcount / threads;
+        int rem = nzcount - threads * block;
         size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
         int nid = tid + 1;
         size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
@@ -1676,8 +1676,8 @@ extern void csc_rowsums_vec(
 #pragma omp parallel num_threads(threads)
 {   
         int tid = omp_get_thread_num();
-        size_t block = nrow / threads;
-        size_t rem = nrow - threads * block;
+        int block = nrow / threads;
+        int rem = nrow - threads * block;
         size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
         int nid = tid + 1;
         size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
