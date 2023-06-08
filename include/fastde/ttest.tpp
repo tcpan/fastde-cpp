@@ -52,7 +52,7 @@ void sparse_ttest_summary(ITER in, IDX_ITER ids, size_t const & nz_count,
 
   // =====  scan and create summary.
   LABEL l;
-  LABEL_ITER lab_iter = labels;
+  // LABEL_ITER lab_iter = labels;
   // then walk through the input, and adjust the non-zeros.
   IT val;
   IDX id;
@@ -269,7 +269,7 @@ double incomplete_beta<T, DEGREE, true>::incbeta(T const & x, bool const & flip 
       double front = exp(log(static_cast<double>(x))*a+log(1.0-static_cast<double>(x))*b - lbeta);
 
       double _a = flip ? static_cast<double>(b) : static_cast<double>(a);
-      double _b = flip ? static_cast<double>(a) : static_cast<double>(b);
+      // double _b = flip ? static_cast<double>(a) : static_cast<double>(b);
       std::vector<double> & numerators = flip ? numerator_ba : numerator_ab;
 
       /*Find the first part before the continued fraction.*/
@@ -357,9 +357,10 @@ template <typename T, typename DEGREE>
 T t_distribution<T, DEGREE, false>::pval(T const & t, DEGREE const & _v, int const & test_type) {
       
       // first calcualte the cdf.
-      double _cdf, o;
+      // double _cdf;
+      double o;
       if (_v == std::numeric_limits<T>::infinity()) {
-        _cdf = 0.5 * erfc(-t * M_SQRT1_2);
+        // _cdf = 0.5 * erfc(-t * M_SQRT1_2);
 
         // Rprintf("equal variance dof: %f \n", df);
         if (test_type == PVAL_TWO_SIDED)  // 2 sided
@@ -448,16 +449,17 @@ T t_distribution<T, DEGREE, false>::cdf(T const & t, DEGREE const & _v) {
 
     // note that dof/2.0 for a AND b is not what wikipedia has.
 template <typename T, typename DEGREE>
-t_distribution<T, DEGREE, true>::t_distribution(DEGREE const & dof) : _v(dof), incbeta(dof * 0.5, 0.5) {};
+t_distribution<T, DEGREE, true>::t_distribution(DEGREE const & dof) : _v(dof), incbeta(dof * 0.5, 0.5) {}
 
     // directly compute pval to avoid repeated 1-x that causes epsilon loss of precision.
 template <typename T, typename DEGREE>
 T t_distribution<T, DEGREE, true>::pval(T const & t, int const & test_type) {
       
       // first calcualte the cdf.
-      double _cdf, o;
+      // double _cdf;
+      double o;
       if (_v == std::numeric_limits<T>::infinity()) {
-        _cdf = 0.5 * erfc(-t * M_SQRT1_2);
+        // _cdf = 0.5 * erfc(-t * M_SQRT1_2);
 
         // Rprintf("equal variance dof: %f \n", df);
         if (test_type == PVAL_TWO_SIDED)  // 2 sided
@@ -658,7 +660,7 @@ void omp_dense_ttest(
     std::vector<std::pair<int, size_t> > &sorted_cluster_counts,
     int threads) {
 
-  std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start = std::chrono::steady_clock::now();
+  // std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start = std::chrono::steady_clock::now();
 
   // get the number of unique labels.
   sorted_cluster_counts.clear();
@@ -684,8 +686,8 @@ void omp_dense_ttest(
 #pragma omp parallel num_threads(threads)
   {
     int tid = omp_get_thread_num();
-    size_t block = nfeatures / threads;
-    size_t rem = nfeatures - threads * block;
+    int block = nfeatures / threads;
+    int rem = nfeatures - threads * block;
     size_t offset = tid * block + (tid > rem ? rem : tid);
     int nid = tid + 1;
     size_t end = nid * block + (nid > rem ? rem : nid);
@@ -751,8 +753,8 @@ void omp_sparse_ttest(
 #pragma omp parallel num_threads(threads)
   {
     int tid = omp_get_thread_num();
-    size_t block = nfeatures / threads;
-    size_t rem = nfeatures - threads * block;
+    int block = nfeatures / threads;
+    int rem = nfeatures - threads * block;
     size_t offset = tid * block + (tid > rem ? rem : tid);
     int nid = tid + 1;
     size_t end = nid * block + (nid > rem ? rem : nid);

@@ -224,15 +224,15 @@ double ranksum_to_pval(double const & val, size_t const & n1,
       double prod = static_cast<double>(n1 * (count - n1));
       double U1 = R - static_cast<double>((n1 * (n1 + 1)) >> 1);  // same as STATISTIC in 
       //  https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/wilcox.test.R
-      double U2 = prod - U1; 
-      double U;
-      if (test_type == PVAL_GREATER) { // greater
-          U = U1;
-      } else if (test_type == PVAL_LESS) {  // less
-          U = U2;
-      } else if (test_type == PVAL_TWO_SIDED) {  // two sided
-          U = std::max(U1, U2);
-      }
+      // double U2 = prod - U1; 
+      // double U;
+      // if (test_type == PVAL_GREATER) { // greater
+      //     U = U1;
+      // } else if (test_type == PVAL_LESS) {  // less
+      //     U = U2;
+      // } else if (test_type == PVAL_TWO_SIDED) {  // two sided
+      //     U = std::max(U1, U2);
+      // }
       // normal approximation
       double mu = prod * 0.5;
       // sigma = sqrt((prod / 12.0) * ((count + 1) - tie_sum / (count * (count - 1))));
@@ -489,7 +489,7 @@ void omp_sparse_wmw(
   // printf("here 1\n");
     using IT = typename std::iterator_traits<XIT>::value_type;
 
-    std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start = std::chrono::steady_clock::now();
+    // std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> start = std::chrono::steady_clock::now();
 
 
   // get the number of unique labels.

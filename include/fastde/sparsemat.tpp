@@ -53,9 +53,9 @@
 //     int tid = omp_get_thread_num();
 //     int block = ncol / threads;
 //     int rem = ncol - threads * block;
-//     size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
+//     size_t offset = tid * block + (tid > rem ? rem : tid);
 //     int nid = tid + 1;
-//     size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
+//     size_t end = nid * block + (nid > rem ? rem : nid);
 
 //     IT2 i_start = p[offset], i_end;
 //     for (; offset < end; ++offset) {
@@ -87,7 +87,7 @@
 //     int tid = omp_get_thread_num();
 //     int block = nelem / threads;
 //     int rem = nelem - threads * block;
-//     size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
+//     size_t offset = tid * block + (tid > rem ? rem : tid);
 
 //     boundaries[tid] = {std::get<0>(temp[offset]), offset};
 // }
@@ -122,9 +122,9 @@
 //     int tid = omp_get_thread_num();
 //     int block = nelem / threads;
 //     int rem = nelem - threads * block;
-//     size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
+//     size_t offset = tid * block + (tid > rem ? rem : tid);
 //     int nid = tid + 1;
-//     size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
+//     size_t end = nid * block + (nid > rem ? rem : nid);
 
 //     IT rid2;
 //     for (; offset < end; ++offset) {
@@ -241,9 +241,9 @@ extern void csc_transpose_csc(
         int tid = omp_get_thread_num();
         int block = nelem / threads;
         int rem = nelem - threads * block;
-        size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
+        size_t offset = tid * block + (tid > rem ? rem : tid);
         int nid = tid + 1;
-        size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
+        size_t end = nid * block + (nid > rem ? rem : nid);
 
         auto istart = i + offset;
         auto iend = i + end;
@@ -268,9 +268,9 @@ extern void csc_transpose_csc(
         int tid = omp_get_thread_num();
         int block = (nrow+1) / threads;   // each thread handles a block of rows.
         int rem = (nrow+1) - threads * block;
-        size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
+        size_t offset = tid * block + (tid > rem ? rem : tid);
         int nid = tid + 1;
-        size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
+        size_t end = nid * block + (nid > rem ? rem : nid);
 
         for (int t = 0; t < threads; ++t) {  // linear scan, for hardware prefetching.
             for (size_t r = offset; r < end; ++r) {
@@ -330,9 +330,9 @@ extern void csc_transpose_csc(
         int tid = omp_get_thread_num();
         int block = nelem / threads;
         int rem = nelem - threads * block;
-        size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
+        size_t offset = tid * block + (tid > rem ? rem : tid);
         int nid = tid + 1;
-        size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
+        size_t end = nid * block + (nid > rem ? rem : nid);
 
         IT2 rid;   // column id needs to start with 0.  row ids start with 0
         XT val;
@@ -504,9 +504,9 @@ extern void csc_transpose_csc_vec(
         int tid = omp_get_thread_num();
         int block = nelem / threads;
         int rem = nelem - threads * block;
-        size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
+        size_t offset = tid * block + (tid > rem ? rem : tid);
         int nid = tid + 1;
-        size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
+        size_t end = nid * block + (nid > rem ? rem : nid);
 
         for (size_t e = offset; e < end; ++e) {
             ++lps[nid][static_cast<size_t>(i[e])];
@@ -529,9 +529,9 @@ extern void csc_transpose_csc_vec(
         int tid = omp_get_thread_num();
         int block = (nrow+1) / threads;   // each thread handles a block of rows.
         int rem = (nrow+1) - threads * block;
-        size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
+        size_t offset = tid * block + (tid > rem ? rem : tid);
         int nid = tid + 1;
-        size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
+        size_t end = nid * block + (nid > rem ? rem : nid);
 
         for (int t = 0; t < threads; ++t) {  // linear scan, for hardware prefetching.
             for (size_t r = offset; r < end; ++r) {
@@ -591,9 +591,9 @@ extern void csc_transpose_csc_vec(
         int tid = omp_get_thread_num();
         int block = nelem / threads;
         int rem = nelem - threads * block;
-        size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
+        size_t offset = tid * block + (tid > rem ? rem : tid);
         int nid = tid + 1;
-        size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
+        size_t end = nid * block + (nid > rem ? rem : nid);
 
         size_t rid;   // column id needs to start with 0.  row ids start with 0
         auto val = x[0];
@@ -738,9 +738,9 @@ extern void csc_to_dense_c(
         int tid = omp_get_thread_num();
         int block = ncol / threads;
         int rem = ncol - threads * block;
-        size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
+        size_t offset = tid * block + (tid > rem ? rem : tid);
         int nid = tid + 1;
-        size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
+        size_t end = nid * block + (nid > rem ? rem : nid);
 
         IT2 r;
         iPT istart, iend;
@@ -821,9 +821,9 @@ extern void csc_to_dense_c_vec(
         int tid = omp_get_thread_num();
         int block = ncol / threads;
         int rem = ncol - threads * block;
-        size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
+        size_t offset = tid * block + (tid > rem ? rem : tid);
         int nid = tid + 1;
-        size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
+        size_t end = nid * block + (nid > rem ? rem : nid);
 
         auto r = i[0];
         size_t istart, iend = p[offset];
@@ -903,9 +903,9 @@ extern void csc_to_dense_transposed_c(
         int tid = omp_get_thread_num();
         int block = ncol / threads;
         int rem = ncol - threads * block;
-        size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
+        size_t offset = tid * block + (tid > rem ? rem : tid);
         int nid = tid + 1;
-        size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
+        size_t end = nid * block + (nid > rem ? rem : nid);
 
         IT2 r;
         iPT istart, iend;
@@ -984,9 +984,9 @@ extern void csc_to_dense_transposed_c_vec(
         int tid = omp_get_thread_num();
         int block = ncol / threads;
         int rem = ncol - threads * block;
-        size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
+        size_t offset = tid * block + (tid > rem ? rem : tid);
         int nid = tid + 1;
-        size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
+        size_t end = nid * block + (nid > rem ? rem : nid);
 
         auto r = i[0];
         size_t istart, iend = p[offset];
@@ -1109,9 +1109,9 @@ extern IT2 csc_rbind(
     int tid = omp_get_thread_num();
     int block = ncol / threads;   // each thread handles a block of rows.
     int rem = ncol - threads * block;
-    size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
+    size_t offset = tid * block + (tid > rem ? rem : tid);
     int nid = tid + 1;
-    size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
+    size_t end = nid * block + (nid > rem ? rem : nid);
 
     PITER2 opptr = op + offset + 1;
     for (size_t i = offset; i < end; ++i, ++opptr) {
@@ -1162,9 +1162,9 @@ extern int csc_rbind_vec(
     int tid = omp_get_thread_num();
     int block = (ncol+1) / threads;   // each thread handles a block of rows.
     int rem = (ncol+1) - threads * block;
-    size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
+    size_t offset = tid * block + (tid > rem ? rem : tid);
     int nid = tid + 1;
-    size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
+    size_t end = nid * block + (nid > rem ? rem : nid);
 
     size_t off;
     for (size_t i = offset; i < end; ++i) {
@@ -1221,9 +1221,9 @@ extern int csc_rbind_vec(
 //     int tid = omp_get_thread_num();
 //     int block = ncol / threads;   // each thread handles a block of rows.
 //     int rem = ncol - threads * block;
-//     size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
+//     size_t offset = tid * block + (tid > rem ? rem : tid);
 //     int nid = tid + 1;
-//     size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
+//     size_t end = nid * block + (nid > rem ? rem : nid);
     
 //     for (size_t i = offset; i < end; ++i) {
 //         // iterator's operator* returns a proxy.  This is the value_type of r_vector<>'s iterator. (const_iterator has T as datatype)
@@ -1461,9 +1461,9 @@ extern void csc_colsums_iter(
         int tid = omp_get_thread_num();
         int block = ncol / threads;
         int rem = ncol - threads * block;
-        size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
+        size_t offset = tid * block + (tid > rem ? rem : tid);
         int nid = tid + 1;
-        size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
+        size_t end = nid * block + (nid > rem ? rem : nid);
 
         auto pptr = p + offset;
         auto pend = p + end;
@@ -1526,9 +1526,9 @@ extern void csc_colsums_vec(
         int tid = omp_get_thread_num();
         int block = ncol / threads;
         int rem = ncol - threads * block;
-        size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
+        size_t offset = tid * block + (tid > rem ? rem : tid);
         int nid = tid + 1;
-        size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
+        size_t end = nid * block + (nid > rem ? rem : nid);
 
 
         size_t xend = p[offset];  // first entry will be star 
@@ -1586,9 +1586,9 @@ extern void csc_rowsums_iter(
         int tid = omp_get_thread_num();
         int block = nzcount / threads;
         int rem = nzcount - threads * block;
-        size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
+        size_t offset = tid * block + (tid > rem ? rem : tid);
         int nid = tid + 1;
-        size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
+        size_t end = nid * block + (nid > rem ? rem : nid);
 
         sums[tid].resize(nrow, 0);
         std::vector<XT> & s = sums[tid];
@@ -1608,9 +1608,9 @@ extern void csc_rowsums_iter(
         int tid = omp_get_thread_num();
         int block = nrow / threads;
         int rem = nrow - threads * block;
-        size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
+        size_t offset = tid * block + (tid > rem ? rem : tid);
         int nid = tid + 1;
-        size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
+        size_t end = nid * block + (nid > rem ? rem : nid);
 
         OITER optr(out + offset);
         for (; offset < end; ++offset, ++optr) {
@@ -1660,9 +1660,9 @@ extern void csc_rowsums_vec(
         int tid = omp_get_thread_num();
         int block = nzcount / threads;
         int rem = nzcount - threads * block;
-        size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
+        size_t offset = tid * block + (tid > rem ? rem : tid);
         int nid = tid + 1;
-        size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
+        size_t end = nid * block + (nid > rem ? rem : nid);
 
         sums[tid].resize(nrow, 0); // initialize
         std::vector<XT> & s = sums[tid];
@@ -1678,9 +1678,9 @@ extern void csc_rowsums_vec(
         int tid = omp_get_thread_num();
         int block = nrow / threads;
         int rem = nrow - threads * block;
-        size_t offset = tid * block + (static_cast<size_t>(tid) > rem ? rem : tid);
+        size_t offset = tid * block + (tid > rem ? rem : tid);
         int nid = tid + 1;
-        size_t end = nid * block + (static_cast<size_t>(nid) > rem ? rem : nid);
+        size_t end = nid * block + (nid > rem ? rem : nid);
 
         for (size_t r = offset; r < end; ++r) {
             XT sum = 0;

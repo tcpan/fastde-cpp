@@ -55,7 +55,7 @@ void sparse_foldchange_summary(
   LABEL key;
   for (auto item : cl_counts) {
     key = item.first;
-    sums[key] = { .sum = 0.0, .thresh_count = 0 };
+    sums[key] = { 0.0, 0 };
     z_cl_counts[key] = item.second;
   }
 
@@ -87,7 +87,7 @@ void sparse_foldchange_summary(
     }
   }
 
-  clust_info total = { .sum = 0.0, .thresh_count = 0 };
+  clust_info total = { 0.0, 0 };
   for (auto item : sums) {
     total.thresh_count += item.second.thresh_count;
     total.sum += item.second.sum;
@@ -121,7 +121,7 @@ void pseudosparse_foldchange_summary(
   LABEL key;
   for (auto item : cl_counts) {
     key = item.first;
-    sums[key] = { .sum = 0.0, .thresh_count = 0 };
+    sums[key] = { 0.0, 0 };
     z_cl_counts[key] = 0;
   }
 
@@ -151,7 +151,7 @@ void pseudosparse_foldchange_summary(
 
   }
 
-  clust_info total = { .sum = 0.0, .thresh_count = 0 };
+  clust_info total = { 0.0, 0 };
   for (auto item : sums) {
     total.thresh_count += item.second.thresh_count;
     total.sum += item.second.sum;
@@ -322,8 +322,8 @@ void omp_dense_foldchange(
   {
     
     int tid = omp_get_thread_num();
-    size_t block = nfeatures / threads;
-    size_t rem = nfeatures - threads * block;
+    int block = nfeatures / threads;
+    int rem = nfeatures - threads * block;
     size_t offset = tid * block + (tid > rem ? rem : tid);
     int nid = tid + 1;
     size_t end = nid * block + (nid > rem ? rem : nid);
@@ -404,8 +404,8 @@ void omp_sparse_foldchange(
 #pragma omp parallel num_threads(threads)
   {
     int tid = omp_get_thread_num();
-    size_t block = nfeatures / threads;
-    size_t rem = nfeatures - threads * block;
+    int block = nfeatures / threads;
+    int rem = nfeatures - threads * block;
     size_t offset = tid * block + (tid > rem ? rem : tid);
     int nid = tid + 1;
     size_t end = nid * block + (nid > rem ? rem : nid);
@@ -459,8 +459,8 @@ void omp_filter_foldchange(
 // reduction( + : init_count, scale_count, fc_count, pos_count, final_count)
     {
       int tid = omp_get_thread_num();
-      size_t block = nelem / threads;
-      size_t rem = nelem - threads * block;
+      int block = nelem / threads;
+      int rem = nelem - threads * block;
       size_t offset = tid * block + (tid > rem ? rem : tid);
       int nid = tid + 1;
       size_t end = nid * block + (nid > rem ? rem : nid);
