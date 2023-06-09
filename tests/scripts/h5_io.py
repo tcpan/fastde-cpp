@@ -122,7 +122,7 @@ def read_h5_vector(filename):
     print(list(f['vector'].keys()))
 
     g = f['vector']
-    V = g['x'][:]
+    V = g['block0_values'][:]
     f.close()
     return V
 

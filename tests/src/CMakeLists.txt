@@ -62,7 +62,7 @@ foreach( exec IN LISTS TEST_APPS)
 endforeach(exec)
 
 
-set(CATCH2_TEST_APPS test_io test_sparsemat_transpose test_sparsemat_todense test_sparsemat_sums test_sparsemat_bind test_normalize test_wmwtest)
+set(CATCH2_TEST_APPS test_io test_sparsemat_transpose test_sparsemat_todense test_sparsemat_sums test_sparsemat_bind test_normalize test_foldchange test_wmwtest test_ttest)
 
 foreach( exec IN LISTS CATCH2_TEST_APPS)
 	add_executable(${exec} ${exec}.cpp)

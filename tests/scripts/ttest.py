@@ -24,6 +24,10 @@ cols = m.shape[1]
 
 
 # %%
+# create a label vector
+# num_labels = 30
+# labels = np.random.randint(1, num_labels+1, rows)
+
 if (os.path.isfile("../data/test_label_vec.h5")):
     labels = h5_io.read_h5_vector("../data/test_label_vec.h5")
 
@@ -53,12 +57,12 @@ for g in range(cols):
         sample1 = gene_data[np.where(labels == l)[0].tolist()]
         sample2 = gene_data[np.where(labels != l)[0].tolist()]
         # isnan is not supported by sparse matrix in stats.  so need to convert to dense.
-        _, pval = stats.mannwhitneyu(sample1, sample2, use_continuity=True, alternative='two-sided', method='asymptotic')
+        _, pval = stats.ttest_ind(sample1, sample2, alternative='two-sided', equal_var = True)
         pv[l-1, g] = pval[0]
         pv2[l-1, g] = pval[0]
 
-h5_io.write_h5_matrix("../data/test_spmat_wilcox_pval_matrix_c.h5", pv)
-h5_io.write_h5_matrix("../data/test_spmat_wilcox_pval_matrix_r.h5", pv2)
+h5_io.write_h5_matrix("../data/test_spmat_ttest_pval_matrix_c.h5", pv)
+h5_io.write_h5_matrix("../data/test_spmat_ttest_pval_matrix_r.h5", pv2)
 
 
 
