@@ -17,7 +17,6 @@
 #include <cmath>  // sqrt
 #include <algorithm>
 #include <type_traits>
-#include <cassert>
 
 #include <omp.h>
 
@@ -284,7 +283,7 @@ void spmat_sort(IT_ITER in, IDX_ITER ids,
   
   // tuplize in and labels.
   if (count == 0) return;
-  assert((count < 20) && "ERROR: count is too small (< 20) for a normal approximation\n");
+  if (count < 20) throw std::invalid_argument("ERROR: count is too small (< 20) for a normal approximation\n");
 
   // initialize ranksums, also need per cluster zero counts.
   z_cl_counts.clear();
@@ -337,7 +336,8 @@ void pseudosparse_sort(
   // tuplize in and labels.
 
   if (count == 0) return;
-  assert((count < 20) && "ERROR: count is too small (< 20) for a normal approximation\n");
+  if (count < 20) throw std::invalid_argument("ERROR: count is too small (< 20) for a normal approximation\n");
+  // assert((count < 20) && "ERROR: count is too small (< 20) for a normal approximation\n");
 
   z_cl_counts.clear();
   LABEL key;
@@ -379,7 +379,8 @@ void wmw(
   
   // tuplize in and labels.
   if (count == 0) return;
-  assert((count < 20) && "ERROR: count is too small (< 20) for a normal approximation\n");
+  if (count < 20) throw std::invalid_argument("ERROR: count is too small (< 20) for a normal approximation\n");
+  // assert((count < 20) && "ERROR: count is too small (< 20) for a normal approximation\n");
 
   if (cl_counts.size() == 0) return;
 
@@ -574,7 +575,8 @@ void spmat_sort_vec(XVEC const & in, IVEC const & ids,
 
   // tuplize x and labels.
   if (count == 0) return;
-  assert((count < 20) && "ERROR: count is too small (< 20) for a normal approximation\n");
+  if (count < 20) throw std::invalid_argument("ERROR: count is too small (< 20) for a normal approximation\n");
+  // assert((count < 20) && "ERROR: count is too small (< 20) for a normal approximation\n");
 
 
   // initialize ranksums, also need per cluster zero counts.
@@ -625,7 +627,8 @@ void pseudosparse_sort_vec(
 
 
   if (count == 0) return;
-  assert((count < 20) && "ERROR: count is too small (< 20) for a normal approximation\n");
+  if (count < 20) throw std::invalid_argument("ERROR: count is too small (< 20) for a normal approximation\n");
+  // assert((count < 20) && "ERROR: count is too small (< 20) for a normal approximation\n");
 
   z_cl_counts.clear();
   LABEL key;
@@ -667,7 +670,8 @@ void wmw_vec(
 
      // tuplize in and labels.
   if (count == 0) return;
-  assert((count < 20) && "ERROR: count is too small (< 20) for a normal approximation\n");
+  if (count < 20) throw std::invalid_argument("ERROR: count is too small (< 20) for a normal approximation\n");
+  // assert((count < 20) && "ERROR: count is too small (< 20) for a normal approximation\n");
 
   if (cl_counts.size() == 0) return;
 
