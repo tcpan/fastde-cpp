@@ -33,9 +33,9 @@
 // x  points to the start fo the columns positive element values
 // count is hte number of positive elements in the column.
 template <typename ITER, typename IDX_ITER, typename LABEL_ITER,
-  typename IT = typename std::iterator_traits<ITER>::value_type,
-  typename IDX = typename std::iterator_traits<IDX_ITER>::value_type,
-  typename LABEL = typename std::iterator_traits<LABEL_ITER>::value_type>
+  typename IT,
+  typename IDX,
+  typename LABEL>
 void sparse_ttest_summary(ITER in, IDX_ITER ids, size_t const & nz_count, 
   LABEL_ITER labels, size_t const & count, IT const & zero_val,
   std::vector<std::pair<LABEL, size_t> > const & clust_counts,
@@ -85,8 +85,8 @@ void sparse_ttest_summary(ITER in, IDX_ITER ids, size_t const & nz_count,
 
 // compute count, mean and variance for each subclass.
 template <typename ITER, typename LABEL_ITER,
-  typename IT = typename std::iterator_traits<ITER>::value_type,
-  typename LABEL = typename std::iterator_traits<LABEL_ITER>::value_type>
+  typename IT,
+  typename LABEL>
 void dense_ttest_summary(
   ITER in, LABEL_ITER labels, size_t const & count, IT const & zero_val,
   std::vector<std::pair<LABEL, size_t> > const & clust_counts,
@@ -547,7 +547,7 @@ T t_distribution<T, DEGREE, true>::cdf(T const & t) {
 
 // types:  
 template <typename LABEL, typename OT_ITER,
-  typename OT = typename std::iterator_traits<OT_ITER>::value_type>
+  typename OT>
 void two_sample_ttest(
   std::unordered_map<LABEL, gaussian_stats<double> > const & gaussian_sums,
   std::vector<std::pair<LABEL, size_t> > const & clust_counts,

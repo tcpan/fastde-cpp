@@ -62,8 +62,7 @@ void count_clusters(LABEL_ITER labels, size_t const & count,
   } // end parallel version.
 }
 
-template <typename LABEL_VEC,
-  typename LABEL = decltype(std::declval<LABEL_VEC>()[0]) >
+template <typename LABEL_VEC, typename LABEL>
 void count_clusters_vec(LABEL_VEC const & labels, size_t const & count,
   std::unordered_map<LABEL, size_t> & clust_counts, int const & threads){
 
@@ -152,8 +151,7 @@ void count_clusters(LABEL_ITER labels, size_t const & count,
   std::sort(clust_counts.begin(), clust_counts.end(), sorter);
 }
 
-template <typename LABEL_VEC,
-  typename LABEL = decltype(std::declval<LABEL_VEC>()[0]) >
+template <typename LABEL_VEC, typename LABEL>
 void count_clusters_vec(LABEL_VEC const & labels, size_t const & count,
   std::vector<std::pair<LABEL, size_t> > & clust_counts, int const & threads) {
 

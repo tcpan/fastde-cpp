@@ -11,6 +11,7 @@
  *  Affiliation: Institute for Data Engineering and Science
  *  			Georgia Institute of Technology, Atlanta, GA 30332
  */
+#include <stddef.h>
 
 #include <iterator>
 #include <vector>
@@ -51,8 +52,8 @@ void pseudosparse_foldchange_summary(
 
 // compute percentages.  This is common amongst all variants
 // this is used in seurat foldchange.default 
-template <typename LABEL, typename PT_ITER, typename PT =
-  typename std::iterator_traits<PT_ITER>::value_type >
+template <typename LABEL, typename PT_ITER, 
+  typename PT = typename std::iterator_traits<PT_ITER>::value_type >
 void foldchange_percents(
   std::vector<std::pair<LABEL, size_t> > const & cl_counts, 
   std::unordered_map<LABEL, clust_info> const & sums, 
@@ -61,8 +62,8 @@ void foldchange_percents(
 
 // compute mean .  this is used for seurat "scaled.data".  no log or pseudocount applied.
 //  Should not be used with expm1
-template <typename LABEL, typename OT_ITER, typename OT =
-  typename std::iterator_traits<OT_ITER>::value_type>
+template <typename LABEL, typename OT_ITER, 
+  typename OT = typename std::iterator_traits<OT_ITER>::value_type>
 void foldchange_mean(
   std::vector<std::pair<LABEL, size_t> > const & cl_counts, 
   std::unordered_map<LABEL, clust_info> const & sums, 
@@ -71,8 +72,8 @@ void foldchange_mean(
 
 
 // compute log of mean with pseudocount.  this is used for seurat "data" and default fold change.
-template <typename LABEL, typename OT_ITER, typename OT = 
-  typename std::iterator_traits<OT_ITER>::value_type>
+template <typename LABEL, typename OT_ITER, 
+  typename OT = typename std::iterator_traits<OT_ITER>::value_type>
 void foldchange_logmean(
   std::vector<std::pair<LABEL, size_t> > const & cl_counts, 
   std::unordered_map<LABEL, clust_info> const & sums, 

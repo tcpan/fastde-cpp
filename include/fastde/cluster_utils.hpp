@@ -2,6 +2,8 @@
 
 // ==== function declaration
 
+#include <stddef.h>
+
 #include <map>
 #include <unordered_map>
 #include <vector>

@@ -11,6 +11,9 @@
 
 // direct write to matrix may not be fast for cpp11:  proxy object creation and iterator creation....
 
+#include <stddef.h>
+#include <stdexcept>
+
 #include <utility>
 #include <unordered_map>
 #include <vector>

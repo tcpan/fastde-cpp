@@ -11,6 +11,8 @@
  *  			Georgia Institute of Technology, Atlanta, GA 30332
  */
 
+#include <stddef.h>
+
 #include <utility>
 #include <unordered_map>  // unordered_map
 #include <vector>

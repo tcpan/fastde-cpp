@@ -4,6 +4,7 @@
 
 // Todo: remove all cpp11 references.  actually, using ITER makes it slower?  move this code to fastde core for now.
 
+#include <stddef.h>
 #include <vector>
 
 template <typename OIT, typename XIT, typename PIT>
